@@ -1,0 +1,278 @@
+{
+    "_meta": {
+        "version": "2.0",
+        "dimensiones": ["global", "docencia", "investigacion", "laboral", "gestion"],
+        "nota": "Los campos marcados con '_computed' son derivados de otras dimensiones y no se rellenan manualmente.",
+        "_changelog": {
+            "v1.0": "Versión original (template.json)",
+            "v2.0": {
+                "fecha": null,
+                "cambios": [
+                    "Nueva estructura jerárquica en 5 dimensiones: global, docencia, investigacion, laboral, gestion",
+                    "Añadido bloque _meta con versión, dimensiones y notas",
+                    "Añadidos campos _computed, _fuentes y _descripcion en nodos derivados",
+                    "sexenios: _comment sustituido por campo tipo",
+                    "liderazgo_cientifico dividido: revisiones+keynotes → investigacion.visibilidad_cientifica; roles_editoriales+comites → gestion.liderazgo_editorial",
+                    "Nuevos indicadores_temporales por dimensión: docencia (creditos, alumnos, evaluaciones), laboral (categoria, instituciones), gestion (cargos, comites), global e investigacion añaden evolucion_proyectos",
+                    "Typos corregidos: scopus_cuartial→scopus_cuartil, es_insitucional→es_institucional, acuerdo_formativo→acuerdo_transformativo"
+                ]
+            }
+        }
+    },
+    "global": {
+        "_descripcion": "Nodo raíz del árbol. Cabecera de identidad y agregados transversales.",
+        "datos_personales": {
+            "nombre": null,
+            "apellidos": null,
+            "nombre_completo": null,
+            "email": null,
+            "web_personal": null,
+            "redes_sociales": []
+        },
+        "identificadores_academicos": {
+            "orcid": null,
+            "researcher_id": null,
+            "scopus_author_id": null,
+            "google_scholar": null,
+            "research_gate": null,
+            "dialnet": null
+        },
+        "tematicas_frecuentes": {
+            "_computed": true,
+            "_fuentes": ["investigacion.publicaciones.contenido.keywords", "docencia.asignaturas", "investigacion.proyectos_investigacion"],
+            "tematicas": []
+        },
+        "hitos_destacados": {
+            "primer_q1": {
+                "revista": null,
+                "año": null
+            },
+            "primer_proyecto_ip": {
+                "titulo": null,
+                "año": null
+            },
+            "premios_reconocimientos": []
+        },
+        "indicadores_temporales": {
+            "_computed": true,
+            "_descripcion": "Vista agregada y consolidada de las evoluciones de cada dimensión.",
+            "evolucion_publicaciones": [],
+            "evolucion_citas": [],
+            "evolucion_tematicas": [],
+            "evolucion_docencia": [],
+            "evolucion_proyectos": []
+        }
+    },
+
+    "docencia": {
+        "_descripcion": "Actividad docente formal: impartición, coordinación y dirección académica.",
+        "direccion_trabajos": {
+            "tfg": null,
+            "tfm": null,
+            "tesis_doctoral": null,
+            "dea_master": null
+        },
+        "asignaturas": [
+            {
+                "nombre": null,
+                "fecha_inicio": null,
+                "fecha_fin": null
+            }
+        ],
+        "coordinacion": [
+            {
+                "asignatura": null,
+                "fecha_inicio": null,
+                "fecha_fin": null
+            }
+        ],
+        "indicadores_temporales": {
+            "_computed": true,
+            "evolucion_creditos": [],
+            "evolucion_alumnos": [],
+            "evolucion_evaluaciones": []
+        }
+    },
+
+    "investigacion": {
+        "_descripcion": "Actividad investigadora: producción científica, proyectos, transferencia y visibilidad.",
+        "metricas": {
+            "sexenios": {
+                "total": null,
+                "ultimo_concedido": null,
+                "tipo": null
+            },
+            "wos": {
+                "documentos": null,
+                "citas": null,
+                "h_index": null,
+                "q1": null,
+                "d1": null,
+                "ifna": null,
+                "ifnb": null,
+                "ifnesi": null,
+                "fecha_actualizacion": null
+            }
+        },
+        "proyectos": [
+            {
+                "titulo": null,
+                "tipo": null,
+                "financiador": null,
+                "programa": null,
+                "coordinador": null,
+                "rol": null,
+                "fecha_inicio": null,
+                "fecha_fin": null
+            }
+        ],
+        "publicaciones": [
+            {
+                "identificacion": {
+                    "titulo": null,
+                    "doi": null,
+                    "handle_upm": null,
+                    "tipo": null
+                },
+                "revista": {
+                    "nombre": null,
+                    "volumen": null,
+                    "numero": null,
+                    "paginas": null,
+                    "wos_cuartil": null,
+                    "wos_posicion": null,
+                    "wos_categoria": null,
+                    "scopus_cuartil": null,
+                    "scopus_categoria": null
+                },
+                "fechas": {
+                    "recibido": null,
+                    "aceptado": null,
+                    "publicado_online": null,
+                    "publicado_revista": null,
+                    "tiempo_revision_dias": null
+                },
+                "autores": [
+                    {
+                        "nombre": null,
+                        "orden": null,
+                        "es_primer_autor": null,
+                        "es_ultimo_autor": null,
+                        "es_correspondencia": null,
+                        "es_institucional": null,
+                        "afiliaciones": []
+                    }
+                ],
+                "contenido": {
+                    "abstract": null,
+                    "keywords": [],
+                    "financiacion": []
+                },
+                "acceso": {
+                    "open_access": null,
+                    "licencia": null,
+                    "apc_euros": null,
+                    "acuerdo_transformativo": null,
+                    "url_repositorio_institucional": null
+                },
+                "impacto": {
+                    "citas_wos": null,
+                    "citas_scopus": null,
+                    "citas_scholar": null,
+                    "citas_scholar_evolucion": {},
+                    "accesos_springer": null,
+                    "altmetrics_score": null,
+                    "plumx_capture": null,
+                    "descargas_repositorio": null,
+                    "visualizaciones_repositorio": null
+                },
+                "indexaciones": []
+            }
+        ],
+        "transferencia_e_impacto": {
+            "patentes": [],
+            "spin_offs": [],
+            "contratos_empresas": []
+        },
+        "visibilidad_cientifica": {
+            "_descripcion": "Roles que acreditan reconocimiento investigador: revisiones y participación como ponente invitado.",
+            "revisiones_revistas": null,
+            "keynotes": []
+        },
+        "colaboraciones": {
+            "colaboradores": [],
+            "paises": [],
+            "instituciones": []
+        },
+        "indicadores_temporales": {
+            "_computed": true,
+            "evolucion_publicaciones": [],
+            "evolucion_citas": [],
+            "evolucion_tematicas": [],
+            "evolucion_proyectos": []
+        }
+    },
+
+    "laboral": {
+        "_descripcion": "Trayectoria profesional y académica: situación actual, formación y experiencia previa.",
+        "situacion_actual": {
+            "grupo_investigacion": {
+                "nombre": null,
+                "rol": null,
+                "fecha_inicio": null
+            },
+            "departamento": {
+                "nombre": null,
+                "institucion": null,
+                "categoria": null,
+                "fecha_inicio": null
+            },
+            "area_conocimiento": []
+        },
+        "formacion_academica": [
+            {
+                "titulo": null,
+                "institucion": null,
+                "fecha": null,
+                "mencion": null
+            }
+        ],
+        "experiencia_profesional": [
+            {
+                "puesto": null,
+                "entidad": null,
+                "institucion": null,
+                "fecha_inicio": null,
+                "fecha_fin": null
+            }
+        ],
+        "indicadores_temporales": {
+            "_computed": true,
+            "evolucion_categoria": [],
+            "evolucion_instituciones": []
+        }
+    },
+
+    "gestion": {
+        "_descripcion": "Responsabilidades de gestión universitaria, liderazgo editorial y participación en comités.",
+        "gestion_academica": [
+            {
+                "cargo": null,
+                "entidad": null,
+                "institucion": null,
+                "fecha_inicio": null,
+                "fecha_fin": null
+            }
+        ],
+        "liderazgo_editorial": {
+            "_descripcion": "Roles formales en revistas y comités que implican responsabilidad de gestión científica.",
+            "roles_editoriales": [],
+            "comites_cientificos": []
+        },
+        "indicadores_temporales": {
+            "_computed": true,
+            "evolucion_cargos": [],
+            "evolucion_comites": []
+        }
+    }
+}
