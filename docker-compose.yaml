@@ -1,0 +1,130 @@
+services:
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    container_name: tfm_minio
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:${MINIO_PORT}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT}:9001"
+
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+
+    volumes:
+      - minio_data:/data
+
+    command: server /data --console-address ":9001"
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+    mem_limit: 512m
+    cpus: 0.5
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - tfm_network
+
+  arangodb:
+    image: arangodb:3.12.8
+    container_name: tfm_arangodb
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:${ARANGO_PORT}:8529"
+
+    environment:
+      ARANGO_ROOT_PASSWORD: ${ARANGO_ROOT_PASSWORD}
+
+    volumes:
+      - arango_data:/var/lib/arangodb3
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8529/_api/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+    mem_limit: 1g
+    cpus: 1.0
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - tfm_network
+
+  memgraph:
+    image: memgraph/memgraph-mage:3.8.1
+    container_name: tfm_memgraph
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:${MEMGRAPH_QUERIES}:7687"
+      - "127.0.0.1:${MEMGRAPH_LOGS}:7444"
+
+    environment:
+      - MEMGRAPH_USER=${MEMGRAPH_USER}
+      - MEMGRAPH_PASSWORD=${MEMGRAPH_PASSWORD}
+
+    volumes:
+      - memgraph_data:/var/lib/memgraph
+
+    # Forzamos un límite de memoria interna y habilitamos autenticación
+    command: ["--memory-limit=7168", "--log-level=WARNING"]
+
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'RETURN 1;' | mgconsole --username ${MEMGRAPH_USER} --password ${MEMGRAPH_PASSWORD}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+    mem_limit: 8g
+    cpus: 2.0
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - tfm_network
+
+  lab:
+    image: memgraph/lab:3.10.0
+    container_name: tfm_memgraph_lab
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${LAB_PORT}:3000"
+    environment:
+      - QUICK_CONNECT_MG_HOST=tfm_memgraph
+      - QUICK_CONNECT_MG_PORT=7687
+    depends_on:
+      - memgraph
+    networks:
+      - tfm_network
+
+
+volumes:
+  minio_data:
+  arango_data:
+  memgraph_data:
+
+
+networks:
+  tfm_network:
+    driver: bridge
