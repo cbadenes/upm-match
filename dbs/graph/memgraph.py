@@ -190,23 +190,23 @@ class MemgraphBackend:
             return 0
 
         processed = 0
+
         for edge in edges:
-            if not all(k in edge for k in ["id", "_from", "_to"]):
+            edge_id = edge.get("id")
+
+            from_ref = edge.get("_from") or edge.get("from_node")
+            to_ref = edge.get("_to") or edge.get("to_node")
+
+            if not edge_id or not from_ref or not to_ref:
                 logger.warning(
-                    "Edge missing required fields (id, _from, _to), skipping: {}",
+                    "Edge missing required fields (id, _from/_to), skipping: {}",
                     edge,
                 )
                 continue
 
-            id_value = edge["id"]
-            from_ref = edge["_from"]  # format: "collection/id"
-            to_ref = edge["_to"]  # format: "collection/id"
-
-            # Parse collection and id from references
             from_collection, fromid = from_ref.split("/", 1)
             to_collection, toid = to_ref.split("/", 1)
 
-            # Serialize structural fields
             merge_query = f"""
             MATCH (from:{from_collection} {{id: $from_id}})
             MATCH (to:{to_collection} {{id: $to_id}})
@@ -221,15 +221,18 @@ class MemgraphBackend:
                         "from_id": fromid,
                         "to_id": toid,
                         "properties": {
-                            k: v for k, v in edge.items() if k not in ["_from", "_to"]
+                            k: v
+                            for k, v in edge.items()
+                            if k not in ["_from", "_to", "from_node", "to_node"]
                         },
                     },
                 )
                 processed += 1
+
             except Exception as exc:
                 logger.exception(
                     "Error upserting edge {} of type {}: {}",
-                    id_value,
+                    edge_id,
                     collection,
                     exc,
                 )
@@ -306,27 +309,32 @@ class MemgraphBackend:
             logger.exception("Error clearing Memgraph database: {}", exc)
             return False
 
-    def adapt_document(self, collection: str, document: dict[str, Any]) -> dict[str, Any]:
+    def adapt_document(
+        self, collection: str, document: dict[str, Any]
+    ) -> dict[str, Any]:
         """Adapt document for Memgraph format.
-        
+
         Memgraph specific mappings:
-        - Node labels should start with capital letter (already done in Pydantic models with "Pdi_", "Publication_", etc.)
+        - Node labels should start with capital letter
         - `title` field may be mapped to `name` for certain node types
         - Remove None values to keep Cypher clean
-        
+
         :param collection: Collection/label name (used to determine mappings)
         :param document: Document dict from Pydantic model
         :return: Backend-specific document dict adapted for Memgraph
         """
         adapted = dict(document)
-        
+
+        if "full_name" in adapted and collection == "Pdi":
+            adapted["name"] = adapted.pop("full_name")
+
         # For certain node types, map 'title' to 'name' (if title exists)
         # This matches the requirement: "el campo 'importante' de cada uno de los nodos debería llamarse `name`"
         if "title" in adapted and collection in ("Publication", "Subject"):
             adapted["name"] = adapted.pop("title")
-        
+
         # Remove None values for cleaner Cypher properties
         # Keep id field (it's required for Memgraph lookups)
         adapted = {k: v for k, v in adapted.items() if v is not None or k == "id"}
-        
+
         return adapted
