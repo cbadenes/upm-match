@@ -11,7 +11,7 @@ class Subject(BaseModel):
     The `id` field is agnóstic and will be mapped appropriately in each backend.
     The `title` field may be mapped to `name` in certain backends.
     The `type` field is the category or level.
-    Temporal information (start_date, end_date) is stored in the teaching edge, not here.
+    The fields `start_date` and `end_date` are removed when uploaded to the graph database, as they are stored in the relationship properties.
     """
 
     id: str = Field(

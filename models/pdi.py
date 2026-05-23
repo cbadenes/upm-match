@@ -12,7 +12,7 @@ TopicStr = Annotated[str, StringConstraints(min_length=1, max_length=100)]
 class Researcher(BaseModel):
     """Represents a researcher profile with personal data and research metadata.
 
-    The `id` field is agnóstic and will be mapped to `_key` in ArangoDB or used directly in Memgraph.
+    The `id` field is agnostic and will be mapped to `_key` in ArangoDB or used directly in Memgraph.
     External IDs are stored as a dictionary where keys are ID types.
     """
 
@@ -31,7 +31,7 @@ class Researcher(BaseModel):
     )
     topics: list[TopicStr] = Field(
         default_factory=list,
-        description="Research topics ranked by relevance (highest count first)",
+        description="Research topics (obtained directly from UPM portal, not inferred from publications)",
     )
 
     model_config = ConfigDict(

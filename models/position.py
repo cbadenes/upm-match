@@ -8,8 +8,9 @@ from pydantic import BaseModel, ConfigDict, Field
 class Position(BaseModel):
     """Represents a position held by a researcher at an institution.
 
-    The `id` field is agnóstic and will be mapped appropriately in each backend.
+    The `id` field is agnostic and will be mapped appropriately in each backend.
     Temporal information (role, since) is stored in the edge relationship, not in the node.
+    The fields `role` and `since` are removed when uploaded to the graph database, as they are stored in the relationship properties.
     """
 
     id: str = Field(
@@ -19,14 +20,15 @@ class Position(BaseModel):
         default=None, description="Position title or entity name"
     )
     entity: Optional[str] = Field(
-        default=None, description="Institution/organization name"
+        default=None,
+        description="Institution/organization type (e.g., 'Departamento Universitario', 'Grupo de Investigacion')",
     )
     role: Optional[str] = Field(default=None, description="Role within the position")
     since: Optional[str] = Field(
         default=None, description="Start date or duration string"
     )
     source_id: Optional[str] = Field(
-        default=None, description="Source system ID (e.g., UPM portal ID)"
+        default=None, description="Source system ID (UPM portal ID)"
     )
 
     model_config = ConfigDict(

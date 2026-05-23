@@ -22,6 +22,10 @@ class Publication(BaseModel):
         default=None, description="Open Access identifier (e.g., OA UPM URL)"
     )
     title: str = Field(..., alias="name", description="Publication title")
+    description: str = Field(
+        ...,
+        description="Cleaned publication description; falls back to the title when no usable description exists",
+    )
     url: str | list[Optional[str]] = Field(
         default=None, description="Publication URL(s)"
     )
@@ -48,6 +52,7 @@ class Publication(BaseModel):
                 "id": "pub_12345678",
                 "oa_id": "https://oa.upm.es/12345678/",
                 "title": "Machine Learning Applications in Healthcare",
+                "description": "This study explores...",
                 "url": "https://doi.org/10.1234/example",
                 "year": 2023,
                 "type": "Artículo",
