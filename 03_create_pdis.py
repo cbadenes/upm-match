@@ -1309,7 +1309,7 @@ def parse_args() -> argparse.Namespace:
         "-s",
         "--storage",
         type=str,
-        default="arango",
+        default="memgraph",
         choices=["arango", "memgraph", "local", "minio"],
         help="Storage backend: arango (default), memgraph, local (JSON files), or minio.",
     )
@@ -1356,15 +1356,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--html-source",
         type=str,
-        default="local",
+        default="minio",
         choices=["local", "minio"],
-        help="Source to read HTML files from: local (default) reads from data/raw/, minio reads from MinIO bucket.",
+        help="Source to read HTML files from: local reads from data/raw/, minio (default) reads from MinIO bucket.",
     )
     parser.add_argument(
         "--html-minio-prefix",
         type=str,
-        default="raw",
-        help="MinIO prefix for reading HTML files (used only if --html-source=minio). Default is 'raw'.",
+        default="researchers",
+        help="MinIO prefix for reading HTML files (used only if --html-source=minio). Default is 'researchers'.",
     )
     return parser.parse_args()
 
