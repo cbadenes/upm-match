@@ -1,3 +1,29 @@
+"""
+This script processes the raw HTML files of researchers' profiles and activities to extract structured information about their personal data, current positions, external IDs, research subjects and publications.
+It uses Scrapy Selectors to parse the HTML content and Polars for data manipulation.
+The extracted information is then transformed into validated Pydantic models.
+The script also includes functions to clean and normalize publication descriptions to ensure consistency and quality of the extracted data.
+Finally, the structured data is stored in a graph database for further analysis and querying.
+
+For each researcher, it is generated these nodes and edges:
+- `Researcher` node with personal data and external IDs.
+- `Publication` nodes for each publication, connected to the `Researcher` node with "Authorship" edges.
+- `Position` nodes for each current position, connected to the `Researcher` node with "Works" edges.
+- `Subject` nodes for each research topic, connected to the `Researcher` node with "Teaching" edges.
+
+The information is extracted from the two HTML files downloaded in the previous step (`profile.html` and `activity.html`) and is cleaned and normalized to ensure quality and consistency of the data before being stored in the graph database.
+The HTML files can be loaded from the local filesystem or directly from MinIO, depending on the configuration and availability of the files.
+The data is processed in a way that handles missing or inconsistent information gracefully, ensuring that the resulting graph database contains accurate and meaningful representations of the researchers and their activities.
+The results can be stored to Memgraph (default option), ArangoDB or MinIO/local JSON files, depending on the configuration.
+
+Use:
+> uv run 03_create_pdis.py
+> uv run 03_create_pdis.py --id 308607
+> uv run 03_create_pdis.py --limit 1000 --html_source minio
+> uv run 03_create_pdis.py --skip-existing
+> uv run 03_create_pdis.py --logs 30 --progress-every 250
+"""
+
 import argparse
 import hashlib
 import json

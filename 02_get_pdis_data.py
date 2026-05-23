@@ -1,4 +1,19 @@
-import asyncio
+"""
+Script to download PDI profiles from the 'Portal Científico UPM' .
+It loads researcher IDs from a CSV stored in MinIO, scrapes their profiles and uploads the results back to MinIO.
+The script can be run for all researchers or a specific one by ID.
+If a profile has already been downloaded and exists in MinIO, it is skipped to save time and resources.
+
+For each researcher, the script downloads two HTML files:
+- `profile.html`: The main profile page of the researcher.
+- `activity.html`: The page containing the researcher's activity, which is loaded via an AJAX request.
+The files are stored in MinIO under the path `researchers/{idPersonal}/`.
+
+Use:
+> uv run 02_get_pdis_data.py
+> uv run 02_get_pdis_data.py --id 308607
+"""
+
 import argparse
 from io import StringIO
 from pathlib import Path

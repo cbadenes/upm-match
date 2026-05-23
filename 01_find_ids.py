@@ -1,3 +1,19 @@
+"""
+Script to find the `idPersonal` and `rfSignature` of all researchers in the UPM portal.
+The results are saved in a CSV file and uploaded to MinIO for later use in the enrichment step.
+
+The script sends a POST request to a PHP endpoint that returns an HTML page containing a JavaScript variable `dataSet` with the researchers' data.
+It extracts this variable, parses it as JSON, and saves the relevant fields in a CSV file.
+The CSV file contains the following columns:
+- `idPersonal`: The unique identifier for each researcher.
+- `rfSignature`: The researcher's signature, which is used to construct the URL for their profile page.
+- `rfAdscription`: The researcher's affiliation.
+- `rfRoll`: The researcher's role.
+
+Use:
+> uv run 01_find_ids.py
+"""
+
 import json
 import re
 
