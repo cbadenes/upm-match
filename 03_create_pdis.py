@@ -31,6 +31,7 @@ import re
 import sys
 import time
 from collections import defaultdict
+from io import StringIO
 from pathlib import Path
 from typing import Optional
 
@@ -50,9 +51,7 @@ from models import (
     Works,
 )
 
-# from process_table import ID
-
-CSV_PATH = Path("data/researchers.csv")
+CSV_OBJECT_NAME = "researchers.csv"
 PUBLICATIONS_REGISTRY = {}  # In-memory storage for publications
 SUBJECTS_REGISTRY = {}  # In-memory storage for subjects
 
@@ -127,6 +126,11 @@ PUBLICATION_METADATA_REGEX = re.compile(
 
 
 def clean_publication_description(value: str | None) -> str | None:
+    """Clean and normalize the publication description by removing common prefixes, author blocks, trailing metadata, and normalizing whitespace.
+
+    :param value: The original description string to clean. This may contain various prefixes, author information blocks, trailing metadata, and inconsistent whitespace that need to be removed or normalized to produce a concise and informative description for the publication.
+    :return: A cleaned and normalized description string for the publication, or None if the input is empty or contains only a missing statement. The cleaning process involves:
+    """
     if not value:
         return None
 
@@ -171,6 +175,11 @@ def clean_publication_description(value: str | None) -> str | None:
 
 
 def choose_publication_description(record: dict[str, object]) -> str:
+    """Extract the most relevant description for a publication from the AJAX dataset record, applying cleaning and normalization to ensure quality and consistency.
+
+    :param record: A dictionary representing a single record from the AJAX dataset, which may contain various fields such as 'description', 'title', and others. The function will attempt to extract a meaningful description by first cleaning the 'description' field and, if that is not sufficient, falling back to the 'title' field. The cleaning process involves removing common prefixes, author blocks, trailing metadata, and normalizing whitespace to produce a concise and informative description for the publication.
+    :return: A cleaned and normalized description string for the publication, or an empty string if no suitable description can be extracted.
+    """
     cleaned_description = clean_publication_description(record.get("description"))
     if cleaned_description:
         return cleaned_description
@@ -179,16 +188,16 @@ def choose_publication_description(record: dict[str, object]) -> str:
     return str(title).strip() if title else ""
 
 
-def load_researcher_ids(csv_path: Path = CSV_PATH) -> tuple[list[int], list[str]]:
-    """Load researcher IDs from a CSV after validating format and contents.
+def load_researcher_ids() -> tuple[list[int], list[str]]:
+    """Load researcher IDs from a CSV stored in MinIO after validating format and contents."""
+    bucket_name = minio.BUCKET_NAME
+    csv_content = minio.read_file(bucket_name, CSV_OBJECT_NAME)
+    if csv_content is None:
+        raise FileNotFoundError(
+            f"CSV file not found in MinIO at {bucket_name}/{CSV_OBJECT_NAME}"
+        )
 
-    :param csv_path: Path to the CSV file containing researcher data.
-    :return: List of researcher IDs.
-    """
-    if not csv_path.exists():
-        raise FileNotFoundError(f"CSV file not found at: {csv_path}")
-
-    df = pl.read_csv(csv_path)
+    df = pl.read_csv(StringIO(csv_content))
 
     if "idPersonal" not in df.columns:
         raise ValueError(
@@ -205,6 +214,7 @@ def load_researcher_ids(csv_path: Path = CSV_PATH) -> tuple[list[int], list[str]
 
     ids = df["idPersonal"].to_list()
     names = df["rfSignature"].to_list()
+    logger.info(f"{len(ids)} IDs loaded from MinIO: {bucket_name}/{CSV_OBJECT_NAME}")
     return ids, names
 
 

@@ -15,24 +15,24 @@ Use:
 """
 
 import argparse
+import asyncio
 from io import StringIO
 from pathlib import Path
 
 import polars as pl
 from loguru import logger
 
-from dbs.minio import read_file as minio_read_file
+from dbs import minio
 from scraping.scraper import run_scraper
 
 # Configuration
-MINIO_BUCKET = "tfm"
 CSV_OBJECT_NAME = "researchers.csv"
-LOG_PATH = Path("logs/pipeline.log")
+LOG_PATH = Path("logs/data_collection.log")
 
 
 # ID loading
 def load_researcher_ids_from_minio(
-    bucket_name: str = MINIO_BUCKET,
+    bucket_name: str = minio.BUCKET_NAME,
     object_name: str = CSV_OBJECT_NAME,
 ) -> list[int]:
     """Load researcher IDs from a CSV stored in MinIO after validating format.
@@ -41,7 +41,7 @@ def load_researcher_ids_from_minio(
     :param object_name: Object name for researchers CSV.
     :return: List of researcher IDs.
     """
-    csv_content = minio_read_file(bucket_name, object_name)
+    csv_content = minio.read_file(bucket_name, object_name)
     if csv_content is None:
         raise FileNotFoundError(
             f"CSV file not found in MinIO at {bucket_name}/{object_name}"
@@ -101,11 +101,13 @@ async def main(researcher_id: int | None = None):
     ids = load_researcher_ids_from_minio()
     if researcher_id is not None:
         if researcher_id not in ids:
-            logger.warning(f"Requested researcher id {researcher_id} was not found in MinIO")
+            logger.warning(
+                f"Requested researcher id {researcher_id} was not found in MinIO"
+            )
         ids = [researcher_id]
 
     # Phase 2: scrape profiles and upload directly to MinIO.
-    stats = await run_scraper(ids, bucket_name=MINIO_BUCKET)
+    stats = await run_scraper(ids, bucket_name=minio.BUCKET_NAME)
 
     logger.info("Pipeline finished")
     logger.info(f"  OK:       {stats['ok']}")

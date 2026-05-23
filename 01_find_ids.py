@@ -21,7 +21,7 @@ import polars as pl
 import requests
 from loguru import logger
 
-from dbs.minio import ensure_bucket, upload_bytes
+from dbs import minio
 
 URL = (
     "https://portalcientifico.upm.es/imarina_mod/templates/imarina/"
@@ -113,9 +113,9 @@ def main():
         ]
     ).sort("rfSignature")
 
-    ensure_bucket("tfm")
-    upload_bytes(
-        bucket_name="tfm",
+    minio.ensure_bucket(minio.BUCKET_NAME)
+    minio.upload_bytes(
+        bucket_name=minio.BUCKET_NAME,
         data=df.write_csv().encode("utf-8"),
         object_name="researchers.csv",
         content_type="text/csv",
