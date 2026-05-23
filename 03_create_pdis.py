@@ -1508,10 +1508,7 @@ def parse_args() -> argparse.Namespace:
         "--logs",
         type=int,
         default=20,
-        help=(
-            "Numeric log level for loguru (10=DEBUG,20=INFO,30=WARNING,"
-            "40=ERROR,50=CRITICAL). Default is 20 (INFO)."
-        ),
+        help="Numeric log level for loguru (10=DEBUG,20=INFO,30=WARNING,40=ERROR,50=CRITICAL). Default is 20 (INFO).",
     )
     parser.add_argument(
         "-p",
@@ -1528,7 +1525,7 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default="minio",
         choices=["local", "minio"],
-        help="Source to read HTML files from: local reads from data/raw/, minio (default) reads from MinIO bucket.",
+        help="Source to read HTML files from: local reads from `data/raw/`, minio (default) reads from MinIO bucket.",
     )
     parser.add_argument(
         "--html-minio-prefix",
@@ -1602,7 +1599,7 @@ if __name__ == "__main__":
             arango_db = get_graph_db(args.storage)
             logger.info("Connected to {} database", args.storage.upper())
 
-        ids, names = load_researcher_ids(CSV_PATH)
+        ids, names = load_researcher_ids()
         researchers = list(zip(ids, names))
 
         results = process_all_researchers(
