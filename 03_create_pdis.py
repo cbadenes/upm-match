@@ -30,6 +30,128 @@ CSV_PATH = Path("data/researchers.csv")
 PUBLICATIONS_REGISTRY = {}  # In-memory storage for publications
 SUBJECTS_REGISTRY = {}  # In-memory storage for subjects
 
+PUBLICATION_DESCRIPTION_MARKERS = [
+    "Summary",
+    "Authors with Filk",
+    "Recognitions linked to item",
+    "Author of contact",
+    "Notes",
+    "Objectives",
+    "Most relevant results",
+    "Degree of originality and innovation",
+    "Methodological contribution",
+    "Thematic priority",
+    "Use of the contribution",
+    "Cites received for the contribution",
+    "Quality of the publication/dissemination/exhibition medium",
+    "Non-academic mentions and references to the contribution",
+    "Copyright held by the owner/author(s)",
+]
+
+PUBLICATION_TRAILING_MARKERS = [
+    "(Summary)",
+    "(Notes)",
+    "(Objectives)",
+    "(Most relevant results)",
+    "(Degree of originality and innovation)",
+    "(Methodological contribution)",
+    "(Thematic priority)",
+    "(Use of the contribution)",
+    "(Cites received for the contribution)",
+    "(Quality of the publication/dissemination/exhibition medium)",
+    "(Non-academic mentions and references to the contribution)",
+    "(Copyright held by the owner/author(s))",
+]
+
+PUBLICATION_PREFIX_REGEXES = [
+    re.compile(r"^\s*Abstract:\s*", re.IGNORECASE),
+    re.compile(r"^\s*©\s*\d{4}\s*(?:Copyright\s+)?", re.IGNORECASE),
+]
+
+PUBLICATION_AUTHOR_BLOCK_MARKERS = [
+    "(Authors with Filk)",
+    "(Author of contact)",
+    "(Recognitions linked to item)",
+]
+
+PUBLICATION_AUTHOR_START_REGEX = re.compile(
+    r"^\s*[A-ZÁÉÍÓÚÜÑ][^.;]{0,80}(?:,\s*[A-ZÁÉÍÓÚÜÑ][^;]{0,10})?",
+    re.IGNORECASE,
+)
+
+PUBLICATION_AUTHOR_CONTEXT_REGEX = re.compile(
+    r"\b(University|Universidad|Department|Departamento|Institute|Centro|School|College|Research|Spain|Ltd|London|Madrid)\b",
+    re.IGNORECASE,
+)
+
+PUBLICATION_COPYRIGHT_REGEX = re.compile(
+    r"(?:©\s*\d{4}\s*)?(?:Copyright\s+for this paper by its authors\.|Copyright\s+held by the owner/author\(s\)\.)",
+    re.IGNORECASE,
+)
+
+PUBLICATION_MISSING_STATEMENT_REGEX = re.compile(
+    r"^\s*No Statement Available(?:\s*\(Recognitions linked to item\))?\s*$",
+    re.IGNORECASE,
+)
+
+PUBLICATION_METADATA_REGEX = re.compile(
+    r"\bDOI:\s*\S+|\b\d{4};\s*\d+\b|\b\d{4}\s*\(\d+\):\s*-|\b\d{4}\s*\(\):\s*-",
+    re.IGNORECASE,
+)
+
+
+def clean_publication_description(value: str | None) -> str | None:
+    if not value:
+        return None
+
+    text = value.replace("\xa0", " ").strip()
+
+    if PUBLICATION_MISSING_STATEMENT_REGEX.match(text):
+        return None
+
+    for prefix_regex in PUBLICATION_PREFIX_REGEXES:
+        text = prefix_regex.sub("", text)
+
+    if PUBLICATION_AUTHOR_START_REGEX.match(
+        text
+    ) and PUBLICATION_AUTHOR_CONTEXT_REGEX.search(text[:250]):
+        for marker in PUBLICATION_AUTHOR_BLOCK_MARKERS:
+            marker_index = text.find(marker)
+            if marker_index != -1:
+                text = text[marker_index + len(marker) :]
+                text = re.sub(r"^\s*;\s*", "", text)
+                break
+
+    match = PUBLICATION_COPYRIGHT_REGEX.search(text)
+    if match:
+        prefix = text[: match.start()].strip()
+        if prefix:
+            text = prefix
+
+    noise_index = None
+    for marker in PUBLICATION_TRAILING_MARKERS:
+        marker_index = text.find(marker)
+        if marker_index != -1 and (noise_index is None or marker_index < noise_index):
+            noise_index = marker_index
+
+    if noise_index is not None:
+        text = text[:noise_index]
+
+    text = re.sub(r"\s+", " ", text)
+    text = re.sub(r"\s*([,.;:])\s*$", r"\1", text).strip()
+    text = re.sub(r"[\s,;:.]+$", "", text).strip()
+
+    return text or None
+
+
+def choose_publication_description(record: dict[str, object]) -> str:
+    cleaned_description = clean_publication_description(record.get("description"))
+    if cleaned_description:
+        return cleaned_description
+
+    title = record.get("title")
+    return str(title).strip() if title else ""
+
 
 def load_researcher_ids(csv_path: Path = CSV_PATH) -> tuple[list[int], list[str]]:
     """Load researcher IDs from a CSV after validating format and contents.
@@ -165,9 +287,9 @@ def load_ajax_dataSet_from_content(ajax_html: str, save=False) -> pl.DataFrame:
 
     mapeo_columnas = {
         "rfTitle": "ACTIVIDAD",
+        "dsDescription": "DESCRIPTION",
         "rfAuthor": "AUTORES",
         "rfKeyword": "KEYWORDS",
-        # "dsDescription": "RESUMEN",
         "rfStartDate": "FECHA INICIO",
         "rfEndDate": "FECHA FIN",
         "rfHash": "IDENTIFICADOR",
@@ -632,6 +754,7 @@ def build_publications(df_ajax: pl.DataFrame) -> list[Publication]:
                 "IDENTIFICADOR": "oa_id",
                 "SUBTIPO": "type",
                 "URL": "url",
+                "DESCRIPTION": "description",
             }
         )
         .drop("TIPO")
@@ -655,9 +778,19 @@ def build_publications(df_ajax: pl.DataFrame) -> list[Publication]:
 
     publications = []
     for record in df_publications.to_dicts():
+        title = str(record.get("title") or "").strip()
+        if not title:
+            logger.warning(
+                "Skipping publication with empty title (portal_upm_id={})",
+                record.get("portal_upm_id"),
+            )
+            continue
+
         raw_url = record.get("url")
         oa_id = record.get("oa_id")
         portal_upm_id = record.get("portal_upm_id")
+        record["title"] = title
+        description = choose_publication_description(record)
 
         if raw_url and str(raw_url).strip():
             urls = [u.strip() for u in str(raw_url).split(",,") if u.strip()]
@@ -673,7 +806,8 @@ def build_publications(df_ajax: pl.DataFrame) -> list[Publication]:
         pub = Publication(
             id=f"{record['id']}",
             oa_id=oa_id,
-            title=record.get("title", ""),
+            title=title,
+            description=description,
             url=url_final,
             year=int(record.get("year", 0)) if record.get("year") else 0,
             type=record.get("type", ""),
