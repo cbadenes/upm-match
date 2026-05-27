@@ -43,17 +43,20 @@ from scrapy import Selector
 from dbs import GraphDataBase, get_graph_db, minio
 from models import (
     Authorship,
+    LastYearProject,
     Position,
     Publication,
     Researcher,
     Subject,
     Teaching,
+    Tutoring,
     Works,
 )
 
 CSV_OBJECT_NAME = "researchers.csv"
 PUBLICATIONS_REGISTRY = {}  # In-memory storage for publications
 SUBJECTS_REGISTRY = {}  # In-memory storage for subjects
+LYP_REGISTRY = {}  # In-memory storage for LastYearProject records
 
 PUBLICATION_DESCRIPTION_MARKERS = [
     "Summary",
@@ -174,18 +177,50 @@ def clean_publication_description(value: str | None) -> str | None:
     return text or None
 
 
+def normalize_keyword_text(value: str | None) -> str:
+    """Normalize keyword text with the same whitespace cleanup used for PDI keywords."""
+    if not value:
+        return ""
+    return re.sub(r"\s+", " ", str(value).replace("\xa0", " ")).strip()
+
+
+def split_publication_keywords(value: object) -> list[str]:
+    """Split and normalize publication keywords while preserving order."""
+    if value is None:
+        return []
+
+    if isinstance(value, list):
+        raw_values = value
+    else:
+        raw_values = re.split(r"[,;|/]", str(value))
+
+    keywords: list[str] = []
+    seen: set[str] = set()
+    for raw_value in raw_values:
+        keyword = normalize_keyword_text(raw_value)
+        if not keyword or keyword in seen:
+            continue
+        seen.add(keyword)
+        keywords.append(keyword)
+
+    return keywords
+
+
 def choose_publication_description(record: dict[str, object]) -> str:
     """Extract the most relevant description for a publication from the AJAX dataset record, applying cleaning and normalization to ensure quality and consistency.
 
-    :param record: A dictionary representing a single record from the AJAX dataset, which may contain various fields such as 'description', 'title', and others. The function will attempt to extract a meaningful description by first cleaning the 'description' field and, if that is not sufficient, falling back to the 'title' field. The cleaning process involves removing common prefixes, author blocks, trailing metadata, and normalizing whitespace to produce a concise and informative description for the publication.
+    :param record: A dictionary representing a single record from the AJAX dataset, which may contain various fields such as 'description', 'title', and others. The function will attempt to extract a meaningful description by first cleaning the 'description' field and, if that is not sufficient, falling back to the original raw description. The cleaning process involves removing common prefixes, author blocks, trailing metadata, and normalizing whitespace to produce a concise and informative description for the publication.
     :return: A cleaned and normalized description string for the publication, or an empty string if no suitable description can be extracted.
     """
-    cleaned_description = clean_publication_description(record.get("description"))
+    raw_description = record.get("description")
+    if raw_description is None:
+        return ""
+
+    cleaned_description = clean_publication_description(raw_description)
     if cleaned_description:
         return cleaned_description
 
-    title = record.get("title")
-    return str(title).strip() if title else ""
+    return str(raw_description).strip()
 
 
 def load_researcher_ids() -> tuple[list[int], list[str]]:
@@ -332,6 +367,8 @@ def load_ajax_dataSet_from_content(ajax_html: str, save=False) -> pl.DataFrame:
         # "stOpenAccess": "OPENACCESS",
         "dtWorkform": "TIPO",
         "dtType": "SUBTIPO",
+        "rfSource": "FUENTE",
+        "rfValidationAgency": "VALIDACIÓN",
         # "rfSubject": "CATEGORÍAS",  <= La usaremos cuando la columna `KEYWORDS` esté vacía
         # "rfLinkName": "FUENTE",
         # "rfQuality11": "IF SJR",
@@ -342,6 +379,7 @@ def load_ajax_dataSet_from_content(ajax_html: str, save=False) -> pl.DataFrame:
         # "rfRef": "CITACIÓN",
         # "idQuality63": "PIDs",
         "rfRefUrl": "URL",
+        "dsDescription5": "DESCRIPCION TFT",
         "idItem": "PORTAL_UPM_ID",
     }
 
@@ -455,7 +493,7 @@ def load_current_positions(sel: Selector) -> list[Position]:
 
         # Convert to validated Pydantic model with capitalized node names
         position = Position(
-            id=f"{position_id}",  # Capitalized node name
+            id=f"{position_id}",
             name=title or entity,
             entity=entity,
             role=role,
@@ -566,8 +604,8 @@ def build_authorship_edges(
 
         edge = Authorship(
             id=f"authorship_{base_pdi_id}_{base_pub_id}",
-            _from=f"Pdi/{pdi_id}",  # Capitalized node name
-            _to=f"Publication/{pub.id}",  # Capitalized node name
+            _from=f"Pdi/{pdi_id}",
+            _to=f"Publication/{pub.id}",
         )
         edges.append(edge)
 
@@ -673,7 +711,7 @@ def build_subjects(df_ajax: pl.DataFrame) -> list[Subject]:
     subjects = []
     for s_dict in subjects_dicts:
         subject = Subject(
-            id=f"{s_dict['id']}",  # Capitalized node name
+            id=f"{s_dict['id']}",
             name=s_dict["name"],
             type=s_dict["type"],
             start_date=s_dict.get("start_date"),
@@ -682,6 +720,72 @@ def build_subjects(df_ajax: pl.DataFrame) -> list[Subject]:
         subjects.append(subject)
 
     return subjects
+
+
+def build_last_year_project(df_ajax: pl.DataFrame) -> list[LastYearProject]:
+    """Build validated LastYearProject models from AJAX dataset.
+
+    :param df_ajax: Cleaned DataFrame from AJAX data.
+    :return: List of validated LastYearProject models with capitalized node names.
+    """
+    if df_ajax.is_empty() or "TIPO" not in df_ajax.columns:
+        return []
+
+    df_lyp = (
+        df_ajax.filter(pl.col("TIPO") == "Dirección de Tesis, TFG, TFM, etc.")
+        .rename(
+            {
+                "PORTAL_UPM_ID": "portal_upm_id",
+                "ACTIVIDAD": "title",
+                "AUTORES": "authors",
+                "KEYWORDS": "keywords",
+                "FECHA INICIO": "start_date",
+                "IDENTIFICADOR": "oa_id",
+                "SUBTIPO": "type",
+                "TFT_DESCRIPCION": "description",
+            }
+        )
+        .with_columns(
+            pl.format("tft_{}", pl.col("portal_upm_id")).alias("id"),
+            pl.col("start_date")
+            .str.strptime(pl.Date, format="%Y-%m-%d", strict=False)
+            .dt.year()
+            .alias("year"),
+        )
+    )
+
+    last_year_projects = []
+    for record in df_lyp.to_dicts():
+        title = str(record.get("title") or "").strip()
+        portal_upm_id = record.get("portal_upm_id")
+        if not title or not portal_upm_id:
+            logger.warning(
+                "Skipping LastYearProject with empty title or portal_upm_id (portal_upm_id={})",
+                portal_upm_id,
+            )
+            continue
+
+        raw_oa_id = record.get("oa_id")
+        oa_id = str(raw_oa_id).strip() if raw_oa_id else None
+        description = normalize_keyword_text(record.get("description"))
+        authors = [
+            a.strip() for a in str(record.get("authors", "")).split(",") if a.strip()
+        ]
+        keywords = split_publication_keywords(record.get("keywords"))
+
+        last_year_project = LastYearProject(
+            id=f"{record['id']}",
+            oa_id=oa_id,
+            title=title,
+            description=description,
+            authors=authors,
+            keywords=keywords,
+            year=int(record.get("year", 0)) if record.get("year") else 0,
+            type=record.get("type", ""),
+        )
+        last_year_projects.append(last_year_project)
+
+    return last_year_projects
 
 
 def build_teaching_edges(pdi_id: str, subjects: list[Subject]) -> list[Teaching]:
@@ -698,10 +802,29 @@ def build_teaching_edges(pdi_id: str, subjects: list[Subject]) -> list[Teaching]
 
         edge = Teaching(
             id=f"teaching_{base_pdi_id}_{subject.id}",
-            _from=f"Pdi/{pdi_id}",  # Capitalized node name
-            _to=f"Subject/{subject.id}",  # Capitalized node name
+            _from=f"Pdi/{pdi_id}",
+            _to=f"Subject/{subject.id}",
             start_date=subject.start_date,
             end_date=subject.end_date,
+        )
+        edges.append(edge)
+
+    return edges
+
+
+def build_tutoring_edges(
+    pdi_id: str, last_year_projects: list[LastYearProject]
+) -> list[Tutoring]:
+    """Generate validated Tutoring edge models for last year projects."""
+    edges = []
+
+    for lyp in last_year_projects:
+        base_pdi_id = pdi_id.split("_", 1)[-1] if "_" in pdi_id else pdi_id
+
+        edge = Tutoring(
+            id=f"tutoring_{base_pdi_id}_{lyp.id}",
+            _from=f"Pdi/{pdi_id}",
+            _to=f"LastYearProject/{lyp.id}",
         )
         edges.append(edge)
 
@@ -722,8 +845,8 @@ def build_works_edges(pdi_id: str, positions: list[Position]) -> list[Works]:
 
         edge = Works(
             id=f"works_{base_pdi_id}_{position.id}",
-            _from=f"Pdi/{pdi_id}",  # Capitalized node name
-            _to=f"Position/{position.id}",  # Capitalized node name
+            _from=f"Pdi/{pdi_id}",
+            _to=f"Position/{position.id}",
             role=position.role,
             since=position.since,
         )
@@ -788,6 +911,8 @@ def build_publications(df_ajax: pl.DataFrame) -> list[Publication]:
                 "FECHA INICIO": "start_date",
                 "FECHA FIN": "end_date",
                 "IDENTIFICADOR": "oa_id",
+                "FUENTE": "source",
+                "VALIDACIÓN": "validation_agency",
                 "SUBTIPO": "type",
                 "URL": "url",
                 "DESCRIPTION": "description",
@@ -844,6 +969,8 @@ def build_publications(df_ajax: pl.DataFrame) -> list[Publication]:
             oa_id=oa_id,
             title=title,
             description=description,
+            source=record.get("source"),
+            validation_agency=record.get("validation_agency"),
             url=url_final,
             year=int(record.get("year", 0)) if record.get("year") else 0,
             type=record.get("type", ""),
@@ -854,13 +981,7 @@ def build_publications(df_ajax: pl.DataFrame) -> list[Publication]:
             ]
             if record.get("authors")
             else [],
-            keywords=[
-                k.strip()
-                for k in str(record.get("keywords", "")).split(",")
-                if k.strip()
-            ]
-            if record.get("keywords")
-            else [],
+            keywords=split_publication_keywords(record.get("keywords")),
             start_date=record.get("start_date"),
             end_date=record.get("end_date"),
         )
@@ -883,6 +1004,8 @@ def build_profile_document(
     list[Works],
     list[Subject],
     list[Teaching],
+    list[LastYearProject],
+    list[Tutoring],
 ]:
     """Build validated Pydantic models for a researcher profile and all related data.
 
@@ -891,7 +1014,7 @@ def build_profile_document(
     :param sel: Scrapy Selector with parsed main HTML.
     :param html: Raw HTML content for topic extraction.
     :param df_ajax: Cleaned DataFrame from AJAX data.
-    :return: Tuple of validated Pydantic models: (profile, publications, authorship_edges, positions, works_edges, subjects, teaching_edges).
+    :return: Tuple of validated Pydantic models: (profile, publications, authorship_edges, positions, works_edges, subjects, teaching_edges, last_year_projects, tutoring_edges).
     """
     full_name, first_name, last_name, email = load_personal_data(sel, rf_signature)
     positions = load_current_positions(sel)
@@ -899,10 +1022,11 @@ def build_profile_document(
     topics = extract_topics(html)
     publications = build_publications(df_ajax)
     subjects = build_subjects(df_ajax)
+    last_year_projects = build_last_year_project(df_ajax)
 
     # Build validated Researcher model with capitalized node name
     profile = Researcher(
-        id=f"pdi_{researcher_id}",  # Capitalized node name
+        id=f"pdi_{researcher_id}",
         full_name=full_name or "",
         first_name=first_name,
         last_name=last_name,
@@ -916,6 +1040,9 @@ def build_profile_document(
     )
     edges_pdi_positions = build_works_edges(pdi_id=profile.id, positions=positions)
     edges_pdi_subject = build_teaching_edges(pdi_id=profile.id, subjects=subjects)
+    edges_pdi_lyp = build_tutoring_edges(
+        pdi_id=profile.id, last_year_projects=last_year_projects
+    )
 
     # Remove temporal metadata from position nodes (stored in edges)
     for pos in positions:
@@ -935,6 +1062,8 @@ def build_profile_document(
         edges_pdi_positions,
         subjects,
         edges_pdi_subject,
+        last_year_projects,
+        edges_pdi_lyp,
     )
 
 
@@ -1082,6 +1211,8 @@ def process_researcher(
             works_edges,
             subjects,
             teaching_edges,
+            last_year_projects,
+            tutoring_edges,
         ) = build_profile_document(
             researcher_id=researcher_id,
             rf_signature=rf_signature,
@@ -1093,6 +1224,7 @@ def process_researcher(
         # Register publications and subjects in memory
         PUBLICATIONS_REGISTRY[researcher_id] = publications
         SUBJECTS_REGISTRY[researcher_id] = subjects
+        LYP_REGISTRY[researcher_id] = last_year_projects
 
         # Save according to storage backend
         success = False
@@ -1112,14 +1244,20 @@ def process_researcher(
                 subjects,
                 authorship_edges,
                 teaching_edges,
+                last_year_projects,
+                tutoring_edges,
             )
         elif storage == "local":
-            success = save_to_local(profile, publications, researcher_id, output_dir)
+            success = save_to_local(
+                profile, publications, last_year_projects, researcher_id, output_dir
+            )
             if success:
-                safe_last_name = normalize_last_name(profile.get("last_name"))
+                safe_last_name = normalize_last_name(profile.last_name)
                 output_path = output_dir / f"{researcher_id}_{safe_last_name}_pdi.json"
         elif storage == "minio":
-            success = save_to_minio(profile, publications, researcher_id, minio_prefix)
+            success = save_to_minio(
+                profile, publications, last_year_projects, researcher_id, minio_prefix
+            )
         else:
             raise ValueError(f"Unknown storage backend: {storage}")
 
@@ -1134,10 +1272,11 @@ def process_researcher(
             }
 
         logger.info(
-            "PDI {} processed: publications={}, subjects={}",
+            "PDI {} processed: publications={}, subjects={}, last_year_projects={}",
             researcher_id,
             len(publications),
             len(subjects),
+            len(last_year_projects),
         )
 
         return {
@@ -1146,10 +1285,14 @@ def process_researcher(
             "profile": profile,
             "publications": publications,
             "subjects": subjects,
+            "last_year_projects": last_year_projects,
             "authorship_edges": authorship_edges
             if storage in ("arango", "memgraph")
             else None,
             "teaching_edges": teaching_edges
+            if storage in ("arango", "memgraph")
+            else None,
+            "tutoring_edges": tutoring_edges
             if storage in ("arango", "memgraph")
             else None,
             "output_path": output_path,
@@ -1297,6 +1440,8 @@ def save_to_graph_db(
     subjects: list[Subject],
     authorship_edges: list[Authorship],
     teaching_edges: list[Teaching],
+    last_year_projects: list[LastYearProject],
+    tutoring_edges: list[Tutoring],
 ) -> bool:
     """Save validated Pydantic models to graph database, converting to backend-specific formats.
 
@@ -1308,6 +1453,8 @@ def save_to_graph_db(
     :param subjects: A list of Subject instances to save.
     :param authorship_edges: A list of Authorship edge instances to save.
     :param teaching_edges: A list of Teaching edge instances to save.
+    :param last_year_projects: A list of LastYearProject instances to save.
+    :param tutoring_edges: A list of Tutoring edge instances to save.
     :return: True if the save operation was successful, False otherwise.
     """
     try:
@@ -1321,6 +1468,10 @@ def save_to_graph_db(
         works_dicts = [edge.model_dump() for edge in works_edges]
         subjects_dicts = [subj.model_dump() for subj in subjects]
         teaching_dicts = [edge.model_dump() for edge in teaching_edges]
+        last_year_projects_dicts = [
+            LastYearProject.model_dump() for LastYearProject in last_year_projects
+        ]
+        tutoring_edge_dicts = [edge.model_dump() for edge in tutoring_edges]
 
         # Apply backend-specific adaptations if backend supports adapt_document
         if hasattr(db, "adapt_document"):
@@ -1333,10 +1484,17 @@ def save_to_graph_db(
             ]
             works_dicts = [db.adapt_document("Works", d) for d in works_dicts]
             subjects_dicts = [db.adapt_document("Subject", d) for d in subjects_dicts]
+            last_year_projects_dicts = [
+                db.adapt_document("LastYearProject", d)
+                for d in last_year_projects_dicts
+            ]
             authorship_dicts = [
                 db.adapt_document("Authorship", d) for d in authorship_dicts
             ]
             teaching_dicts = [db.adapt_document("Teaching", d) for d in teaching_dicts]
+            tutoring_edge_dicts = [
+                db.adapt_document("Tutoring", d) for d in tutoring_edge_dicts
+            ]
 
         # Upsert documents with proper collection names
         db.upsert_documents("Pdi", [profile_dict])
@@ -1346,16 +1504,20 @@ def save_to_graph_db(
         db.upsert_edges("Works", works_dicts)
         db.upsert_documents("Subject", subjects_dicts)
         db.upsert_edges("Teaching", teaching_dicts)
+        db.upsert_documents("LastYearProject", last_year_projects_dicts)
+        db.upsert_edges("Tutoring", tutoring_edge_dicts)
 
         logger.debug(
-            "Saved to graph DB: pdi={}, pubs={}, positions={}, subjects={}, authorship_edges={}, works_edges={}, teaching_edges={}",
+            "Saved to graph DB: pdi={}, pubs={}, positions={}, subjects={}, last_year_projects={}, authorship_edges={}, works_edges={}, teaching_edges={}, tutoring_edges={}",
             profile.id,
             len(publications),
             len(positions),
             len(subjects),
+            len(last_year_projects),
             len(authorship_edges),
             len(works_edges),
             len(teaching_edges),
+            len(tutoring_edges),
         )
         return True
     except Exception as exc:
@@ -1370,6 +1532,7 @@ def save_to_graph_db(
 def save_to_local(
     profile: Researcher,
     publications: list[Publication],
+    last_year_projects: list[LastYearProject],
     researcher_id: int,
     output_dir: Path = Path("data/processed"),
 ) -> bool:
@@ -1377,6 +1540,7 @@ def save_to_local(
 
     :param profile: The Researcher instance to save.
     :param publications: A list of Publication instances to save.
+    :param last_year_projects: A list of LastYearProject instances to save.
     :param researcher_id: The unique ID of the researcher, used for naming the output files.
     :param output_dir: The directory where the JSON files will be saved.
     :return: True if the save operation was successful, False otherwise.
@@ -1404,7 +1568,28 @@ def save_to_local(
                 encoding="utf-8",
             )
 
-        logger.debug("Saved locally: {}, pubs={}", profile_path, len(publications))
+        if last_year_projects:
+            last_year_projects_path = (
+                output_dir / f"{researcher_id}_{safe_last_name}_last_year_projects.json"
+            )
+            last_year_projects_path.write_text(
+                json.dumps(
+                    [
+                        LastYearProject.model_dump()
+                        for LastYearProject in last_year_projects
+                    ],
+                    ensure_ascii=False,
+                    indent=4,
+                ),
+                encoding="utf-8",
+            )
+
+        logger.debug(
+            "Saved locally: {}, pubs={}, last_year_projects={}",
+            profile_path,
+            len(publications),
+            len(last_year_projects),
+        )
         return True
     except Exception as exc:
         logger.exception("Error saving locally for {}: {}", researcher_id, exc)
@@ -1414,6 +1599,7 @@ def save_to_local(
 def save_to_minio(
     profile: Researcher,
     publications: list[Publication],
+    last_year_projects: list[LastYearProject],
     researcher_id: int,
     prefix: str = "pdi",
 ) -> bool:
@@ -1422,6 +1608,7 @@ def save_to_minio(
 
     :param profile: The Researcher instance to save.
     :param publications: A list of Publication instances to save.
+    :param last_year_projects: A list of LastYearProject instances to save.
     :param researcher_id: The unique ID of the researcher, used for naming the MinIO objects.
     :param prefix: The prefix to use for the MinIO object keys (default is "pdi").
     :return: True if the save operation was successful, False otherwise.
@@ -1444,12 +1631,27 @@ def save_to_minio(
             ):
                 return False
 
+        if last_year_projects:
+            last_year_projects_key = (
+                f"{prefix}/{researcher_id}_{safe_last_name}_last_year_projects.json"
+            )
+            if not minio.upload_json(
+                minio.BUCKET_NAME,
+                [
+                    LastYearProject.model_dump()
+                    for LastYearProject in last_year_projects
+                ],
+                last_year_projects_key,
+            ):
+                return False
+
         logger.debug(
-            "Saved to MinIO: {}/{}_{}_* , pubs={}",
+            "Saved to MinIO: {}/{}_{}_* , pubs={}, last_year_projects={}",
             prefix,
             researcher_id,
             safe_last_name,
             len(publications),
+            len(last_year_projects),
         )
         return True
     except Exception as exc:
@@ -1572,11 +1774,15 @@ def final_summary(args, results: list[dict], researchers: list[tuple]):
             if SUBJECTS_REGISTRY
             else 0
         )
+        total_lyp = (
+            sum(len(lyp) for lyp in LYP_REGISTRY.values()) if LYP_REGISTRY else 0
+        )
         logger.info(
-            "Final summary: {} researchers, {} total publications, {} total subjects",
+            "Final summary: {} researchers, {} total publications, {} total subjects, {} total last year projects",
             len(PUBLICATIONS_REGISTRY),
             total_pubs,
             total_subjects,
+            total_lyp,
         )
     except Exception as exc:
         logger.error("Error printing final summary: {}", exc)

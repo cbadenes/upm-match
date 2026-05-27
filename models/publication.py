@@ -24,7 +24,11 @@ class Publication(BaseModel):
     title: str = Field(..., alias="name", description="Publication title")
     description: str = Field(
         ...,
-        description="Cleaned publication description; falls back to the title when no usable description exists",
+        description="Cleaned publication description; keeps the original text if cleaning removes everything",
+    )
+    source: Optional[str] = Field(default=None, description="Source publication venue")
+    validation_agency: Optional[str] = Field(
+        default=None, description="Validation agency (e.g., Scopus, WoS)"
     )
     url: str | list[Optional[str]] = Field(
         default=None, description="Publication URL(s)"
@@ -53,6 +57,8 @@ class Publication(BaseModel):
                 "oa_id": "https://oa.upm.es/12345678/",
                 "title": "Machine Learning Applications in Healthcare",
                 "description": "This study explores...",
+                "source": "IEEE Access. 13 173860-173868",
+                "validation_agency": "WoS",
                 "url": "https://doi.org/10.1234/example",
                 "year": 2023,
                 "type": "Artículo",

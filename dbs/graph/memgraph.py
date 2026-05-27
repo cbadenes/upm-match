@@ -329,8 +329,11 @@ class MemgraphBackend:
             adapted["name"] = adapted.pop("full_name")
 
         # For certain node types, map 'title' to 'name' (if title exists)
-        # This matches the requirement: "el campo 'importante' de cada uno de los nodos debería llamarse `name`"
-        if "title" in adapted and collection in ("Publication", "Subject"):
+        if "title" in adapted and collection in (
+            "Publication",
+            "Subject",
+            "LastYearProject",
+        ):
             adapted["name"] = adapted.pop("title")
 
         # Remove None values for cleaner Cypher properties

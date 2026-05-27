@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 ResearcherId = Annotated[str, StringConstraints(pattern=r"^pdi_\d{6}$")]
 EmailStr = Annotated[str, StringConstraints(pattern=r"^[\w\.-]+@[\w\.-]+\.\w+$")]
-TopicStr = Annotated[str, StringConstraints(min_length=1, max_length=100)]
+TopicStr = Annotated[str, StringConstraints(min_length=1)]
 
 
 class Researcher(BaseModel):

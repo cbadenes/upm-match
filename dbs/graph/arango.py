@@ -56,11 +56,13 @@ class ArangoBackend:
         self._ensure_collection("publication")
         self._ensure_collection("position")
         self._ensure_collection("subject")
+        self._ensure_collection("last_year_project")
         # self._ensure_collection("organizations")
 
         self._ensure_collection("authorship", edge=True)
         self._ensure_collection("works", edge=True)
         self._ensure_collection("teaching", edge=True)
+        self._ensure_collection("tutoring", edge=True)
         # self._ensure_collection("affiliation", edge=True)
 
     def query(
@@ -189,7 +191,7 @@ class ArangoBackend:
         try:
             # Get all collections in the database
             collections = self._db.collections()
-            
+
             for collection in collections:
                 # Skip system collections
                 if collection["name"].startswith("_"):
@@ -198,20 +200,24 @@ class ArangoBackend:
                     self._db.delete_collection(collection["name"])
                     logger.debug("Deleted collection {}", collection["name"])
                 except Exception as exc:
-                    logger.exception("Error deleting collection {}: {}", collection["name"], exc)
-            
+                    logger.exception(
+                        "Error deleting collection {}: {}", collection["name"], exc
+                    )
+
             logger.info("Cleared all collections from ArangoDB database")
             return True
         except Exception as exc:
             logger.exception("Error clearing ArangoDB database: {}", exc)
             return False
 
-    def adapt_document(self, collection: str, document: dict[str, Any]) -> dict[str, Any]:
+    def adapt_document(
+        self, collection: str, document: dict[str, Any]
+    ) -> dict[str, Any]:
         """Adapt document for ArangoDB format.
-        
+
         ArangoDB specific mappings:
         - `id` field is mapped to `_key` (using existing _normalize_identity_fields)
-        
+
         :param collection: Collection name (not used for ArangoDB, but kept for interface consistency)
         :param document: Document dict from Pydantic model
         :return: Backend-specific document dict with `_key` set from `id`

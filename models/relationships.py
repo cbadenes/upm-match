@@ -82,6 +82,20 @@ class Teaching(EdgeNode):
     )
 
 
+class Tutoring(EdgeNode):
+    """Represents the tutoring relationship between a researcher and a thesis or final project."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "id": "tutoring_pdi_307844_tft_67901",
+                "_from": "Pdi/pdi_307844",
+                "_to": "LastYearProject/tft_67901",
+            }
+        }
+    )
+
+
 class Works(EdgeNode):
     """Represents the works relationship between a researcher and a position.
 
