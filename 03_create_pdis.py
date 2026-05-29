@@ -34,9 +34,9 @@ from collections import defaultdict
 from io import StringIO
 from pathlib import Path
 from typing import Optional
+from unicodedata import normalize as unicodedata_normalize
 
 import polars as pl
-import polars.selectors as cs
 from loguru import logger
 from scrapy import Selector
 
@@ -96,6 +96,15 @@ PUBLICATION_PREFIX_REGEXES = [
     re.compile(r"^\s*©\s*\d{4}\s*(?:Copyright\s+)?", re.IGNORECASE),
 ]
 
+PUBLICATION_BILINGUAL_ABSTRACT_REGEX = re.compile(
+    r"\s*-{2,}\s*ABSTRACT\s*-{2,}\s*", re.IGNORECASE
+)
+
+PUBLICATION_ABSTRACT_SECTION_REGEX = re.compile(
+    r"\b(?:BACKGROUND|OBJECTIVES?|AIM|AIMS|METHODS?|RESULTS?|CONCLUSIONS?|INTRODUCTION|PURPOSES?)\s*:",
+    re.IGNORECASE,
+)
+
 PUBLICATION_AUTHOR_BLOCK_MARKERS = [
     "(Authors with Filk)",
     "(Author of contact)",
@@ -128,8 +137,8 @@ PUBLICATION_METADATA_REGEX = re.compile(
 )
 
 
-def clean_publication_description(value: str | None) -> str | None:
-    """Clean and normalize the publication description by removing common prefixes, author blocks, trailing metadata, and normalizing whitespace.
+def clean_description(value: str | None) -> str | None:
+    """Clean and normalize the given description by removing common prefixes, author blocks, trailing metadata, and normalizing whitespace.
 
     :param value: The original description string to clean. This may contain various prefixes, author information blocks, trailing metadata, and inconsistent whitespace that need to be removed or normalized to produce a concise and informative description for the publication.
     :return: A cleaned and normalized description string for the publication, or None if the input is empty or contains only a missing statement. The cleaning process involves:
@@ -144,6 +153,17 @@ def clean_publication_description(value: str | None) -> str | None:
 
     for prefix_regex in PUBLICATION_PREFIX_REGEXES:
         text = prefix_regex.sub("", text)
+
+    bilingual_abstract_parts = PUBLICATION_BILINGUAL_ABSTRACT_REGEX.split(
+        text, maxsplit=1
+    )
+    if len(bilingual_abstract_parts) > 1:
+        text = bilingual_abstract_parts[0].strip()
+
+    if text.startswith(("©", "Copyright")):
+        section_match = PUBLICATION_ABSTRACT_SECTION_REGEX.search(text)
+        if section_match:
+            text = text[section_match.start() :].strip()
 
     if PUBLICATION_AUTHOR_START_REGEX.match(
         text
@@ -170,18 +190,32 @@ def clean_publication_description(value: str | None) -> str | None:
     if noise_index is not None:
         text = text[:noise_index]
 
+    if re.search(r"\b(?:DOI|arXiv)\b", text, re.IGNORECASE):
+        citation_tail_match = re.search(r"\s+\d{4}\s*[;,].*$|\s*,\s*\(\):\s*.*$", text)
+        if citation_tail_match:
+            prefix = text[: citation_tail_match.start()].strip()
+            if prefix:
+                text = prefix
+
+    metadata_match = PUBLICATION_METADATA_REGEX.search(text)
+    if metadata_match:
+        prefix = text[: metadata_match.start()].strip()
+        if prefix:
+            text = prefix
+
     text = re.sub(r"\s+", " ", text)
     text = re.sub(r"\s*([,.;:])\s*$", r"\1", text).strip()
     text = re.sub(r"[\s,;:.]+$", "", text).strip()
 
+    content_tokens = [
+        token
+        for token in re.findall(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9]+", text)
+        if token.lower() not in {"doi", "arxiv"}
+    ]
+    if not content_tokens:
+        return None
+
     return text or None
-
-
-def normalize_keyword_text(value: str | None) -> str:
-    """Normalize keyword text with the same whitespace cleanup used for PDI keywords."""
-    if not value:
-        return ""
-    return re.sub(r"\s+", " ", str(value).replace("\xa0", " ")).strip()
 
 
 def split_publication_keywords(value: object) -> list[str]:
@@ -192,12 +226,18 @@ def split_publication_keywords(value: object) -> list[str]:
     if isinstance(value, list):
         raw_values = value
     else:
-        raw_values = re.split(r"[,;|/]", str(value))
+        raw_values = re.split(r"[;|/]", str(value))
 
     keywords: list[str] = []
     seen: set[str] = set()
     for raw_value in raw_values:
-        keyword = normalize_keyword_text(raw_value)
+        keyword = (
+            normalize_topic(
+                re.sub(r"\s+", " ", str(raw_value).replace("\xa0", " ")).strip()
+            )
+            if raw_value
+            else ""
+        )
         if not keyword or keyword in seen:
             continue
         seen.add(keyword)
@@ -213,14 +253,30 @@ def choose_publication_description(record: dict[str, object]) -> str:
     :return: A cleaned and normalized description string for the publication, or an empty string if no suitable description can be extracted.
     """
     raw_description = record.get("description")
+    other_description = record.get("DESCRIPCION TFT")
+
+    raw_description = (
+        other_description
+        if len(str(other_description)) > len(str(raw_description))
+        else raw_description
+    )
     if raw_description is None:
         return ""
 
-    cleaned_description = clean_publication_description(raw_description)
+    cleaned_description = clean_description(raw_description)
     if cleaned_description:
         return cleaned_description
 
-    return str(raw_description).strip()
+    raw_text = re.sub(r"\s+", " ", str(raw_description).replace("\xa0", " ")).strip()
+    raw_tokens = [
+        token
+        for token in re.findall(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9]+", raw_text)
+        if token.lower() not in {"doi", "arxiv"}
+    ]
+    if not raw_tokens:
+        return ""
+
+    return raw_text
 
 
 def load_researcher_ids() -> tuple[list[int], list[str]]:
@@ -323,11 +379,10 @@ def load_html_file(
         return None
 
 
-def load_ajax_dataSet_from_content(ajax_html: str, save=False) -> pl.DataFrame:
+def load_ajax_dataSet(ajax_html: str) -> pl.DataFrame:
     """Load and clean the dataset from AJAX HTML content string.
 
     :param ajax_html: The AJAX HTML content as a string.
-    :param save: Whether to save the cleaned dataset to a CSV file, defaults to False
     :return: A cleaned Polars DataFrame with the relevant activity data extracted from the AJAX HTML.
     """
 
@@ -369,7 +424,7 @@ def load_ajax_dataSet_from_content(ajax_html: str, save=False) -> pl.DataFrame:
         "dtType": "SUBTIPO",
         "rfSource": "FUENTE",
         "rfValidationAgency": "VALIDACIÓN",
-        # "rfSubject": "CATEGORÍAS",  <= La usaremos cuando la columna `KEYWORDS` esté vacía
+        "rfSubject": "CATEGORÍAS",
         # "rfLinkName": "FUENTE",
         # "rfQuality11": "IF SJR",
         # "rfQuality17": "CITAS EUROPEPMC",
@@ -391,14 +446,30 @@ def load_ajax_dataSet_from_content(ajax_html: str, save=False) -> pl.DataFrame:
 
     df_final = df.select(columnas_presentes).rename(mapeo_final)
 
-    df_final = df_final.with_columns(
-        cs.string()
-        .str.replace_all(r"[\r\n]+", "; ")
-        .str.replace_all(r";", ",")
-        .str.replace_all(r"\s+", " ")
-        .str.strip_chars('"')
-        .str.strip_chars()
-    )
+    keyword_like_columns = {
+        column for column in ["KEYWORDS", "CATEGORÍAS"] if column in df_final.columns
+    }
+    string_columns = [
+        column
+        for column, dtype in df_final.schema.items()
+        if dtype == pl.Utf8 and column != "URL"
+    ]
+
+    cleaned_expressions = []
+    for column in string_columns:
+        expression = pl.col(column).str.replace_all(r"[\r\n]+", "; ")
+        if column not in keyword_like_columns:
+            expression = expression.str.replace_all(r";", ",")
+
+        cleaned_expressions.append(
+            expression.str.replace_all(r"\s+", " ")
+            .str.strip_chars('"')
+            .str.strip_chars()
+            .alias(column)
+        )
+
+    if cleaned_expressions:
+        df_final = df_final.with_columns(cleaned_expressions)
 
     if "URL" in df_final.columns:
         df_final = df_final.with_columns(
@@ -419,18 +490,6 @@ def load_ajax_dataSet_from_content(ajax_html: str, save=False) -> pl.DataFrame:
     #     df_final.write_csv(f"ajax_{ID}_limpio.csv")
 
     return df_final
-
-
-def load_ajax_dataSet(file, save=False) -> pl.DataFrame:
-    """Load and clean the dataset from the AJAX HTML file.
-
-    :param file: Path to the AJAX HTML file containing the dataset.
-    :param save: Whether to save the cleaned dataset to a CSV file, defaults to False
-    :return: A cleaned Polars DataFrame with the relevant activity data extracted from the AJAX HTML.
-    """
-    with open(file, encoding="utf-8") as f:
-        ajax_html = f.read()
-    return load_ajax_dataSet_from_content(ajax_html, save)
 
 
 def load_personal_data(
@@ -580,11 +639,31 @@ def normalize_topic(topic: str) -> str:
     :param topic: The original research topic to normalize.
     :return: The normalized research topic.
     """
-    t = topic.lower().strip()
+    t = unicodedata_normalize("NFKD", topic)
+    t = t.encode("ascii", "ignore").decode("ascii")
+    t = t.lower().strip()
     t = t.rstrip(".")
     t = re.sub(r"(?<=[a-z]{4})s\b", "", t)
     t = re.sub(r"\s+", " ", t)
     return t
+
+
+def has_keywords(value: object) -> bool:
+    """Return True when a keyword-like value contains at least one normalized token."""
+    return bool(split_publication_keywords(value))
+
+
+def choose_keyword_source(record: dict[str, object]) -> object | None:
+    """Pick the keyword field, falling back to categories when keywords are missing."""
+    primary_keywords = record.get("keywords")
+    if has_keywords(primary_keywords):
+        return primary_keywords
+
+    fallback_keywords = record.get("CATEGORÍAS")
+    if has_keywords(fallback_keywords):
+        return fallback_keywords
+
+    return None
 
 
 def build_authorship_edges(
@@ -742,7 +821,7 @@ def build_last_year_project(df_ajax: pl.DataFrame) -> list[LastYearProject]:
                 "FECHA INICIO": "start_date",
                 "IDENTIFICADOR": "oa_id",
                 "SUBTIPO": "type",
-                "TFT_DESCRIPCION": "description",
+                "DESCRIPCION TFT": "description",
             }
         )
         .with_columns(
@@ -767,24 +846,23 @@ def build_last_year_project(df_ajax: pl.DataFrame) -> list[LastYearProject]:
 
         raw_oa_id = record.get("oa_id")
         oa_id = str(raw_oa_id).strip() if raw_oa_id else None
-        description = normalize_keyword_text(record.get("description"))
+        description = clean_description(record.get("description")) or ""
         authors = [
             a.strip() for a in str(record.get("authors", "")).split(",") if a.strip()
         ]
-        keywords = split_publication_keywords(record.get("keywords"))
+        keywords = split_publication_keywords(choose_keyword_source(record))
 
-        last_year_project = LastYearProject(
+        project = LastYearProject(
             id=f"{record['id']}",
             oa_id=oa_id,
             title=title,
             description=description,
             authors=authors,
             keywords=keywords,
-            year=int(record.get("year", 0)) if record.get("year") else 0,
+            year=int(record.get("year", 0)),
             type=record.get("type", ""),
         )
-        last_year_projects.append(last_year_project)
-
+        last_year_projects.append(project)
     return last_year_projects
 
 
@@ -981,7 +1059,7 @@ def build_publications(df_ajax: pl.DataFrame) -> list[Publication]:
             ]
             if record.get("authors")
             else [],
-            keywords=split_publication_keywords(record.get("keywords")),
+            keywords=split_publication_keywords(choose_keyword_source(record)),
             start_date=record.get("start_date"),
             end_date=record.get("end_date"),
         )
@@ -1201,7 +1279,7 @@ def process_researcher(
 
         html = main_html
         sel = Selector(text=html)
-        df_ajax = load_ajax_dataSet_from_content(ajax_html)
+        df_ajax = load_ajax_dataSet(ajax_html)
 
         (
             profile,
