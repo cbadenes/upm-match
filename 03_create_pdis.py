@@ -53,6 +53,7 @@ from models import (
     Works,
 )
 
+LOG_PATH = Path("logs/create_pdis.log")
 CSV_OBJECT_NAME = "researchers.csv"
 PUBLICATIONS_REGISTRY = {}  # In-memory storage for publications
 SUBJECTS_REGISTRY = {}  # In-memory storage for subjects
@@ -859,7 +860,7 @@ def build_last_year_project(df_ajax: pl.DataFrame) -> list[LastYearProject]:
             description=description,
             authors=authors,
             keywords=keywords,
-            year=int(record.get("year", 0)),
+            year=int(record.get("year") or 0),
             type=record.get("type", ""),
         )
         last_year_projects.append(project)
@@ -1872,6 +1873,15 @@ if __name__ == "__main__":
     # Configure logger level from CLI (numeric levels)
     logger.remove()
     logger.add(sys.stderr, level=args.logs)
+
+    LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    logger.add(
+        LOG_PATH,
+        rotation="100 MB",
+        retention="10 days",
+        level="INFO",
+        encoding="utf-8",
+    )
 
     results = []
     researchers = []

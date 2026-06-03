@@ -27,7 +27,7 @@ from scraping.scraper import run_scraper
 
 # Configuration
 CSV_OBJECT_NAME = "researchers.csv"
-LOG_PATH = Path("logs/data_collection.log")
+LOG_PATH = Path("logs/get_pdis_data.log")
 
 
 # ID loading
@@ -87,15 +87,11 @@ async def main(researcher_id: int | None = None):
     LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
     logger.add(
         LOG_PATH,
-        rotation="50 MB",
+        rotation="100 MB",
         retention="10 days",
         level="INFO",
         encoding="utf-8",
     )
-
-    logger.info("═" * 60)
-    logger.info("Starting pipeline - Portal Cientifico UPM")
-    logger.info("═" * 60)
 
     # Phase 1: load researcher IDs from MinIO.
     ids = load_researcher_ids_from_minio()
