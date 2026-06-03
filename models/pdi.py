@@ -5,7 +5,7 @@ from typing import Annotated, Optional
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 ResearcherId = Annotated[str, StringConstraints(pattern=r"^pdi_\d{6}$")]
-EmailStr = Annotated[str, StringConstraints(pattern=r"^[\w\.-]+@[\w\.-]+\.\w+$")]
+EmailStr = Annotated[str, StringConstraints(pattern=r"^[\w\.-]+@[\w\.-]+$")]
 TopicStr = Annotated[str, StringConstraints(min_length=1)]
 
 

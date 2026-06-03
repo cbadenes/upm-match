@@ -112,7 +112,12 @@ class MemgraphBackend:
         :param id: The value of the id property to check.
         :return: True if the node exists, False otherwise.
         """
-        return self.fetch_document(collection, id) is not None
+        return (
+            self.query(
+                f"MATCH (n:{collection.capitalize()} {{id: $id}}) RETURN n", {"id": id}
+            )
+            is not None
+        )
 
     def count_documents(self, collection: str) -> int:
         """Return the number of nodes with the given label.
