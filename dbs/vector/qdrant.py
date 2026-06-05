@@ -210,9 +210,13 @@ class QdrantBackend:
 
         # Fall back to a single search if only one list produced a valid embedding
         if not general_idx:
-            return self.search_by_keywords(collection, sparse_field, specific_keywords, limit)
+            return self.search_by_keywords(
+                collection, sparse_field, specific_keywords, limit
+            )
         if not specific_idx:
-            return self.search_by_keywords(collection, sparse_field, general_keywords, limit)
+            return self.search_by_keywords(
+                collection, sparse_field, general_keywords, limit
+            )
 
         results = self._client.query_points(
             collection_name=collection,
@@ -223,7 +227,9 @@ class QdrantBackend:
                     limit=limit * 2,
                 ),
                 models.Prefetch(
-                    query=models.SparseVector(indices=specific_idx, values=specific_val),
+                    query=models.SparseVector(
+                        indices=specific_idx, values=specific_val
+                    ),
                     using=sparse_field,
                     limit=limit * 2,
                 ),

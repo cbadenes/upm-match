@@ -103,7 +103,9 @@ def search():
                 logger.debug("Query enriched - length={}", len(query_text))
             except Exception as exc:
                 logger.exception("Query enrichment failed")
-                return jsonify({"error": f"Error al enriquecer la consulta: {exc}"}), 500
+                return jsonify(
+                    {"error": f"Error al enriquecer la consulta: {exc}"}
+                ), 500
 
         try:
             results = search_pdis_by_summary(_db, query_text, limit=limit)

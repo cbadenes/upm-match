@@ -21,17 +21,15 @@ import argparse
 import sys
 import time
 from io import StringIO
-from pathlib import Path
 
 import polars as pl
 from dotenv import load_dotenv
 from loguru import logger
 
-from utils.logging import setup_logging
-
 from dbs import minio
 from dbs.vector import QdrantBackend, VectorPoint
 from models import ResearcherEnrichmentDocument
+from utils.logging import setup_logging
 
 load_dotenv()
 
@@ -41,8 +39,6 @@ ENRICHMENT_KEY_TEMPLATE = "researchers/{researcher_id}/enrichment.json"
 
 COLLECTION_NAME = "researcher_keywords"
 SPARSE_FIELD = "keywords_bm42"
-
-
 
 
 def load_researcher_ids(bucket_name: str, object_name: str) -> list[int]:

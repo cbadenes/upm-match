@@ -61,13 +61,15 @@ class GraphDataBase(Protocol):
         :return: True if the operation was successful, False otherwise."""
         ...
 
-    def adapt_document(self, collection: str, document: dict[str, Any]) -> dict[str, Any]:
+    def adapt_document(
+        self, collection: str, document: dict[str, Any]
+    ) -> dict[str, Any]:
         """Adapt a document dict to backend-specific format.
-        
+
         This method handles field mappings specific to each backend:
         - ArangoDB: id → _key, normalizes node/edge references
         - Memgraph: title → name (for certain node types), other adaptations
-        
+
         :param collection: The collection/label name (e.g., 'Pdi', 'Publication')
         :param document: The document dict from Pydantic model
         :return: Backend-specific document dict

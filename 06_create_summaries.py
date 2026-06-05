@@ -29,14 +29,13 @@ from agno.agent import Agent
 from agno.models.ollama import Ollama
 from dotenv import load_dotenv
 from loguru import logger
-
-from utils.logging import setup_logging
 from pydantic import BaseModel, Field
 from qdrant_client import QdrantClient
 from qdrant_client import models as qdrant_models
 
 from dbs import minio
 from models import ResearcherEnrichmentDocument
+from utils.logging import setup_logging
 
 load_dotenv()
 
@@ -91,8 +90,6 @@ class ExpertiseUpdate(BaseModel):
             "No tool/system names, no paper titles, no time markers."
         )
     )
-
-
 
 
 def _load_researcher_ids(bucket_name: str, object_name: str) -> list[int]:
@@ -466,7 +463,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    setup_logging("create_summaries", level="DEBUG" if args.verbose else "INFO")
+    setup_logging(args.verbose)
     logger.info("=== UPM Match - Rolling Biography Pipeline ===")
     logger.info(
         "Summary model: {}  |  Embed model: {}",

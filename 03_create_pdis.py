@@ -28,7 +28,6 @@ import argparse
 import hashlib
 import json
 import re
-import sys
 import time
 from collections import defaultdict
 from io import StringIO
@@ -38,8 +37,6 @@ from unicodedata import normalize as unicodedata_normalize
 
 import polars as pl
 from loguru import logger
-
-from utils.logging import setup_logging
 from scrapy import Selector
 
 from dbs import GraphDataBase, get_graph_db, minio
@@ -54,6 +51,7 @@ from models import (
     Tutoring,
     Works,
 )
+from utils.logging import setup_logging
 
 CSV_OBJECT_NAME = "researchers.csv"
 PUBLICATIONS_REGISTRY = {}  # In-memory storage for publications

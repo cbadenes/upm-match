@@ -19,9 +19,15 @@ load_dotenv()
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="UPM Match recommendation server.")
-    parser.add_argument("--host", default="0.0.0.0", help="Bind host (default: 0.0.0.0)")
-    parser.add_argument("--port", type=int, default=5000, help="Bind port (default: 5000)")
-    parser.add_argument("--debug", action="store_true", help="Enable Flask debug / auto-reload")
+    parser.add_argument(
+        "--host", default="0.0.0.0", help="Bind host (default: 0.0.0.0)"
+    )
+    parser.add_argument(
+        "--port", type=int, default=5000, help="Bind port (default: 5000)"
+    )
+    parser.add_argument(
+        "--debug", action="store_true", help="Enable Flask debug / auto-reload"
+    )
     return parser.parse_args()
 
 
