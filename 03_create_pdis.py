@@ -38,6 +38,8 @@ from unicodedata import normalize as unicodedata_normalize
 
 import polars as pl
 from loguru import logger
+
+from utils.logging import setup_logging
 from scrapy import Selector
 
 from dbs import GraphDataBase, get_graph_db, minio
@@ -53,7 +55,6 @@ from models import (
     Works,
 )
 
-LOG_PATH = Path("logs/create_pdis.log")
 CSV_OBJECT_NAME = "researchers.csv"
 PUBLICATIONS_REGISTRY = {}  # In-memory storage for publications
 SUBJECTS_REGISTRY = {}  # In-memory storage for subjects
@@ -1870,18 +1871,7 @@ def final_summary(args, results: list[dict], researchers: list[tuple]):
 if __name__ == "__main__":
     args = parse_args()
 
-    # Configure logger level from CLI (numeric levels)
-    logger.remove()
-    logger.add(sys.stderr, level=args.logs)
-
-    LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    logger.add(
-        LOG_PATH,
-        rotation="100 MB",
-        retention="10 days",
-        level="INFO",
-        encoding="utf-8",
-    )
+    setup_logging("create_pdis", level=args.logs)
 
     results = []
     researchers = []

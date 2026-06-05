@@ -21,6 +21,8 @@ import polars as pl
 import requests
 from loguru import logger
 
+from utils.logging import setup_logging
+
 from dbs import minio
 
 URL = (
@@ -38,6 +40,7 @@ HEADERS = {
 
 
 def main():
+    setup_logging("find_ids")
     logger.info("Sending POST request to the PHP endpoint...")
     response = requests.post(URL, data=PAYLOAD, headers=HEADERS, timeout=30)
     response.raise_for_status()

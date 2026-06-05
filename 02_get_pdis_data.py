@@ -22,12 +22,13 @@ from pathlib import Path
 import polars as pl
 from loguru import logger
 
+from utils.logging import setup_logging
+
 from dbs import minio
 from scraping.scraper import run_scraper
 
 # Configuration
 CSV_OBJECT_NAME = "researchers.csv"
-LOG_PATH = Path("logs/get_pdis_data.log")
 
 
 # ID loading
@@ -84,14 +85,7 @@ def parse_args() -> argparse.Namespace:
 async def main(researcher_id: int | None = None):
     """Run the full pipeline: load IDs, scrape and upload profiles to MinIO."""
 
-    LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    logger.add(
-        LOG_PATH,
-        rotation="100 MB",
-        retention="10 days",
-        level="INFO",
-        encoding="utf-8",
-    )
+    setup_logging("get_pdis_data")
 
     # Phase 1: load researcher IDs from MinIO.
     ids = load_researcher_ids_from_minio()

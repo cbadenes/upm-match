@@ -19,6 +19,8 @@ import polars as pl
 from dotenv import load_dotenv
 from loguru import logger
 
+from utils.logging import setup_logging
+
 from dbs import get_graph_db, minio
 from models import (
     ResearcherEnrichmentDocument,
@@ -30,7 +32,6 @@ from models import (
 
 load_dotenv()
 
-LOG_PATH = Path("logs/enrich_profile.log")
 MINIO_BUCKET = minio.BUCKET_NAME
 CSV_OBJECT_NAME = "researchers.csv"
 ENRICHMENT_KEY_TEMPLATE = "researchers/{researcher_id}/enrichment.json"
@@ -513,17 +514,7 @@ def main() -> None:
     """Run the enrichment pipeline."""
     args = parse_args()
 
-    logger.remove()
-    logger.add(sys.stderr, level=args.logs)
-
-    LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    logger.add(
-        LOG_PATH,
-        rotation="100 MB",
-        retention="10 days",
-        level="INFO",
-        encoding="utf-8",
-    )
+    setup_logging("enrich_profile", level=args.logs)
 
     researcher_ids = resolve_researcher_ids(args)
     if not researcher_ids:

@@ -23,7 +23,7 @@ MINIO_CLIENT = Minio(
     secure=False,
 )
 
-BUCKET_NAME: str | None = os.environ.get("MINIO_BUCKET_NAME")
+BUCKET_NAME: str | None = os.environ.get("MINIO_BUCKET_NAME", "raw")
 
 
 def bucket_exists(bucket_name: str) -> bool:

@@ -29,6 +29,8 @@ from agno.agent import Agent
 from agno.models.ollama import Ollama
 from dotenv import load_dotenv
 from loguru import logger
+
+from utils.logging import setup_logging
 from pydantic import BaseModel, Field
 from qdrant_client import QdrantClient
 from qdrant_client import models as qdrant_models
@@ -38,7 +40,6 @@ from models import ResearcherEnrichmentDocument
 
 load_dotenv()
 
-LOG_PATH = Path("logs/create_summaries.log")
 # MinIO
 MINIO_BUCKET = minio.BUCKET_NAME
 CSV_OBJECT_NAME = "researchers.csv"
@@ -92,12 +93,6 @@ class ExpertiseUpdate(BaseModel):
     )
 
 
-def _setup_logging(verbose: bool) -> None:
-    logger.remove()
-    level = "DEBUG" if verbose else "INFO"
-    logger.add(sys.stderr, level=level, colorize=True)
-    LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    logger.add(LOG_PATH, level="DEBUG", rotation="10 MB", retention="30 days")
 
 
 def _load_researcher_ids(bucket_name: str, object_name: str) -> list[int]:
@@ -471,7 +466,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    _setup_logging(args.verbose)
+    setup_logging("create_summaries", level="DEBUG" if args.verbose else "INFO")
     logger.info("=== UPM Match - Rolling Biography Pipeline ===")
     logger.info(
         "Summary model: {}  |  Embed model: {}",
