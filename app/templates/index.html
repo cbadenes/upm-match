@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UPM Match — Buscador de directores</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f8f9fa;
+      --surface: #ffffff;
+      --border: #e2e8f0;
+      --text: #1a202c;
+      --muted: #718096;
+      --accent: #3b82f6;
+      --accent-light: #eff6ff;
+      --green: #10b981;
+      --green-light: #ecfdf5;
+      --purple: #8b5cf6;
+      --purple-light: #f5f3ff;
+      --tag-bg: #edf2f7;
+      --score-track: #e2e8f0;
+      --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+      --shadow-md: 0 4px 6px rgba(0,0,0,.07), 0 2px 4px rgba(0,0,0,.06);
+      --radius: 10px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f172a;
+        --surface: #1e293b;
+        --border: #334155;
+        --text: #f1f5f9;
+        --muted: #94a3b8;
+        --accent: #60a5fa;
+        --accent-light: #1e3a5f;
+        --green: #34d399;
+        --green-light: #064e3b;
+        --purple: #a78bfa;
+        --purple-light: #2e1065;
+        --tag-bg: #334155;
+        --score-track: #334155;
+      }
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    header .logo {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.02em;
+    }
+
+    header .subtitle {
+      font-size: .85rem;
+      color: var(--muted);
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+
+    .search-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.75rem;
+      box-shadow: var(--shadow);
+      margin-bottom: 1.5rem;
+    }
+
+    /* ── Mode selector ── */
+    .mode-label {
+      font-size: .8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--muted);
+      margin-bottom: .5rem;
+    }
+
+    .mode-selector {
+      display: flex;
+      gap: 0;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      width: fit-content;
+      margin-bottom: 1rem;
+    }
+
+    .mode-btn {
+      padding: .45rem 1.1rem;
+      border: none;
+      border-right: 1px solid var(--border);
+      background: transparent;
+      font-size: .85rem;
+      font-weight: 500;
+      color: var(--muted);
+      cursor: pointer;
+      transition: background .15s, color .15s;
+    }
+
+    .mode-btn:last-child { border-right: none; }
+
+    .mode-btn.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    /* ── Sub-mode (summary variants) ── */
+    .sub-mode {
+      display: none;
+      margin-bottom: .9rem;
+      padding: .75rem 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .sub-mode.visible { display: block; }
+
+    .sub-mode-label {
+      font-size: .78rem;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: .5rem;
+    }
+
+    .radio-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .radio-group label {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      font-size: .875rem;
+      font-weight: 400;
+      cursor: pointer;
+      color: var(--text);
+    }
+
+    /* ── Textarea / form ── */
+    .search-card label.field-label {
+      display: block;
+      font-size: .875rem;
+      font-weight: 600;
+      margin-bottom: .5rem;
+      color: var(--text);
+    }
+
+    .search-card p.hint {
+      font-size: .8rem;
+      color: var(--muted);
+      margin-bottom: .75rem;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 110px;
+      padding: .75rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: inherit;
+      font-size: .9rem;
+      resize: vertical;
+      transition: border-color .15s;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(59,130,246,.15);
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    button[type="submit"] {
+      padding: .6rem 1.5rem;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: .9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+
+    button[type="submit"]:hover { opacity: .88; }
+    button[type="submit"]:disabled { opacity: .5; cursor: not-allowed; }
+
+    .spinner {
+      display: none;
+      width: 18px; height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Keywords section ── */
+    .keywords-section {
+      display: none;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      box-shadow: var(--shadow);
+      margin-bottom: 1.5rem;
+    }
+
+    .keywords-section h2 {
+      font-size: .8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+
+    .keyword-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: .75rem;
+      margin-bottom: .75rem;
+    }
+
+    .keyword-row:last-child { margin-bottom: 0; }
+
+    .keyword-row .row-label {
+      font-size: .75rem;
+      font-weight: 600;
+      color: var(--muted);
+      padding-top: .3rem;
+      min-width: 70px;
+      flex-shrink: 0;
+    }
+
+    .tags { display: flex; flex-wrap: wrap; gap: .4rem; }
+
+    .tag {
+      display: inline-block;
+      padding: .25rem .65rem;
+      border-radius: 999px;
+      font-size: .78rem;
+      font-weight: 500;
+    }
+
+    .tag-general {
+      background: var(--accent-light);
+      color: var(--accent);
+    }
+
+    .tag-specific {
+      background: var(--green-light);
+      color: var(--green);
+    }
+
+    .tag-matched {
+      background: var(--tag-bg);
+      color: var(--text);
+      font-size: .72rem;
+    }
+
+    /* ── Enriched query section ── */
+    .enriched-section {
+      display: none;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      box-shadow: var(--shadow);
+      margin-bottom: 1.5rem;
+    }
+
+    .enriched-section h2 {
+      font-size: .8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      margin-bottom: .6rem;
+    }
+
+    .enriched-section p {
+      font-size: .88rem;
+      color: var(--text);
+      line-height: 1.65;
+    }
+
+    /* ── Results ── */
+    .results-header {
+      display: flex;
+      align-items: baseline;
+      gap: .5rem;
+      margin-bottom: .75rem;
+    }
+
+    .results-header h2 {
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    .results-header .count {
+      font-size: .82rem;
+      color: var(--muted);
+    }
+
+    .result-list { display: flex; flex-direction: column; gap: .75rem; }
+
+    .result-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.1rem 1.4rem;
+      box-shadow: var(--shadow);
+      display: grid;
+      grid-template-columns: 2rem 1fr;
+      gap: .5rem 1rem;
+      align-items: start;
+    }
+
+    .result-rank {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--accent);
+      line-height: 1.4;
+    }
+
+    .result-body {}
+
+    .result-name {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: .3rem;
+    }
+
+    .result-meta {
+      font-size: .78rem;
+      color: var(--muted);
+      margin-bottom: .6rem;
+    }
+
+    .score-bar-wrap {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      margin-bottom: .7rem;
+    }
+
+    .score-bar-track {
+      flex: 1;
+      height: 5px;
+      background: var(--score-track);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .score-bar-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 999px;
+      transition: width .4s ease;
+    }
+
+    .score-label {
+      font-size: .72rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .result-section-title {
+      font-size: .7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--muted);
+      margin-bottom: .35rem;
+    }
+
+    .result-topics-wrap { margin-bottom: .5rem; }
+
+    .result-summary {
+      font-size: .82rem;
+      color: var(--text);
+      line-height: 1.6;
+      margin-bottom: .6rem;
+      padding: .6rem .8rem;
+      background: var(--bg);
+      border-radius: 6px;
+      border-left: 3px solid var(--purple);
+    }
+
+    .no-match {
+      font-size: .78rem;
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    /* ── Error / empty states ── */
+    .alert {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+      border-radius: 8px;
+      padding: .75rem 1rem;
+      font-size: .875rem;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .alert { background: #3b1515; border-color: #7f1d1d; color: #fca5a5; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">UPM Match</div>
+    <div class="subtitle">Encuentra tu director de TFG / TFM / Tesis</div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Search form -->
+  <div class="search-card">
+
+    <!-- Mode selector -->
+    <div class="mode-label">Modo de búsqueda</div>
+    <div class="mode-selector">
+      <button class="mode-btn active" data-mode="keywords">Por keywords</button>
+      <button class="mode-btn" data-mode="summary">Por resumen</button>
+    </div>
+
+    <!-- Summary sub-mode (hidden unless summary is selected) -->
+    <div class="sub-mode" id="sub-mode">
+      <div class="sub-mode-label">Variante</div>
+      <div class="radio-group">
+        <label>
+          <input type="radio" name="sub-mode" value="summary_direct" checked />
+          Búsqueda directa
+        </label>
+        <label>
+          <input type="radio" name="sub-mode" value="summary_enriched" />
+          Búsqueda enriquecida
+        </label>
+      </div>
+    </div>
+
+    <label class="field-label" for="idea">Describe tu idea de investigación</label>
+    <p class="hint">Puedes escribir en castellano, inglés o mezclar ambos. Cuanto más detallado, mejor.</p>
+    <textarea id="idea" placeholder="Ej. Quiero desarrollar un sistema que genere preguntas de evaluación automáticamente a partir de apuntes de clase usando modelos de lenguaje grande, siguiendo la taxonomía de Bloom…"></textarea>
+    <div class="actions">
+      <button type="submit" id="btn-search">Buscar directores</button>
+      <div class="spinner" id="spinner"></div>
+    </div>
+  </div>
+
+  <!-- Keyword summary (shown after keywords search) -->
+  <div class="keywords-section" id="keywords-section">
+    <h2>Keywords generadas</h2>
+    <div class="keyword-row">
+      <span class="row-label">Generales</span>
+      <div class="tags" id="tags-general"></div>
+    </div>
+    <div class="keyword-row">
+      <span class="row-label">Específicas</span>
+      <div class="tags" id="tags-specific"></div>
+    </div>
+  </div>
+
+  <!-- Enriched query (shown after summary_enriched search) -->
+  <div class="enriched-section" id="enriched-section">
+    <h2>Consulta enriquecida</h2>
+    <p id="enriched-text"></p>
+  </div>
+
+  <!-- Results -->
+  <div id="results-wrap" style="display:none">
+    <div class="results-header">
+      <h2>Directores recomendados</h2>
+      <span class="count" id="results-count"></span>
+    </div>
+    <div class="result-list" id="result-list"></div>
+  </div>
+
+  <div class="alert" id="error-box" style="display:none"></div>
+
+</div>
+
+<script>
+  const btn          = document.getElementById('btn-search');
+  const spinner      = document.getElementById('spinner');
+  const ideaEl       = document.getElementById('idea');
+  const kwSection    = document.getElementById('keywords-section');
+  const tagsGen      = document.getElementById('tags-general');
+  const tagsSpc      = document.getElementById('tags-specific');
+  const enrichedSec  = document.getElementById('enriched-section');
+  const enrichedText = document.getElementById('enriched-text');
+  const resultsWrap  = document.getElementById('results-wrap');
+  const resultList   = document.getElementById('result-list');
+  const resultCount  = document.getElementById('results-count');
+  const errorBox     = document.getElementById('error-box');
+  const subModeWrap  = document.getElementById('sub-mode');
+
+  // ── Mode state ─────────────────────────────────────────────────────────────
+  let currentMode = 'keywords'; // 'keywords' | 'summary'
+
+  document.querySelectorAll('.mode-btn').forEach(modeBtn => {
+    modeBtn.addEventListener('click', () => {
+      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+      modeBtn.classList.add('active');
+      currentMode = modeBtn.dataset.mode;
+      subModeWrap.classList.toggle('visible', currentMode === 'summary');
+    });
+  });
+
+  function getSearchMode() {
+    if (currentMode === 'keywords') return 'keywords';
+    const checked = document.querySelector('input[name="sub-mode"]:checked');
+    return checked ? checked.value : 'summary_direct';
+  }
+
+  // ── UI helpers ──────────────────────────────────────────────────────────────
+  function setLoading(on) {
+    btn.disabled = on;
+    spinner.style.display = on ? 'block' : 'none';
+  }
+
+  function showError(msg) {
+    errorBox.textContent = msg;
+    errorBox.style.display = 'block';
+    kwSection.style.display = 'none';
+    enrichedSec.style.display = 'none';
+    resultsWrap.style.display = 'none';
+  }
+
+  function clearError() {
+    errorBox.style.display = 'none';
+    errorBox.textContent = '';
+  }
+
+  function makeTags(container, words, cls) {
+    container.innerHTML = '';
+    words.forEach(w => {
+      const s = document.createElement('span');
+      s.className = `tag ${cls}`;
+      s.textContent = w;
+      container.appendChild(s);
+    });
+  }
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // ── Result rendering ────────────────────────────────────────────────────────
+  function buildCard(r, mode) {
+    const card = document.createElement('div');
+    card.className = 'result-card';
+
+    const sinceText = r.since ? `Activo desde ${r.since} · ` : '';
+
+    // Summary block (shown in summary modes when data is available)
+    let summaryHTML = '';
+    if (mode !== 'keywords' && r.summary) {
+      summaryHTML = `
+        <div class="result-topics-wrap">
+          <div class="result-section-title">Resumen investigador</div>
+          <div class="result-summary">${escHtml(r.summary)}</div>
+        </div>`;
+    }
+
+    // Matched topics (keywords mode only)
+    let matchedHTML = '';
+    if (mode === 'keywords') {
+      if (r.matched_topics && r.matched_topics.length > 0) {
+        const tagEls = r.matched_topics
+          .map(t => `<span class="tag tag-matched">${escHtml(t)}</span>`)
+          .join('');
+        matchedHTML = `
+          <div class="result-topics-wrap">
+            <div class="result-section-title">Coincidencias</div>
+            <div class="tags">${tagEls}</div>
+          </div>`;
+      } else {
+        matchedHTML = `
+          <div class="result-topics-wrap">
+            <span class="no-match">Sin coincidencias directas — relevante por proximidad semántica</span>
+          </div>`;
+      }
+    }
+
+    // Remaining topics
+    const matchedSet = new Set((r.matched_topics || []).map(t => t.toLowerCase()));
+    const rest = (r.all_topics || []).filter(t => !matchedSet.has(t.toLowerCase()));
+    let allTopicsHTML = '';
+    if (rest.length > 0) {
+      const tagEls = rest.map(t => `<span class="tag tag-matched">${escHtml(t)}</span>`).join('');
+      allTopicsHTML = `
+        <div class="result-topics-wrap">
+          <div class="result-section-title">Temas de investigación</div>
+          <div class="tags">${tagEls}</div>
+        </div>`;
+    }
+
+    card.innerHTML = `
+      <div class="result-rank">#${r.rank}</div>
+      <div class="result-body">
+        <div class="result-name">${escHtml(r.name)}</div>
+        <div class="result-meta">${sinceText}${escHtml(r.researcher_id)}</div>
+        <div class="score-bar-wrap">
+          <div class="score-bar-track">
+            <div class="score-bar-fill" style="width:${r.score_pct}%"></div>
+          </div>
+          <span class="score-label">relevancia ${r.score_pct}%</span>
+        </div>
+        ${summaryHTML}
+        ${matchedHTML}
+        ${allTopicsHTML}
+      </div>`;
+
+    return card;
+  }
+
+  function renderResults(data) {
+    clearError();
+    const mode = data.mode || 'keywords';
+
+    // Keywords section
+    if (mode === 'keywords') {
+      makeTags(tagsGen, data.general_keywords || [], 'tag-general');
+      makeTags(tagsSpc, data.specific_keywords || [], 'tag-specific');
+      kwSection.style.display = 'block';
+      enrichedSec.style.display = 'none';
+    } else if (mode === 'summary_enriched' && data.enriched_query) {
+      enrichedText.textContent = data.enriched_query;
+      enrichedSec.style.display = 'block';
+      kwSection.style.display = 'none';
+    } else {
+      kwSection.style.display = 'none';
+      enrichedSec.style.display = 'none';
+    }
+
+    // Results
+    resultList.innerHTML = '';
+    const items = data.results || [];
+    resultCount.textContent = `${items.length} resultado${items.length !== 1 ? 's' : ''}`;
+
+    items.forEach(r => resultList.appendChild(buildCard(r, mode)));
+
+    resultsWrap.style.display = items.length > 0 ? 'block' : 'none';
+    if (items.length === 0) showError('No se encontraron resultados. Asegúrate de que Qdrant tiene datos indexados.');
+  }
+
+  // ── Search ──────────────────────────────────────────────────────────────────
+  async function doSearch() {
+    const idea = ideaEl.value.trim();
+    if (!idea) { showError('Por favor escribe una idea antes de buscar.'); return; }
+
+    clearError();
+    setLoading(true);
+    kwSection.style.display = 'none';
+    enrichedSec.style.display = 'none';
+    resultsWrap.style.display = 'none';
+
+    try {
+      const resp = await fetch('/api/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idea, mode: getSearchMode() }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) { showError(data.error || `Error ${resp.status}`); return; }
+      renderResults(data);
+    } catch (err) {
+      showError(`Error de red: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  btn.addEventListener('click', doSearch);
+  ideaEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) doSearch();
+  });
+</script>
+</body>
+</html>
