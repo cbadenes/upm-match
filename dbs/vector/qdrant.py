@@ -9,9 +9,19 @@ from .base import SearchResult, VectorPoint
 
 load_dotenv()
 
+
+def _require_env(name: str) -> str:
+    value = os.environ.get(name, "")
+    if not value:
+        raise RuntimeError(
+            f"Required environment variable {name!r} is not set. Check your .env file."
+        )
+    return value
+
+
 _HOST = os.environ.get("QDRANT_HOST", "localhost")
 _PORT = int(os.environ.get("QDRANT_PORT", "6333"))
-_API_KEY = os.environ.get("QDRANT_API_KEY")
+_API_KEY = _require_env("QDRANT_API_KEY")
 
 _SPARSE_MODEL_NAME = "Qdrant/bm42-all-minilm-l6-v2-attentions"
 
@@ -26,7 +36,7 @@ class QdrantBackend:
         self,
         host: str = _HOST,
         port: int = _PORT,
-        api_key: str | None = _API_KEY,
+        api_key: str = _API_KEY,
     ):
         self._client = QdrantClient(url=f"http://{host}:{port}", api_key=api_key)
         self._embedder: SparseTextEmbedding | None = None

@@ -11,10 +11,20 @@ from minio.error import S3Error
 
 load_dotenv()
 
-__ACCESS_KEY = os.environ.get("MINIO_ROOT_USER")
-__SECRET_KEY = os.environ.get("MINIO_ROOT_PASSWORD")
+
+def _require_env(name: str) -> str:
+    value = os.environ.get(name, "")
+    if not value:
+        raise RuntimeError(
+            f"Required environment variable {name!r} is not set. Check your .env file."
+        )
+    return value
+
+
+__ACCESS_KEY = _require_env("MINIO_ROOT_USER")
+__SECRET_KEY = _require_env("MINIO_ROOT_PASSWORD")
 __HOST = os.environ.get("MINIO_HOST", "localhost")
-__PORT = os.environ.get("MINIO_PORT")
+__PORT = os.environ.get("MINIO_PORT", "9000")
 
 MINIO_CLIENT = Minio(
     f"{__HOST}:{__PORT}",
@@ -23,7 +33,7 @@ MINIO_CLIENT = Minio(
     secure=False,
 )
 
-BUCKET_NAME: str | None = os.environ.get("MINIO_BUCKET_NAME", "raw")
+BUCKET_NAME: str = _require_env("MINIO_BUCKET_NAME")
 
 
 def bucket_exists(bucket_name: str) -> bool:

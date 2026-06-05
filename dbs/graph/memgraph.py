@@ -7,10 +7,20 @@ from loguru import logger
 
 load_dotenv()
 
-_USERNAME = os.environ.get("MEMGRAPH_USERNAME", "")
-_PASSWORD = os.environ.get("MEMGRAPH_PASSWORD", "")
+
+def _require_env(name: str) -> str:
+    value = os.environ.get(name, "")
+    if not value:
+        raise RuntimeError(
+            f"Required environment variable {name!r} is not set. Check your .env file."
+        )
+    return value
+
+
+_USERNAME = _require_env("MEMGRAPH_USERNAME")
+_PASSWORD = _require_env("MEMGRAPH_PASSWORD")
 _HOST = os.environ.get("MEMGRAPH_HOST", "localhost")
-_PORT = int(os.environ.get("MEMGRAPH_PORT", 7687))
+_PORT = int(os.environ.get("MEMGRAPH_PORT", "7687"))
 _ENCRYPTED = os.environ.get("MEMGRAPH_ENCRYPTED", "false").lower() == "true"
 
 

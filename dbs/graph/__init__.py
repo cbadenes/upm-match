@@ -15,7 +15,7 @@ _BACKENDS = {
 }
 
 
-def get_graph_db(backend: str = "arango", **kwargs) -> GraphDataBase:
+def get_graph_db(backend: str = "memgraph", **kwargs) -> GraphDataBase:
     """Factory function to get a graph database backend instance.
 
     :param backend: The name of the backend to use (e.g., "arango", "memgraph", "neo4j").
