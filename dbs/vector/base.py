@@ -106,6 +106,42 @@ class VectorDataBase(Protocol):
         """
         ...
 
+    def search_by_keyword_sets(
+        self,
+        collection: str,
+        sparse_field: str,
+        general_keywords: list[str],
+        specific_keywords: list[str],
+        limit: int = 10,
+    ) -> list[SearchResult]:
+        """Search using RRF fusion of two independent sparse keyword queries.
+
+        :param collection: Name of the collection to search.
+        :param sparse_field: Name of the sparse vector field to use.
+        :param general_keywords: Broad domain keywords for the first query leg.
+        :param specific_keywords: Precise method/technique keywords for the second query leg.
+        :param limit: Maximum number of fused results to return.
+        :return: List of SearchResult objects sorted by fused relevance score.
+        """
+        ...
+
+    def search_dense(
+        self,
+        collection: str,
+        vector: list[float],
+        limit: int = 10,
+    ) -> list[SearchResult]:
+        """Search for the most similar points using a pre-computed dense vector.
+
+        Queries the default (unnamed) dense vector field of the collection.
+
+        :param collection: Name of the collection to search.
+        :param vector: Dense query vector to compare against stored vectors.
+        :param limit: Maximum number of results to return.
+        :return: List of SearchResult objects sorted by similarity score descending.
+        """
+        ...
+
     def delete_collection(self, collection: str) -> bool:
         """Delete a collection entirely. Returns True on success.
         Use with caution, as this will remove all data in the collection.

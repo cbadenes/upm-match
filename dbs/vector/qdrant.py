@@ -167,6 +167,90 @@ class QdrantBackend:
             for p in results.points
         ]
 
+    def search_by_keyword_sets(
+        self,
+        collection: str,
+        sparse_field: str,
+        general_keywords: list[str],
+        specific_keywords: list[str],
+        limit: int = 10,
+    ) -> list[SearchResult]:
+        """Search using Qdrant's native RRF fusion over two sparse keyword queries.
+
+        Embeds general and specific keyword lists independently and merges the
+        ranked results using Reciprocal Rank Fusion so neither list dominates.
+
+        :param collection: Name of the Qdrant collection.
+        :param sparse_field: Name of the sparse vector field to query.
+        :param general_keywords: Broad domain keywords for the first query.
+        :param specific_keywords: Precise technique/method keywords for the second query.
+        :param limit: Maximum number of fused results to return.
+        :return: List of SearchResult objects sorted by fused relevance score.
+        """
+        general_idx, general_val = (
+            self.embed(general_keywords) if general_keywords else ([], [])
+        )
+        specific_idx, specific_val = (
+            self.embed(specific_keywords) if specific_keywords else ([], [])
+        )
+
+        if not general_idx and not specific_idx:
+            logger.warning("Both keyword lists produced empty embeddings")
+            return []
+
+        # Fall back to a single search if only one list produced a valid embedding
+        if not general_idx:
+            return self.search_by_keywords(collection, sparse_field, specific_keywords, limit)
+        if not specific_idx:
+            return self.search_by_keywords(collection, sparse_field, general_keywords, limit)
+
+        results = self._client.query_points(
+            collection_name=collection,
+            prefetch=[
+                models.Prefetch(
+                    query=models.SparseVector(indices=general_idx, values=general_val),
+                    using=sparse_field,
+                    limit=limit * 2,
+                ),
+                models.Prefetch(
+                    query=models.SparseVector(indices=specific_idx, values=specific_val),
+                    using=sparse_field,
+                    limit=limit * 2,
+                ),
+            ],
+            query=models.FusionQuery(fusion=models.Fusion.RRF),
+            limit=limit,
+            with_payload=True,
+        )
+        return [
+            SearchResult(id=p.id, score=p.score, payload=p.payload or {})
+            for p in results.points
+        ]
+
+    def search_dense(
+        self,
+        collection: str,
+        vector: list[float],
+        limit: int = 10,
+    ) -> list[SearchResult]:
+        """Search using the default (unnamed) dense vector field of the collection.
+
+        :param collection: Name of the Qdrant collection.
+        :param vector: Pre-computed dense query vector.
+        :param limit: Maximum number of results to return.
+        :return: List of SearchResult objects sorted by similarity score descending.
+        """
+        results = self._client.query_points(
+            collection_name=collection,
+            query=vector,
+            limit=limit,
+            with_payload=True,
+        )
+        return [
+            SearchResult(id=p.id, score=p.score, payload=p.payload or {})
+            for p in results.points
+        ]
+
     def delete_collection(self, collection: str) -> bool:
         try:
             self._client.delete_collection(collection)
