@@ -1,13 +1,13 @@
-"""UPM Match — pipeline DAG principal.
+"""UPM Match — main pipeline DAG.
 
-Grafo de dependencias:
-  01_find_ids => 02_get_pdis_data => 03_create_pdis => 04_enrich_profile => [05_create_keywords, 06_create_summaries]
+Task dependency graph:
+  01_find_ids -> 02_get_pdis_data -> 03_create_pdis -> 04_enrich_profile -> [05_create_keywords, 06_create_summaries]
 
-Las fases 05 y 06 son independientes entre sí y se ejecutan en paralelo.
-Duración estimada del pipeline completo: 3-6 horas.
+Phases 05 and 06 are independent and run in parallel.
+Estimated full pipeline duration: 3-6 hours.
 
-Para ejecutar solo parte del pipeline selecciona las tareas desde la UI
-con "Clear" + "Only Failed" o usa el trigger con parámetros.
+To run only part of the pipeline, select tasks from the UI using
+"Clear" + "Only Failed", or use the trigger with parameters.
 """
 
 from __future__ import annotations
@@ -30,10 +30,10 @@ _default_args = {
 
 with DAG(
     dag_id="upm_match_pipeline",
-    description="Pipeline completo: scraping => grafo Memgraph => enriquecimiento LLM => indexación Qdrant",
+    description="Full pipeline: scraping -> Memgraph graph -> LLM enrichment -> Qdrant indexing",
     start_date=datetime(2026, 1, 30),
-    # schedule=None  => sólo ejecución manual
-    # Para ejecución automática semanal (domingos 3am): schedule="0 3 * * 0"
+    # schedule=None  -> manual trigger only
+    # For weekly automatic runs (Sundays at 3am): schedule="0 3 * * 0"
     schedule=None,
     catchup=False,
     default_args=_default_args,
@@ -43,7 +43,7 @@ with DAG(
     fase1 = BashOperator(
         task_id="01_find_ids",
         bash_command=f"cd {_PROJECT} && {_UV} 01_find_ids.py",
-        doc_md="Extrae IDs de investigadores del portal UPM y sube `researchers.csv` a MinIO.",
+        doc_md="Extracts researcher IDs from the UPM portal and uploads `researchers.csv` to MinIO.",
     )
 
     fase2 = BashOperator(
@@ -52,14 +52,14 @@ with DAG(
         retries=2,
         retry_delay=timedelta(minutes=5),
         execution_timeout=timedelta(hours=3),
-        doc_md="Descarga HTML de perfil y actividad de cada investigador (async, concurrencia=10, backoff exponencial).",
+        doc_md="Downloads profile and activity HTML for each researcher (async, concurrency=10, exponential backoff).",
     )
 
     fase3 = BashOperator(
         task_id="03_create_pdis",
         bash_command=f"cd {_PROJECT} && {_UV} 03_create_pdis.py",
         execution_timeout=timedelta(hours=2),
-        doc_md="Parsea HTMLs y construye el grafo en Memgraph (nodos Pdi, Publication, Position, Subject, LastYearProject).",
+        doc_md="Parses HTML files and builds the graph in Memgraph (nodes: Pdi, Publication, Position, Subject, LastYearProject).",
     )
 
     fase4 = BashOperator(
@@ -68,21 +68,21 @@ with DAG(
         retries=2,
         retry_delay=timedelta(minutes=15),
         execution_timeout=timedelta(hours=4),
-        doc_md="Enriquece cada investigador con Claude (keywords, resúmenes, UNESCO). Output: enrichment.json en MinIO.",
+        doc_md="Enriches each researcher with Claude (keywords, summaries, UNESCO categories). Output: enrichment.json in MinIO.",
     )
 
     fase5 = BashOperator(
         task_id="05_create_keywords",
         bash_command=f"cd {_PROJECT} && {_UV} 05_create_keywords.py --skip-existing",
         execution_timeout=timedelta(hours=1),
-        doc_md="Indexa keywords en Qdrant (colección sparse BM42 `researcher_keywords`). --skip-existing evita re-indexar.",
+        doc_md="Indexes keywords in Qdrant (sparse BM42 collection `researcher_keywords`). --skip-existing skips already-indexed researchers.",
     )
 
     fase6 = BashOperator(
         task_id="06_create_summaries",
         bash_command=f"cd {_PROJECT} && {_UV} 06_create_summaries.py",
         execution_timeout=timedelta(hours=3),
-        doc_md="Genera biografías rolling con Ollama e indexa en Qdrant (colección densa `researcher_summaries`).",
+        doc_md="Generates rolling biographies with Ollama and indexes them in Qdrant (dense collection `researcher_summaries`).",
     )
 
     fase1 >> fase2 >> fase3 >> fase4 >> [fase5, fase6]

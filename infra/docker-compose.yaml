@@ -1,31 +1,63 @@
-# Configuración común para todos los contenedores de Airflow.
-# Los servicios individuales extienden este bloque con <<: *airflow-common.
+# Explicit project name: ensures existing volumes (upm_match_*) are reused regardless of the working directory.
+name: upm_match
+
+# =============================================================================
+# UPM Match - Docker Compose
+#
+# Network architecture:
+#   - Traefik is the only external entry point (port 80).
+#   - Routes are defined in traefik/dynamic.yml (file provider).
+#   - All other services do NOT expose ports to the host.
+#
+# Service access:
+#   http://localhost/airflow            -> Airflow Webserver
+#   http://localhost/ollama             -> Ollama REST API
+#   http://localhost/s3                 -> MinIO S3 API
+#   http://qdrant.localhost             -> Qdrant Dashboard + API
+#   http://lab.localhost                -> Memgraph Lab
+#   http://minio.localhost              -> MinIO Console
+#   http://traefik.localhost/dashboard/ -> Traefik Dashboard
+#
+# Usage (always from the project root):
+#   docker compose --env-file .env -f infra/docker-compose.yaml <command>
+#
+# The --env-file flag is required because Docker Compose looks for .env in the
+# compose file's directory (infra/) but the .env lives at the project root.
+#
+# See infra/README.md for full setup instructions.
+# =============================================================================
+
+
+# Airflow shared configuration
+# All Airflow services extend this block with <<: *airflow-common.
 x-airflow-common: &airflow-common
   build:
-    context: .
-    dockerfile: airflow/Dockerfile
-  env_file: .env
+    context: ..                          # project root
+    dockerfile: infra/airflow/Dockerfile # relative to context
+  env_file: ../.env
   environment: &airflow-env
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
     AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY}
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
     AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_SECRET_KEY}
-    # uv: entorno del proyecto en volumen dedicado para evitar conflictos con .venv de Windows
-    UV_PROJECT_ENVIRONMENT: /opt/airflow/upm_venv
+    AIRFLOW__WEBSERVER__BASE_URL: "http://localhost/airflow"
+    AIRFLOW__WEBSERVER__ENABLE_PROXY_FIX: "True"
+    IN_DOCKER: "true"
+    UV_PROJECT_ENVIRONMENT: /home/airflow/upm_venv
     UV_PYTHON: "3.13"
-    # Overrides de red: los servicios se acceden por nombre de contenedor dentro de tfm_network
-    MINIO_HOST: tfm_minio
+    PYTHONUNBUFFERED: "1"
+    # Network overrides: use service names (not container names) to avoid underscore DNS issues
+    MINIO_HOST: minio
     MINIO_PORT: "9000"
-    MEMGRAPH_HOST: tfm_memgraph
-    QDRANT_HOST: tfm_qdrant
+    MEMGRAPH_HOST: memgraph
+    QDRANT_HOST: qdrant
     QDRANT_PORT: "6333"
-    OLLAMA_HOST: tfm_ollama
+    OLLAMA_HOST: ollama
     OLLAMA_PORT: "11434"
   volumes:
-    - ./airflow/dags:/opt/airflow/dags
-    - .:/opt/airflow/project
-    - upm_project_venv:/opt/airflow/upm_venv
+    - ./airflow/dags:/opt/airflow/dags   # relative to infra/
+    - ..:/opt/airflow/project            # project root
   networks:
     - tfm_network
   logging:
@@ -37,87 +69,96 @@ x-airflow-common: &airflow-common
 
 services:
 
-  # Almacenamiento de objetos
+  # Reverse proxy
+  traefik:
+    image: traefik:v3.2
+    container_name: tfm_traefik
+    restart: unless-stopped
+    command:
+      - "--providers.file.filename=/etc/traefik/dynamic.yml"
+      - "--providers.file.watch=true"
+      - "--entrypoints.web.address=:80"
+      - "--api.dashboard=true"
+      - "--api.insecure=true"
+    ports:
+      - "80:80"
+    volumes:
+      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+    networks:
+      - tfm_network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+
+  # Object storage
   minio:
     image: minio/minio:RELEASE.2025-09-07T16-13-09Z
     container_name: tfm_minio
     restart: unless-stopped
-
-    ports:
-      - "127.0.0.1:${MINIO_PORT}:9000"
-      - "127.0.0.1:${MINIO_CONSOLE_PORT}:9001"
-
+    # Uncomment for direct host access during local development:
+    # ports:
+    #   - "127.0.0.1:9000:9000"   # S3 API  (set MINIO_PORT=9000 in .env)
+    #   - "127.0.0.1:9001:9001"   # Console
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-
     volumes:
       - minio_data:/data
-
     command: server /data --console-address ":9001"
-
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 30s
       timeout: 10s
       retries: 3
-
     mem_limit: 512m
     cpus: 0.5
-
+    networks:
+      - tfm_network
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
 
-    networks:
-      - tfm_network
 
-  # Base de datos de grafos
+  # Graph database
   memgraph:
+    # Uncomment for direct host access during local development:
+    # ports:
+    #   - "127.0.0.1:7687:7687"   # Bolt protocol
     image: memgraph/memgraph-mage:3.8.1
     container_name: tfm_memgraph
     restart: unless-stopped
-
-    ports:
-      - "127.0.0.1:${MEMGRAPH_QUERIES}:7687"
-      - "127.0.0.1:${MEMGRAPH_LOGS}:7444"
-
     environment:
       - MEMGRAPH_USER=${MEMGRAPH_USERNAME}
       - MEMGRAPH_PASSWORD=${MEMGRAPH_PASSWORD}
-
     volumes:
       - memgraph_data:/var/lib/memgraph
-
-    # Forzamos un límite de memoria interna y habilitamos autenticación
     command: ["--memory-limit=7168", "--log-level=WARNING"]
-
     healthcheck:
       test: ["CMD-SHELL", "echo 'RETURN 1;' | mgconsole --username ${MEMGRAPH_USERNAME} --password ${MEMGRAPH_PASSWORD}"]
       interval: 30s
       timeout: 10s
       retries: 3
-
     mem_limit: 8g
     cpus: 2.0
-
+    networks:
+      - tfm_network
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
 
-    networks:
-      - tfm_network
 
+  # Memgraph GUI
   lab:
     image: memgraph/lab:3.10.0
     container_name: tfm_memgraph_lab
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:${LAB_PORT}:3000"
     environment:
       - QUICK_CONNECT_MG_HOST=tfm_memgraph
       - QUICK_CONNECT_MG_PORT=7687
@@ -125,19 +166,23 @@ services:
       - memgraph
     networks:
       - tfm_network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-  # LLM local
+
+  # Local LLM
   ollama:
     image: ollama/ollama:0.30.0
     container_name: tfm_ollama
     restart: unless-stopped
-
-    ports:
-      - "127.0.0.1:${OLLAMA_PORT}:11434"
-
+    # Uncomment for direct host access during local development:
+    # ports:
+    #   - "127.0.0.1:11434:11434"
     volumes:
       - ollama_data:/root/.ollama
-
     deploy:
       resources:
         reservations:
@@ -145,92 +190,78 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
-
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
       interval: 30s
       timeout: 10s
       retries: 3
-
     mem_limit: 8g
     cpus: 4.0
-
+    networks:
+      - tfm_network
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
 
-    networks:
-      - tfm_network
 
-  # Base de datos vectorial
+  # Vector database
   qdrant:
     image: qdrant/qdrant:v1.18.1
     container_name: tfm_qdrant
     restart: unless-stopped
-
-    ports:
-      - "127.0.0.1:${QDRANT_PORT:-6333}:6333"
-      - "127.0.0.1:${QDRANT_GRPC_PORT:-6334}:6334"
-
+    # Uncomment for direct host access during local development:
+    # ports:
+    #   - "127.0.0.1:6333:6333"
     environment:
       - QDRANT__SERVICE__API_KEY=${QDRANT_API_KEY}
-
     volumes:
       - qdrant_data:/qdrant/storage
-
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
       interval: 30s
       timeout: 10s
       retries: 3
-
     mem_limit: 4g
     cpus: 2.0
-
+    networks:
+      - tfm_network
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
 
-    networks:
-      - tfm_network
 
-  # Metadatos de Airflow
+  # Airflow metadata (PostgreSQL)
   postgres:
     image: postgres:17-alpine
     container_name: tfm_postgres
     restart: unless-stopped
-
     environment:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
       POSTGRES_DB: airflow
-
     volumes:
       - postgres_data:/var/lib/postgresql/data
-
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "airflow"]
       interval: 10s
       timeout: 5s
       retries: 5
-
     mem_limit: 256m
     cpus: 0.5
-
+    networks:
+      - tfm_network
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
 
-    networks:
-      - tfm_network
 
-  # Inicializador de Airflow (se ejecuta tan solo una vez)
+  # Airflow init (runs once then exits)
   airflow-init:
     <<: *airflow-common
     container_name: tfm_airflow_init
@@ -251,9 +282,10 @@ services:
           --lastname Admin \
           --role Admin \
           --email "$${AIRFLOW_ADMIN_EMAIL:-admin@upm.es}" 2>/dev/null || true
-        echo "Airflow init completado."
+        echo "Airflow init complete."
 
-  # Scheduler de Airflow
+
+  # Airflow scheduler
   airflow-scheduler:
     <<: *airflow-common
     container_name: tfm_airflow_scheduler
@@ -262,17 +294,16 @@ services:
       airflow-init:
         condition: service_completed_successfully
     command: scheduler
-
     healthcheck:
       test: ["CMD", "airflow", "jobs", "check", "--job-type", "SchedulerJob", "--hostname", "$${HOSTNAME}"]
       interval: 30s
       timeout: 10s
       retries: 5
-
     mem_limit: 1g
     cpus: 1.0
 
-  # Webserver de Airflow (GUI en http://localhost:8080) ─
+
+  # Airflow webserver (http://localhost/airflow)
   airflow-webserver:
     <<: *airflow-common
     container_name: tfm_airflow_webserver
@@ -280,16 +311,12 @@ services:
     depends_on:
       airflow-init:
         condition: service_completed_successfully
-    ports:
-      - "127.0.0.1:8080:8080"
     command: webserver
-
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 5
-
     mem_limit: 1g
     cpus: 1.0
 
@@ -300,7 +327,6 @@ volumes:
   ollama_data:
   qdrant_data:
   postgres_data:
-  upm_project_venv:
 
 
 networks:
