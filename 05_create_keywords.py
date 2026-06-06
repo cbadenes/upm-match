@@ -27,6 +27,7 @@ from loguru import logger
 from dbs.vector import QdrantBackend, VectorPoint
 from utils.logging import setup_logging
 from utils.researchers import load_enrichment, load_researcher_ids
+from utils.text import normalize_topic
 
 load_dotenv()
 
@@ -84,7 +85,7 @@ def run(
             stats["no_enrichment"] += 1
             continue
 
-        topics = [t.strip().lower() for t in enrichment.topics if t.strip()]
+        topics = [normalize_topic(t) for t in enrichment.topics if t.strip()]
         if not topics:
             full_name = (
                 f"{enrichment.first_name or ''} {enrichment.last_name or ''}".strip()
@@ -116,7 +117,9 @@ def run(
                 },
             )
         )
-        logger.info("PDI {} queued for keyword indexing: {} topics", researcher_id, len(topics))
+        logger.info(
+            "PDI {} queued for keyword indexing: {} topics", researcher_id, len(topics)
+        )
 
         if len(batch) >= batch_size:
             flush_batch()
