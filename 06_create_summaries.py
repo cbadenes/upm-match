@@ -20,11 +20,9 @@ import os
 import sys
 import time
 from collections import defaultdict
-from io import StringIO
 from pathlib import Path
 
 import ollama as _ollama
-import polars as pl
 from agno.agent import Agent
 from agno.models.ollama import Ollama
 from dotenv import load_dotenv
@@ -33,16 +31,13 @@ from pydantic import BaseModel, Field
 from qdrant_client import QdrantClient
 from qdrant_client import models as qdrant_models
 
-from dbs import minio
 from models import ResearcherEnrichmentDocument
 from utils.logging import setup_logging
+from utils.researchers import load_enrichment as _load_enrichment
+from utils.researchers import load_researcher_ids as _load_researcher_ids
 
 load_dotenv()
 
-# MinIO
-MINIO_BUCKET = minio.BUCKET_NAME
-CSV_OBJECT_NAME = "researchers.csv"
-ENRICHMENT_KEY_TEMPLATE = "researchers/{researcher_id}/enrichment.json"
 # Ollama
 _OLLAMA_PORT = os.environ.get("OLLAMA_PORT", "11434")
 _OLLAMA_HOST = os.environ.get("OLLAMA_HOST", f"http://localhost:{_OLLAMA_PORT}")
@@ -90,35 +85,6 @@ class ExpertiseUpdate(BaseModel):
             "No tool/system names, no paper titles, no time markers."
         )
     )
-
-
-def _load_researcher_ids(bucket_name: str, object_name: str) -> list[int]:
-    csv_content = minio.read_file(bucket_name, object_name)
-    if csv_content is None:
-        raise FileNotFoundError(f"CSV not found at {bucket_name}/{object_name}")
-    df = pl.read_csv(StringIO(csv_content))
-    if "idPersonal" not in df.columns:
-        raise ValueError(f"No 'idPersonal' column in CSV. Found: {df.columns}")
-    return (
-        df.select("idPersonal")
-        .drop_nulls()
-        .filter(pl.col("idPersonal").cast(pl.Int64) > 0)
-        .get_column("idPersonal")
-        .cast(pl.Int64)
-        .to_list()
-    )
-
-
-def _load_enrichment(researcher_id: int) -> ResearcherEnrichmentDocument | None:
-    key = ENRICHMENT_KEY_TEMPLATE.format(researcher_id=researcher_id)
-    data = minio.read_json(MINIO_BUCKET, key)
-    if data is None:
-        return None
-    try:
-        return ResearcherEnrichmentDocument.model_validate(data)
-    except Exception as exc:
-        logger.warning("Failed to parse enrichment for {}: {}", researcher_id, exc)
-        return None
 
 
 def _group_pubs_by_year(
@@ -340,7 +306,7 @@ def _upsert_point(
             )
         ],
     )
-    logger.debug("Upserted dense summary for researcher {}", researcher_id)
+    logger.info("PDI {} upserted into dense summaries collection", researcher_id)
 
 
 # ── Main processing loop ───────────────────────────────────────────────────────
@@ -485,7 +451,7 @@ def main() -> int:
         logger.info("Processing single researcher: {}", args.id)
     else:
         try:
-            researcher_ids = _load_researcher_ids(MINIO_BUCKET, CSV_OBJECT_NAME)
+            researcher_ids = _load_researcher_ids()
         except Exception as exc:
             logger.exception("Failed to load researcher IDs: {}", exc)
             return 1

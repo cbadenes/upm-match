@@ -40,6 +40,7 @@ from loguru import logger
 from scrapy import Selector
 
 from dbs import GraphDataBase, get_graph_db, minio
+from utils.researchers import load_researcher_ids_with_signatures
 from models import (
     Authorship,
     LastYearProject,
@@ -53,7 +54,6 @@ from models import (
 )
 from utils.logging import setup_logging
 
-CSV_OBJECT_NAME = "researchers.csv"
 PUBLICATIONS_REGISTRY = {}  # In-memory storage for publications
 SUBJECTS_REGISTRY = {}  # In-memory storage for subjects
 LYP_REGISTRY = {}  # In-memory storage for LastYearProject records
@@ -279,36 +279,6 @@ def choose_publication_description(record: dict[str, object]) -> str:
     return raw_text
 
 
-def load_researcher_ids() -> tuple[list[int], list[str]]:
-    """Load researcher IDs from a CSV stored in MinIO after validating format and contents."""
-    bucket_name = minio.BUCKET_NAME
-    csv_content = minio.read_file(bucket_name, CSV_OBJECT_NAME)
-    if csv_content is None:
-        raise FileNotFoundError(
-            f"CSV file not found in MinIO at {bucket_name}/{CSV_OBJECT_NAME}"
-        )
-
-    df = pl.read_csv(StringIO(csv_content))
-
-    if "idPersonal" not in df.columns:
-        raise ValueError(
-            f"The CSV does not contain the 'idPersonal' column. Columns found: {df.columns}"
-        )
-
-    df = (
-        df.select(["idPersonal", "rfSignature"])
-        .drop_nulls()
-        .filter(pl.col("idPersonal").cast(pl.Int64) > 0)
-        .unique()
-        .sort("idPersonal")
-    )
-
-    ids = df["idPersonal"].to_list()
-    names = df["rfSignature"].to_list()
-    logger.info(f"{len(ids)} IDs loaded from MinIO: {bucket_name}/{CSV_OBJECT_NAME}")
-    return ids, names
-
-
 def normalize_last_name(value: Optional[str], fallback: str = "sin_apellido") -> str:
     """Build a filesystem/object-safe token from a last name."""
     raw = str(value or fallback).strip()
@@ -362,7 +332,7 @@ def load_html_file(
         else:
             object_key = f"{minio_prefix}/{researcher_id}_{file_type}.html"  # if file_type is something else, fallback to old naming convention
         try:
-            content = minio.read_file(minio.BUCKET_NAME, object_key)
+            content = minio.read_file(minio.RAW_BUCKET, object_key)
             if content is not None:
                 return content
             else:
@@ -379,27 +349,32 @@ def load_html_file(
         return None
 
 
+def _parse_activity_json(ajax_html: str) -> list[dict] | None:
+    """Extract the raw activity JSON list from the AJAX HTML content.
+
+    :param ajax_html: The AJAX HTML content as a string.
+    :return: The raw list of activity records, or None if not found or unparseable.
+    """
+    match = re.search(r"var dataSet\s*=\s*(\[.*\]);", ajax_html, re.DOTALL)
+    if not match:
+        return None
+    try:
+        return json.loads(match.group(1))
+    except json.JSONDecodeError:
+        try:
+            json_str = match.group(1).rsplit("]", 1)[0] + "]"
+            return json.loads(json_str)
+        except Exception:
+            return None
+
+
 def load_ajax_dataSet(ajax_html: str) -> pl.DataFrame:
     """Load and clean the dataset from AJAX HTML content string.
 
     :param ajax_html: The AJAX HTML content as a string.
     :return: A cleaned Polars DataFrame with the relevant activity data extracted from the AJAX HTML.
     """
-
-    match = re.search(r"var dataSet\s*=\s*(\[.*\]);", ajax_html, re.DOTALL)
-
-    if not match:
-        return pl.DataFrame()
-
-    try:
-        json_str = match.group(1)
-        activity_data = json.loads(json_str)
-    except json.JSONDecodeError:
-        try:
-            json_str = json_str.rsplit("]", 1)[0] + "]"
-            activity_data = json.loads(json_str)
-        except Exception:
-            return pl.DataFrame()
+    activity_data = _parse_activity_json(ajax_html)
 
     if not activity_data:
         return pl.DataFrame()
@@ -1177,12 +1152,11 @@ def researcher_exists_in_minio(researcher_id: int, prefix: str) -> bool:
     """Check if a researcher has already been processed in MinIO.
 
     :param researcher_id: The ID of the researcher to check.
-    :param prefix: The prefix to use for MinIO object keys.
-    :return: True if the PDI object exists in MinIO, False otherwise.
+    :param prefix: The prefix to use for MinIO object keys (unused, kept for API compat).
+    :return: True if the PDI object exists in the processed bucket, False otherwise.
     """
     try:
-        object_prefix = f"{prefix}/{researcher_id}_"
-        return bool(minio.list_objects(minio.BUCKET_NAME, prefix=object_prefix))
+        return minio.object_exists(minio.PROCESSED_BUCKET, f"pdi_{researcher_id}.json")
     except Exception:
         return False
 
@@ -1279,6 +1253,15 @@ def process_researcher(
 
         html = main_html
         sel = Selector(text=html)
+
+        raw_activity = _parse_activity_json(ajax_html)
+        if raw_activity is not None:
+            minio.upload_json(
+                minio.PROCESSED_BUCKET,
+                raw_activity,
+                f"pdi_{researcher_id}.json",
+            )
+
         df_ajax = load_ajax_dataSet(ajax_html)
 
         (
@@ -1695,7 +1678,7 @@ def save_to_minio(
         safe_last_name = normalize_last_name(profile.last_name)
 
         pdi_key = f"{prefix}/{researcher_id}_{safe_last_name}_pdi.json"
-        if not minio.upload_json(minio.BUCKET_NAME, profile.model_dump(), pdi_key):
+        if not minio.upload_json(minio.PROCESSED_BUCKET, profile.model_dump(), pdi_key):
             return False
 
         if publications:
@@ -1703,7 +1686,7 @@ def save_to_minio(
                 f"{prefix}/{researcher_id}_{safe_last_name}_publications.json"
             )
             if not minio.upload_json(
-                minio.BUCKET_NAME,
+                minio.PROCESSED_BUCKET,
                 [pub.model_dump() for pub in publications],
                 publications_key,
             ):
@@ -1714,7 +1697,7 @@ def save_to_minio(
                 f"{prefix}/{researcher_id}_{safe_last_name}_last_year_projects.json"
             )
             if not minio.upload_json(
-                minio.BUCKET_NAME,
+                minio.PROCESSED_BUCKET,
                 [
                     LastYearProject.model_dump()
                     for LastYearProject in last_year_projects
@@ -1870,6 +1853,7 @@ if __name__ == "__main__":
     args = parse_args()
 
     setup_logging("create_pdis", level=args.logs)
+    minio.ensure_bucket(minio.PROCESSED_BUCKET)
 
     results = []
     researchers = []
@@ -1881,7 +1865,7 @@ if __name__ == "__main__":
             arango_db = get_graph_db(args.storage)
             logger.info("Connected to {} database", args.storage.upper())
 
-        ids, names = load_researcher_ids()
+        ids, names = load_researcher_ids_with_signatures()
         researchers = list(zip(ids, names))
 
         results = process_all_researchers(

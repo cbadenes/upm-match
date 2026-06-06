@@ -20,58 +20,18 @@ from __future__ import annotations
 import argparse
 import sys
 import time
-from io import StringIO
 
-import polars as pl
 from dotenv import load_dotenv
 from loguru import logger
 
-from dbs import minio
 from dbs.vector import QdrantBackend, VectorPoint
-from models import ResearcherEnrichmentDocument
 from utils.logging import setup_logging
+from utils.researchers import load_enrichment, load_researcher_ids
 
 load_dotenv()
 
-MINIO_BUCKET = minio.BUCKET_NAME
-CSV_OBJECT_NAME = "researchers.csv"
-ENRICHMENT_KEY_TEMPLATE = "researchers/{researcher_id}/enrichment.json"
-
 COLLECTION_NAME = "researcher_keywords"
 SPARSE_FIELD = "keywords_bm42"
-
-
-def load_researcher_ids(bucket_name: str, object_name: str) -> list[int]:
-    """Load researcher IDs from the CSV stored in MinIO."""
-    csv_content = minio.read_file(bucket_name, object_name)
-    if csv_content is None:
-        raise FileNotFoundError(f"CSV not found at {bucket_name}/{object_name}")
-    df = pl.read_csv(StringIO(csv_content))
-    if "idPersonal" not in df.columns:
-        raise ValueError(f"No 'idPersonal' column in CSV. Found: {df.columns}")
-    return (
-        df.select("idPersonal")
-        .drop_nulls()
-        .filter(pl.col("idPersonal").cast(pl.Int64) > 0)
-        .get_column("idPersonal")
-        .cast(pl.Int64)
-        .to_list()
-    )
-
-
-def load_enrichment(
-    bucket_name: str, researcher_id: int
-) -> ResearcherEnrichmentDocument | None:
-    """Read and validate the enrichment document for a researcher from MinIO."""
-    key = ENRICHMENT_KEY_TEMPLATE.format(researcher_id=researcher_id)
-    data = minio.read_json(bucket_name, key)
-    if data is None:
-        return None
-    try:
-        return ResearcherEnrichmentDocument.model_validate(data)
-    except Exception as exc:
-        logger.warning("Failed to parse enrichment for {}: {}", researcher_id, exc)
-        return None
 
 
 def run(
@@ -118,7 +78,7 @@ def run(
             stats["skipped"] += 1
             continue
 
-        enrichment = load_enrichment(MINIO_BUCKET, researcher_id)
+        enrichment = load_enrichment(researcher_id)
         if enrichment is None:
             logger.debug("No enrichment.json for {}", researcher_id)
             stats["no_enrichment"] += 1
@@ -156,6 +116,7 @@ def run(
                 },
             )
         )
+        logger.info("PDI {} queued for keyword indexing: {} topics", researcher_id, len(topics))
 
         if len(batch) >= batch_size:
             flush_batch()
@@ -204,7 +165,7 @@ def main() -> int:
         logger.info("Processing {} specific researcher IDs", len(researcher_ids))
     else:
         try:
-            researcher_ids = load_researcher_ids(MINIO_BUCKET, CSV_OBJECT_NAME)
+            researcher_ids = load_researcher_ids()
         except Exception as exc:
             logger.exception("Failed to load researcher IDs: {}", exc)
             return 1

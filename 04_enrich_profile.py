@@ -11,15 +11,14 @@ import json
 import re
 import sys
 from datetime import datetime, timezone
-from io import StringIO
 from pathlib import Path
 from typing import Any, Iterable
 
-import polars as pl
 from dotenv import load_dotenv
 from loguru import logger
 
 from utils.logging import setup_logging
+from utils.researchers import ENRICHMENT_KEY_TEMPLATE, load_researcher_ids
 
 from dbs import get_graph_db, minio
 from models import (
@@ -32,40 +31,7 @@ from models import (
 
 load_dotenv()
 
-MINIO_BUCKET = minio.BUCKET_NAME
-CSV_OBJECT_NAME = "researchers.csv"
-ENRICHMENT_KEY_TEMPLATE = "researchers/{researcher_id}/enrichment.json"
 MULTISPACE_RE = re.compile(r"\s+")
-
-
-def load_researcher_ids_from_minio(
-    bucket_name: str = MINIO_BUCKET,
-    object_name: str = CSV_OBJECT_NAME,
-) -> list[int]:
-    """Load researcher IDs from MinIO."""
-    csv_content = minio.read_file(bucket_name, object_name)
-    if csv_content is None:
-        raise FileNotFoundError(
-            f"CSV file not found in MinIO at {bucket_name}/{object_name}"
-        )
-
-    df = pl.read_csv(StringIO(csv_content))
-    if "idPersonal" not in df.columns:
-        raise ValueError(
-            f"The CSV does not contain the 'idPersonal' column. Columns found: {df.columns}"
-        )
-
-    df = (
-        df.select(["idPersonal"])
-        .drop_nulls(subset=["idPersonal"])
-        .filter(pl.col("idPersonal").cast(pl.Int64) > 0)
-        .unique()
-        .sort("idPersonal")
-    )
-
-    researcher_ids = [int(row[0]) for row in df.iter_rows()]
-    logger.info("Loaded {} researcher IDs from MinIO", len(researcher_ids))
-    return researcher_ids
 
 
 def parse_args() -> argparse.Namespace:
@@ -424,7 +390,7 @@ def persist_document(
     """Persist the validated document in MinIO."""
     object_name = ENRICHMENT_KEY_TEMPLATE.format(researcher_id=researcher_id)
     if not minio.upload_json(
-        MINIO_BUCKET, document.model_dump(mode="json"), object_name
+        minio.CURATED_BUCKET, document.model_dump(mode="json"), object_name
     ):
         raise RuntimeError(f"Failed to persist enrichment document: {object_name}")
 
@@ -456,7 +422,7 @@ def process_researcher(
 ) -> bool:
     """Run the enrichment for one researcher."""
     object_name = ENRICHMENT_KEY_TEMPLATE.format(researcher_id=researcher_id)
-    if skip_existing and minio.object_exists(MINIO_BUCKET, object_name):
+    if skip_existing and minio.object_exists(minio.CURATED_BUCKET, object_name):
         logger.info("Skipping {} because {} already exists", researcher_id, object_name)
         return False
 
@@ -498,7 +464,7 @@ def process_researcher(
 
 def resolve_researcher_ids(args: argparse.Namespace) -> list[int]:
     """Resolve the researchers to process from CLI arguments."""
-    researcher_ids = load_researcher_ids_from_minio()
+    researcher_ids = load_researcher_ids()
     if args.id is not None:
         researcher_ids = [
             researcher_id
@@ -515,6 +481,7 @@ def main() -> None:
     args = parse_args()
 
     setup_logging("enrich_profile", level=args.logs)
+    minio.ensure_bucket(minio.CURATED_BUCKET)
 
     researcher_ids = resolve_researcher_ids(args)
     if not researcher_ids:

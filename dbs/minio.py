@@ -33,7 +33,9 @@ MINIO_CLIENT = Minio(
     secure=False,
 )
 
-BUCKET_NAME: str = _require_env("MINIO_BUCKET_NAME")
+RAW_BUCKET: str = _require_env("MINIO_RAW_BUCKET")
+PROCESSED_BUCKET: str = _require_env("MINIO_PROCESSED_BUCKET")
+CURATED_BUCKET: str = _require_env("MINIO_CURATED_BUCKET")
 
 
 def bucket_exists(bucket_name: str) -> bool:

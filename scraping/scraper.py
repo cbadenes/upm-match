@@ -142,7 +142,7 @@ async def scrape_researcher(
 
             # Random courtesy pause.
             await asyncio.sleep(random.uniform(PAUSE_MIN, PAUSE_MAX))
-            logger.debug("[{}] OK", researcher_id)
+            logger.info("[{}] Downloaded and uploaded to MinIO", researcher_id)
             return True
 
         except httpx.HTTPStatusError as e:

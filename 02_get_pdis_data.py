@@ -16,56 +16,14 @@ Use:
 
 import argparse
 import asyncio
-from io import StringIO
-from pathlib import Path
 
-import polars as pl
 from loguru import logger
 
 from utils.logging import setup_logging
+from utils.researchers import load_researcher_ids
 
 from dbs import minio
 from scraping.scraper import run_scraper
-
-# Configuration
-CSV_OBJECT_NAME = "researchers.csv"
-
-
-# ID loading
-def load_researcher_ids_from_minio(
-    bucket_name: str = minio.BUCKET_NAME,
-    object_name: str = CSV_OBJECT_NAME,
-) -> list[int]:
-    """Load researcher IDs from a CSV stored in MinIO after validating format.
-
-    :param bucket_name: MinIO bucket name.
-    :param object_name: Object name for researchers CSV.
-    :return: List of researcher IDs.
-    """
-    csv_content = minio.read_file(bucket_name, object_name)
-    if csv_content is None:
-        raise FileNotFoundError(
-            f"CSV file not found in MinIO at {bucket_name}/{object_name}"
-        )
-
-    df = pl.read_csv(StringIO(csv_content))
-
-    if "idPersonal" not in df.columns:
-        raise ValueError(
-            f"The CSV does not contain the 'idPersonal' column. Columns found: {df.columns}"
-        )
-
-    df = (
-        df.select("idPersonal")
-        .drop_nulls()
-        .filter(pl.col("idPersonal").cast(pl.Int64) > 0)
-        .unique()
-        .sort("idPersonal")
-    )
-
-    ids = df["idPersonal"].to_list()
-    logger.info(f"{len(ids)} IDs loaded from MinIO: {bucket_name}/{object_name}")
-    return ids
 
 
 def parse_args() -> argparse.Namespace:
@@ -88,7 +46,7 @@ async def main(researcher_id: int | None = None):
     setup_logging("get_pdis_data")
 
     # Phase 1: load researcher IDs from MinIO.
-    ids = load_researcher_ids_from_minio()
+    ids = load_researcher_ids()
     if researcher_id is not None:
         if researcher_id not in ids:
             logger.warning(
@@ -97,7 +55,7 @@ async def main(researcher_id: int | None = None):
         ids = [researcher_id]
 
     # Phase 2: scrape profiles and upload directly to MinIO.
-    stats = await run_scraper(ids, bucket_name=minio.BUCKET_NAME)
+    stats = await run_scraper(ids, bucket_name=minio.RAW_BUCKET)
 
     logger.info("Pipeline finished")
     logger.info(f"  OK:       {stats['ok']}")

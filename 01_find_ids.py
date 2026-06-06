@@ -41,6 +41,7 @@ HEADERS = {
 
 def main():
     setup_logging("find_ids")
+    minio.ensure_bucket(minio.RAW_BUCKET)
     logger.info("Sending POST request to the PHP endpoint...")
     response = requests.post(URL, data=PAYLOAD, headers=HEADERS, timeout=30)
     response.raise_for_status()
@@ -116,9 +117,8 @@ def main():
         ]
     ).sort("rfSignature")
 
-    minio.ensure_bucket(minio.BUCKET_NAME)
     minio.upload_bytes(
-        bucket_name=minio.BUCKET_NAME,
+        bucket_name=minio.RAW_BUCKET,
         data=df.write_csv().encode("utf-8"),
         object_name="researchers.csv",
         content_type="text/csv",
