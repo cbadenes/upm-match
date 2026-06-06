@@ -10,6 +10,8 @@ Contains everything needed to run the full stack: databases, LLM, object storage
 ```
 infra/
 ├── docker-compose.yaml    # All service definitions
+├── app/
+│   └── Dockerfile         # Flask app image (python:3.13-slim + uv + gunicorn)
 ├── airflow/
 │   ├── Dockerfile         # Airflow image extended with uv + Python 3.13
 │   └── dags/
@@ -24,7 +26,7 @@ infra/
 ## Prerequisites
 
 - **Docker Desktop** ≥ 4.x with WSL2 enabled
-- In Docker Desktop → Settings → General: enable **"Expose daemon on tcp://localhost:2375 without TLS"**
+- In Docker Desktop $\rightarrow$ Settings $\rightarrow$ General: enable **"Expose daemon on tcp://localhost:2375 without TLS"**
 - A `.env` file at the project root (see Environment variables below)
 
 ---
@@ -73,7 +75,20 @@ docker compose --env-file .env -f infra/docker-compose.yaml ps
 
 # Tail logs for a specific service
 docker compose --env-file .env -f infra/docker-compose.yaml logs -f airflow-webserver
+
+# Tail app logs (includes both Gunicorn access log and loguru output)
+docker compose --env-file .env -f infra/docker-compose.yaml logs -f app
 ```
+
+### Rebuilding the app after code changes
+
+The app image bakes the source code at build time, so any change to `app/`, `dbs/`, `models/` or `utils/` requires a rebuild:
+
+```bash
+docker compose --env-file .env -f infra/docker-compose.yaml up -d --build app
+```
+
+For rapid iteration, `uv run main.py` (Flask dev server on port 5000) still works locally without Docker as long as Qdrant and Ollama ports are exposed in `docker-compose.yaml` (the commented-out `ports:` blocks).
 
 ---
 
@@ -82,12 +97,13 @@ docker compose --env-file .env -f infra/docker-compose.yaml logs -f airflow-webs
 | Service | URL | Credentials |
 |---|---|---|
 | **Traefik Dashboard** | http://traefik.localhost/dashboard/ | No login |
+| **UPM Match App** | http://localhost/app | No login |
 | **Airflow** | http://localhost/airflow | `admin` / `AIRFLOW_ADMIN_PASSWORD` |
 | **Memgraph Lab** | http://lab.localhost | `MEMGRAPH_USERNAME` / `MEMGRAPH_PASSWORD` |
 | **MinIO Console** | http://minio.localhost | `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` |
 | **MinIO S3 API** | http://localhost/s3 | AWS-style credentials (`MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD`) |
 | **Ollama API** | http://localhost/ollama | No login |
-| **Qdrant** | http://qdrant.localhost/dashboard | Include the API keyto see the GUI |
+| **Qdrant** | http://qdrant.localhost/dashboard | Include the API key to see the GUI |
 
 
 > `*.localhost` subdomains resolve automatically in modern browsers.
@@ -107,7 +123,7 @@ The DAG `upm_match_pipeline` in `airflow/dags/upm_match.py` runs the 6 phases se
                                                                           +-> 06_create_summaries
 ```
 
-To trigger it: http://localhost/airflow → DAG `upm_match_pipeline` → ▶ button.
+To trigger it: http://localhost/airflow $\rightarrow$ DAG `upm_match_pipeline` $\rightarrow$ ▶ button.
 
 Dependencies are pre-installed in the Docker image, so the first task run starts immediately.
 
@@ -148,7 +164,7 @@ The default is `/`, producing HTML like:
 ```
 
 When Traefik routes `localhost/qdrant` with `StripPrefix /qdrant`, Qdrant receives the request at `/`, serves the HTML and the browser tries to load `localhost/assets/main-3f2a1b.js`. 
-Traefik has no route for `/assets/...` → 404 → the page loads blank.
+Traefik has no route for `/assets/...` $\rightarrow$ 404 $\rightarrow$ the page loads blank.
 
 The only clean fix is for the application to expose a `BASE_PATH` environment variable so the build compiles assets with that prefix. None of the SPAs in this stack support it.
 
@@ -156,15 +172,16 @@ The only clean fix is for the application to expose a `BASE_PATH` environment va
 
 | Service | Type | Why subpaths work |
 |---|---|---|
+| UPM Match App | Flask app | `ProxyFix(x_prefix=1)` reads `X-Forwarded-Prefix: /app` sent by Traefik; `url_for()` generates correct paths; no compiled assets |
 | Airflow | Flask app | Respects `AIRFLOW__WEBSERVER__BASE_URL`: generates all URLs with the configured prefix, no StripPrefix needed |
-| Ollama | Pure REST API | Serves only JSON, no HTML assets → StripPrefix works |
+| Ollama | Pure REST API | Serves only JSON, no HTML assets $\rightarrow$ StripPrefix works |
 | MinIO S3 API | Pure REST API | Same as above |
 
 **Why subdomains work for all services:**
 
 With `Host('qdrant.localhost')`, Traefik forwards traffic without modifying the path. 
 Qdrant receives requests at `/`, serves HTML with `<script src="/assets/main.js">` and the browser requests `qdrant.localhost/assets/main.js`. 
-Traefik routes that to Qdrant too (same `Host` rule) → 200. 
+Traefik routes that to Qdrant too (same `Host` rule) $\rightarrow$ 200. 
 No conflicts.
 
 In Kubernetes this maps directly to Ingress `spec.rules[].host` per service.

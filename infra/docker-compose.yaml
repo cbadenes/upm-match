@@ -261,6 +261,35 @@ services:
         max-file: "3"
 
 
+  # Flask web app (http://app.localhost)
+  app:
+    build:
+      context: ..                       # project root
+      dockerfile: infra/app/Dockerfile
+    container_name: tfm_app
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      IN_DOCKER: "true"
+      MINIO_HOST: minio
+      MINIO_PORT: "9000"
+      MEMGRAPH_HOST: memgraph
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: "6333"
+      OLLAMA_HOST: "http://ollama:11434"
+      OLLAMA_PORT: "11434"
+    depends_on:
+      - qdrant
+      - ollama
+    networks:
+      - tfm_network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+
   # Airflow init (runs once then exits)
   airflow-init:
     <<: *airflow-common

@@ -68,6 +68,14 @@ http:
       # With IP AllowList:
       # middlewares: [strip-s3, api-allowlist]
 
+    app:
+      rule: "Host(`localhost`) && PathPrefix(`/app`)"
+      entrypoints: [web]
+      middlewares: [strip-app, prefix-app]
+      service: app
+      # With Basic Auth:
+      # middlewares: [strip-app, prefix-app, gui-auth]
+
 
   middlewares:
 
@@ -78,6 +86,15 @@ http:
     strip-s3:
       stripPrefix:
         prefixes: ["/s3"]
+
+    strip-app:
+      stripPrefix:
+        prefixes: ["/app"]
+
+    prefix-app:
+      headers:
+        customRequestHeaders:
+          X-Forwarded-Prefix: "/app"
 
     # Security middlewares (disabled — uncomment to activate)
 
@@ -126,3 +143,8 @@ http:
       loadBalancer:
         servers:
           - url: "http://tfm_minio:9000"
+
+    app:
+      loadBalancer:
+        servers:
+          - url: "http://tfm_app:5000"

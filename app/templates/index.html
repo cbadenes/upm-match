@@ -703,7 +703,7 @@
     resultsWrap.style.display = 'none';
 
     try {
-      const resp = await fetch('/api/search', {
+      const resp = await fetch('{{ url_for("main.search") }}', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idea, mode: getSearchMode() }),
