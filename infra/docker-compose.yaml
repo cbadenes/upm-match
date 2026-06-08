@@ -4,25 +4,23 @@ name: upm_match
 # =============================================================================
 # UPM Match - Docker Compose
 #
-# Network architecture:
-#   - Traefik is the only external entry point (port 80).
-#   - Routes are defined in traefik/dynamic.yml (file provider).
-#   - All other services do NOT expose ports to the host.
+# Network architecture (subpath routing):
+#   - A container Nginx is the ONLY external entry point, published on loopback (127.0.0.1:${HOST_PORT}:80).
+#     In production the host-managed Nginx forwards ${PUBLIC_BASE_URL} to that port; locally you hit it directly.
+#   - Routing lives in nginx/default.conf.template; everything hangs under the single subpath ${APP_BASE_PATH} (e.g. /upm-match).
+#   - All other services do NOT publish ports to the host.
 #
-# Service access:
-#   http://localhost/airflow            -> Airflow Webserver
-#   http://localhost/ollama             -> Ollama REST API
-#   http://localhost/s3                 -> MinIO S3 API
-#   http://qdrant.localhost             -> Qdrant Dashboard + API
-#   http://lab.localhost                -> Memgraph Lab
-#   http://minio.localhost              -> MinIO Console
-#   http://traefik.localhost/dashboard/ -> Traefik Dashboard
+# Public URLs (replace localhost:${HOST_PORT} with your domain in production):
+#   http://localhost:${HOST_PORT}${APP_BASE_PATH}/                  -> UPM Match app
+#   http://localhost:${HOST_PORT}${APP_BASE_PATH}/airflow           -> Airflow Webserver
+#   http://localhost:${HOST_PORT}${APP_BASE_PATH}/lab               -> Memgraph Lab
+#   http://localhost:${HOST_PORT}${APP_BASE_PATH}/qdrant/dashboard  -> Qdrant dashboard
+#   (MinIO S3 / Ollama / Memgraph Bolt / Qdrant gRPC stay internal — no public route.)
 #
 # Usage (always from the project root):
 #   docker compose --env-file .env -f infra/docker-compose.yaml <command>
 #
-# The --env-file flag is required because Docker Compose looks for .env in the
-# compose file's directory (infra/) but the .env lives at the project root.
+# The --env-file flag is required because Docker Compose looks for .env in the compose file's directory (infra/) but the .env lives at the project root.
 #
 # See infra/README.md for full setup instructions.
 # =============================================================================
@@ -41,7 +39,7 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY}
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
     AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_SECRET_KEY}
-    AIRFLOW__WEBSERVER__BASE_URL: "http://localhost/airflow"
+    AIRFLOW__WEBSERVER__BASE_URL: "${PUBLIC_BASE_URL}/airflow"
     AIRFLOW__WEBSERVER__ENABLE_PROXY_FIX: "True"
     IN_DOCKER: "true"
     UV_PROJECT_ENVIRONMENT: /home/airflow/upm_venv
@@ -55,6 +53,7 @@ x-airflow-common: &airflow-common
     QDRANT_PORT: "6333"
     OLLAMA_HOST: ollama
     OLLAMA_PORT: "11434"
+    APP_BASE_PATH: ${APP_BASE_PATH}      # used by the webserver healthcheck path below
   volumes:
     - ./airflow/dags:/opt/airflow/dags   # relative to infra/
     - ..:/opt/airflow/project            # project root
@@ -69,21 +68,28 @@ x-airflow-common: &airflow-common
 
 services:
 
-  # Reverse proxy
-  traefik:
-    image: traefik:v3.2
-    container_name: tfm_traefik
+  # Reverse proxy (subpath router), which is the only externally published service.
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: tfm_nginx
     restart: unless-stopped
-    command:
-      - "--providers.file.filename=/etc/traefik/dynamic.yml"
-      - "--providers.file.watch=true"
-      - "--entrypoints.web.address=:80"
-      - "--api.dashboard=true"
-      - "--api.insecure=true"
+    environment:
+      # Substituted into default.conf.template by the image's envsubst entrypoint.
+      # Only APP_BASE_PATH is substituted; internal upstream ports are hardcoded in
+      # the template, and $host/$uri/etc. are left intact.
+      APP_BASE_PATH: ${APP_BASE_PATH}
+      NGINX_ENVSUBST_FILTER: "^APP_BASE_PATH$$"
     ports:
-      - "80:80"
+      # External (host) port = HOST_PORT (the only tunable side); container port is
+      # fixed at 80. In production the host Nginx forwards ${PUBLIC_BASE_URL} here.
+      # Never bind 0.0.0.0 (the host already owns :80/:443).
+      - "127.0.0.1:${HOST_PORT}:80"
     volumes:
-      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+    depends_on:
+      - app
+      - airflow-webserver
+      - lab
     networks:
       - tfm_network
     logging:
@@ -98,10 +104,10 @@ services:
     image: minio/minio:RELEASE.2025-09-07T16-13-09Z
     container_name: tfm_minio
     restart: unless-stopped
-    # Uncomment for direct host access during local development:
+    # Uncomment for direct host access during local development.
     # ports:
-    #   - "127.0.0.1:9000:9000"   # S3 API  (set MINIO_PORT=9000 in .env)
-    #   - "127.0.0.1:9001:9001"   # Console
+    #   - "127.0.0.1:${MINIO_PORT}:9000"           # S3 API  -> localhost:${MINIO_PORT}
+    #   - "127.0.0.1:${MINIO_CONSOLE_PORT}:9001"   # Console -> localhost:${MINIO_CONSOLE_PORT}
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
@@ -126,9 +132,9 @@ services:
 
   # Graph database
   memgraph:
-    # Uncomment for direct host access during local development:
+    # Uncomment for direct host access during local development.
     # ports:
-    #   - "127.0.0.1:7687:7687"   # Bolt protocol
+    #   - "127.0.0.1:${MEMGRAPH_PORT}:7687"   # Bolt protocol -> localhost:${MEMGRAPH_PORT}
     image: memgraph/memgraph-mage:3.8.1
     container_name: tfm_memgraph
     restart: unless-stopped
@@ -154,7 +160,7 @@ services:
         max-file: "3"
 
 
-  # Memgraph GUI
+  # Memgraph GUI (served under ${APP_BASE_PATH}/lab)
   lab:
     image: memgraph/lab:3.10.0
     container_name: tfm_memgraph_lab
@@ -162,6 +168,8 @@ services:
     environment:
       - QUICK_CONNECT_MG_HOST=tfm_memgraph
       - QUICK_CONNECT_MG_PORT=7687
+      # Makes Lab serve all assets/links under the subpath (no strip in Nginx)
+      - BASE_PATH=${APP_BASE_PATH}/lab
     depends_on:
       - memgraph
     networks:
@@ -178,9 +186,9 @@ services:
     image: ollama/ollama:0.30.0
     container_name: tfm_ollama
     restart: unless-stopped
-    # Uncomment for direct host access during local development:
+    # Uncomment for direct host access during local development.
     # ports:
-    #   - "127.0.0.1:11434:11434"
+    #   - "127.0.0.1:${OLLAMA_PORT}:11434"   # -> localhost:${OLLAMA_PORT}
     volumes:
       - ollama_data:/root/.ollama
     deploy:
@@ -211,9 +219,9 @@ services:
     image: qdrant/qdrant:v1.18.1
     container_name: tfm_qdrant
     restart: unless-stopped
-    # Uncomment for direct host access during local development:
+    # Uncomment for direct host access during local development.
     # ports:
-    #   - "127.0.0.1:6333:6333"
+    #   - "127.0.0.1:${QDRANT_PORT}:6333"   # -> localhost:${QDRANT_PORT}
     environment:
       - QDRANT__SERVICE__API_KEY=${QDRANT_API_KEY}
     volumes:
@@ -261,7 +269,7 @@ services:
         max-file: "3"
 
 
-  # Flask web app (http://app.localhost)
+  # Flask web app (served under ${APP_BASE_PATH}/)
   app:
     build:
       context: ..                       # project root
@@ -271,6 +279,8 @@ services:
     env_file: ../.env
     environment:
       IN_DOCKER: "true"
+      # Mounts the Flask blueprint under the subpath so url_for() emits /upm-match/...
+      APP_BASE_PATH: ${APP_BASE_PATH}
       MINIO_HOST: minio
       MINIO_PORT: "9000"
       MEMGRAPH_HOST: memgraph
@@ -332,7 +342,7 @@ services:
     cpus: 1.0
 
 
-  # Airflow webserver (http://localhost/airflow)
+  # Airflow webserver (served under ${APP_BASE_PATH}/airflow)
   airflow-webserver:
     <<: *airflow-common
     container_name: tfm_airflow_webserver
@@ -342,7 +352,8 @@ services:
         condition: service_completed_successfully
     command: webserver
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      # Airflow serves under BASE_URL now, so /health lives under the subpath.
+      test: ["CMD-SHELL", "curl -f http://localhost:8080${APP_BASE_PATH}/airflow/health"]
       interval: 30s
       timeout: 10s
       retries: 5

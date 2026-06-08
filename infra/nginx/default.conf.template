@@ -1,0 +1,141 @@
+# =============================================================================
+# UPM Match - Container Nginx (subpath router)
+#
+# Single entry point for the whole stack. 
+# Everything hangs under one subpath (${APP_BASE_PATH}, e.g. /upm-match) so the deployment needs no subdomains.
+#
+# Chain:   Host Nginx  =>  127.0.0.1:HOST_PORT  =>  this Nginx :80  =>  services
+#
+# The prefix is PRESERVED end-to-end (no strip) for the apps that understand a base path (Flask, Airflow, Memgraph Lab).
+# Each app therefore sees the same path the browser sees and generates correct links.
+#
+# This file is a TEMPLATE: the official nginx image renders it with envsubst on startup, substituting ONLY ${APP_BASE_PATH} (NGINX_ENVSUBST_FILTER guards the rest).
+# All `$nginx_runtime_vars` below are left untouched.
+# =============================================================================
+
+# WebSocket upgrade handling (Memgraph Lab streams logs over WS).
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+# Prefer the proto the HOST Nginx forwarded (https in prod) over $scheme, because
+# between host and container the traffic is plain http. Falls back to $scheme when
+# the header is absent (direct local access without the host Nginx in front).
+map $http_x_forwarded_proto $fwd_proto {
+    default $http_x_forwarded_proto;
+    ''      $scheme;
+}
+
+server {
+    listen 80;
+    server_name _;
+
+    # Allow large uploads (datasets / file forms) through the proxy.
+    client_max_body_size 100m;
+
+    # Emit RELATIVE Location headers on our own redirects so the browser keeps the
+    # original scheme/host/port (this container only knows its internal :80, not the
+    # public port/host in front of it).
+    absolute_redirect off;
+
+    # Security middlewares (DISABLED - uncomment to activate)
+    # (1) IP allow-list: restrict who can reach the stack.
+    #     allow 127.0.0.1;
+    #     allow 192.168.1.0/24;   # local network - adjust as needed
+    #     deny  all;
+    # (2) Basic Auth: protect the GUIs with user/password.
+    #     Generate the file:  htpasswd -B -c infra/nginx/.htpasswd admin
+    #     Then mount it and uncomment (per-location or here, server-wide):
+    #     auth_basic           "UPM Match";
+    #     auth_basic_user_file /etc/nginx/.htpasswd;
+
+    # Airflow
+    # Native base_url (AIRFLOW__WEBSERVER__BASE_URL) => NO strip. 
+    # Airflow already serves every URL/asset under ${APP_BASE_PATH}/airflow.
+    location ${APP_BASE_PATH}/airflow {
+        proxy_pass http://airflow-webserver:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $http_host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $fwd_proto;
+        proxy_set_header X-Forwarded-Host  $http_host;
+        proxy_set_header Upgrade           $http_upgrade;
+        proxy_set_header Connection        $connection_upgrade;
+    }
+
+    # Memgraph Lab
+    # Native BASE_PATH env => NO strip. 
+    # WebSocket headers required for live logs.
+    location ${APP_BASE_PATH}/lab {
+        proxy_pass http://lab:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $http_host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $fwd_proto;
+        proxy_set_header Upgrade           $http_upgrade;
+        proxy_set_header Connection        $connection_upgrade;
+    }
+
+    # Qdrant dashboard
+    # Qdrant's SPA has no base-path support: it hardcodes absolute /dashboard/... asset/worker/openapi paths and derives the REST API 
+    # base at runtime from location.pathname by stripping a trailing "dashboard" (qse() in the bundle).
+    # To serve it under the subpath we:
+    #   1. Strip ${APP_BASE_PATH}/qdrant -> Qdrant root, so the REST API is reachable at .../qdrant/<endpoint> and the SPA at .../qdrant/dashboar.
+    #   2. Rrewrite every absolute "/dashboard/" the app emits to "${APP_BASE_PATH}/qdrant/dashboard/" (HTML + JS + JSON) so assets, web workers and openapi.json load from under the subpath.
+    #   3. Land users on .../qdrant/dashboard WITHOUT a trailing slash, so qse() resolves the API base to .../qdrant/ (with a slash it would not).
+    # NOTE: only "/dashboard/" (with trailing slash) is rewritten, never the bare "/dashboard", which would corrupt the qse() regex literal /dashboard$/.
+    location = ${APP_BASE_PATH}/qdrant  { return 301 ${APP_BASE_PATH}/qdrant/dashboard; }
+    location = ${APP_BASE_PATH}/qdrant/ { return 301 ${APP_BASE_PATH}/qdrant/dashboard; }
+    location ${APP_BASE_PATH}/qdrant/ {
+        proxy_pass http://qdrant:6333/;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $http_host;
+        proxy_set_header X-Forwarded-Proto $fwd_proto;
+        proxy_set_header Accept-Encoding   "";     # sub_filter needs uncompressed upstream
+        sub_filter_once  off;
+        sub_filter_types text/javascript application/json text/css;  # text/html always included
+
+        # (a) Static side: rewrite the absolute /dashboard/ asset, worker, modulepreload, openapi.json and CSS-font references to live under the subpath.
+        sub_filter '/dashboard/' '${APP_BASE_PATH}/qdrant/dashboard/';
+
+        # (b) Dynamic side: the REST client rebuilds its base from origin+port and calls /collections, /telemetry, ... at the domain ROOT (the path is discarded), 
+        #     which in production never reaches us (the host only forwards ${APP_BASE_PATH}/). 
+        #     We inject a tiny shim that runs before the bundle and re-prefixes same-origin requests that are not already under ${APP_BASE_PATH}/, i.e. the API calls.
+        sub_filter '<head>' '<head><script>(function(){var P="${APP_BASE_PATH}/qdrant";function fix(u){try{var x=new URL(u,location.origin);if(x.origin===location.origin&&x.pathname.lastIndexOf("${APP_BASE_PATH}/",0)!==0){x.pathname=P+x.pathname;return x.toString()}}catch(e){}return u}var f=window.fetch;window.fetch=function(i,o){try{if(typeof i==="string")i=fix(i);else if(i&&i.url)i=new Request(fix(i.url),i)}catch(e){}return f.call(this,i,o)};var xo=XMLHttpRequest.prototype.open;XMLHttpRequest.prototype.open=function(m,u){var a=Array.prototype.slice.call(arguments);try{a[1]=fix(u)}catch(e){}return xo.apply(this,a)}})();</script>';
+    }
+
+    # MinIO console (OPTIONAL)
+    # Needs MINIO_BROWSER_REDIRECT_URL=${PUBLIC_BASE_URL}/console on the minio service.
+    # location ${APP_BASE_PATH}/console/ {
+    #     proxy_pass http://minio:9001/;
+    #     proxy_http_version 1.1;
+    #     proxy_set_header Host              $host;
+    #     proxy_set_header X-Forwarded-Proto $fwd_proto;
+    #     proxy_set_header Upgrade           $http_upgrade;
+    #     proxy_set_header Connection        $connection_upgrade;
+    # }
+
+    # Flask app: everything else under the prefix
+    # Longer prefixes above (airflow, lab, ...) are matched first by Nginx and the app catches the rest. 
+    # Prefix preserved => blueprint mounted at ${APP_BASE_PATH}.
+    location ${APP_BASE_PATH}/ {
+        proxy_pass http://app:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $http_host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $fwd_proto;
+        # Searches trigger local LLM (Ollama) calls that can exceed Nginx's default
+        # 60s, especially on a cold model load. Align with the app's gunicorn --timeout 120.
+        proxy_connect_timeout 5s;
+        proxy_send_timeout    120s;
+        proxy_read_timeout    120s;
+    }
+
+    # Bare prefix => trailing slash, and root => prefix (local convenience).
+    location = ${APP_BASE_PATH} { return 301 ${APP_BASE_PATH}/; }
+    location = /                { return 301 ${APP_BASE_PATH}/; }
+}

@@ -1,7 +1,24 @@
-# UPM Match — Local Infrastructure
+# UPM Match — Infrastructure
 
-Docker configuration for the local development environment.
-Contains everything needed to run the full stack: databases, LLM, object storage, reverse proxy and pipeline orchestrator.
+Docker configuration for the full stack: databases, LLM, object storage, reverse proxy and pipeline orchestrator.
+Everything is served under a **single subpath**(`/upm-match`) behind one host port, so the production server needs no subdomains.
+
+---
+
+## Routing model (subpaths, not subdomains)
+
+The production server already runs its own host-managed Nginx and **cannot create subdomains**: everything must hang off one URL, `https://<domain>/upm-match/`.
+The host Nginx forwards that subpath to a single local port.
+Inside the stack a container Nginx fans the request out to each service:
+
+```
+Browser ──https──► Host Nginx ──http──► 127.0.0.1:HOST_PORT ──► container Nginx :80 ──► service
+            (TLS, public)      (loopback, private port)        (infra/nginx/...)      (app/airflow/lab/...)
+```
+
+The prefix `/upm-match` is **preserved end-to-end** (never stripped at the host).
+Each app therefore sees the exact path the browser sees and generates correct links.
+The host Nginx is **not ours to edit** — we only hand the admin the block in [`nginx/host-nginx.example.conf`](nginx/host-nginx.example.conf).
 
 ---
 
@@ -9,25 +26,26 @@ Contains everything needed to run the full stack: databases, LLM, object storage
 
 ```
 infra/
-├── docker-compose.yaml    # All service definitions
+├── docker-compose.yaml          # All service definitions
 ├── app/
-│   └── Dockerfile         # Flask app image (python:3.13-slim + uv + gunicorn)
+│   └── Dockerfile               # Flask app image (python:3.13-slim + uv + gunicorn)
 ├── airflow/
-│   ├── Dockerfile         # Airflow image extended with uv + Python 3.13
-│   └── dags/
-│       └── upm_match.py   # Data pipeline DAG (6 phases)
+│   ├── Dockerfile               # Airflow image extended with uv + Python 3.13
+│   └── dags/upm_match.py        # Data pipeline DAG (6 phases)
+├── nginx/
+│   ├── default.conf.template    # Container Nginx routing (rendered by envsubst)
+│   └── host-nginx.example.conf  # Block to hand to the host-Nginx admin
 ├── traefik/
-│   └── dynamic.yml        # Traefik routes and middlewares (file provider)
-└── README.md              # This file
+│   └── dynamic.yml.bak          # Previous Traefik config (kept for reference only)
+└── README.md                    # This file
 ```
 
 ---
 
 ## Prerequisites
 
-- **Docker Desktop** ≥ 4.x with WSL2 enabled
-- In Docker Desktop $\rightarrow$ Settings $\rightarrow$ General: enable **"Expose daemon on tcp://localhost:2375 without TLS"**
-- A `.env` file at the project root (see Environment variables below)
+- **Docker Desktop** $\geq 4.x$ with WSL2 enabled (NVIDIA GPU passthrough for Ollama).
+- A `.env` file at the project root (see below).
 
 ---
 
@@ -39,26 +57,36 @@ Copy `.env.sample` (project root) to `.env` and fill in the real values:
 cp .env.sample .env
 ```
 
-The `.env.sample` file documents every variable along with the commands needed to generate the Airflow keys. The actual `.env` is never committed.
+The variables that drive the routing:
+
+| Variable | Example (local) | Purpose |
+|---|---|---|
+| `APP_BASE_PATH` | `/upm-match` | The subpath everything hangs under. Used by the Nginx template, the Flask blueprint and the Lab `BASE_PATH`. |
+| `HOST_PORT` | `1234` | Loopback port the host Nginx forwards to. **Keep private**: published only on `127.0.0.1`. |
+| `PUBLIC_BASE_URL` | `http://localhost:1234/upm-match` | Full external base URL (scheme + host + prefix). Drives Airflow's `BASE_URL`. In production: `https://<domain>/upm-match`. |
+
+`.env` is never committed (it is in `.gitignore`).
+`APP_BASE_PATH` must be the path component of `PUBLIC_BASE_URL`.
 
 ---
 
 ## Setup
 
-All commands must be run from the **project root** using `--env-file .env` so that Docker Compose finds the `.env` file (it looks in the compose file's directory by default, which is `infra/`, not the project root).
+All commands run from the **project root** with `--env-file .env` (Compose looks for `.env` in the compose file's directory, `infra/`, by default, not the root).
 
 ### First time
 
 ```bash
-# 1. Build the Airflow image and initialise its database
+# 1. Build the Airflow image and initialise its metadata DB
 docker compose --env-file .env -f infra/docker-compose.yaml up airflow-init --build
 
-# 2. Start all services
-docker compose --env-file .env -f infra/docker-compose.yaml up -d
+# 2. Build and start everything
+docker compose --env-file .env -f infra/docker-compose.yaml up -d --build
 
-# 3. Pull Ollama models (only needed once)
-docker exec tfm_ollama ollama pull qwen2.5:7b-instruct
-docker exec tfm_ollama ollama pull nomic-embed-text-v2-moe
+# 3. Pull the Ollama models (only once)
+docker exec -it tfm_ollama ollama pull qwen2.5:7b-instruct
+docker exec -it tfm_ollama ollama pull nomic-embed-text-v2-moe
+docker exec -it tfm_ollama ollama pull <other_ollama_model>  # You must explicit it in .env to use it
 ```
 
 ### Daily usage
@@ -67,174 +95,131 @@ docker exec tfm_ollama ollama pull nomic-embed-text-v2-moe
 # Start
 docker compose --env-file .env -f infra/docker-compose.yaml up -d
 
-# Stop (data is preserved in volumes)
+# Stop (data preserved in the upm_match_* volumes)
 docker compose --env-file .env -f infra/docker-compose.yaml down
 
-# Check status
+# Status / logs
 docker compose --env-file .env -f infra/docker-compose.yaml ps
-
-# Tail logs for a specific service
-docker compose --env-file .env -f infra/docker-compose.yaml logs -f airflow-webserver
-
-# Tail app logs (includes both Gunicorn access log and loguru output)
+docker compose --env-file .env -f infra/docker-compose.yaml logs -f nginx
 docker compose --env-file .env -f infra/docker-compose.yaml logs -f app
-```
 
-### Rebuilding the app after code changes
-
-The app image bakes the source code at build time, so any change to `app/`, `dbs/`, `models/` or `utils/` requires a rebuild:
-
-```bash
+# Rebuild the app after code changes (source is baked at build time)
 docker compose --env-file .env -f infra/docker-compose.yaml up -d --build app
 ```
 
-For rapid iteration, `uv run main.py` (Flask dev server on port 5000) still works locally without Docker as long as Qdrant and Ollama ports are exposed in `docker-compose.yaml` (the commented-out `ports:` blocks).
+For rapid iteration, `uv run main.py` still runs the Flask dev server locally without Docker (with `APP_BASE_PATH` unset it serves at `/`).
+It needs Qdrant and Ollama reachable (uncomment their `ports:` blocks in `docker-compose.yaml`).
 
 ---
 
 ## Service access
 
+All public URLs share the same host/port and prefix. Locally that is `http://localhost:1234/upm-match`; in production `https://<domain>/upm-match`.
+
 | Service | URL | Credentials |
 |---|---|---|
-| **Traefik Dashboard** | http://traefik.localhost/dashboard/ | No login |
-| **UPM Match App** | http://localhost/app | No login |
-| **Airflow** | http://localhost/airflow | `admin` / `AIRFLOW_ADMIN_PASSWORD` |
-| **Memgraph Lab** | http://lab.localhost | `MEMGRAPH_USERNAME` / `MEMGRAPH_PASSWORD` |
-| **MinIO Console** | http://minio.localhost | `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` |
-| **MinIO S3 API** | http://localhost/s3 | AWS-style credentials (`MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD`) |
-| **Ollama API** | http://localhost/ollama | No login |
-| **Qdrant** | http://qdrant.localhost/dashboard | Include the API key to see the GUI |
+| **UPM Match App** | `…/upm-match/` | No login |
+| **Airflow** | `…/upm-match/airflow` | `admin` / `AIRFLOW_ADMIN_PASSWORD` |
+| **Memgraph Lab** | `…/upm-match/lab` | `MEMGRAPH_USERNAME` / `MEMGRAPH_PASSWORD` |
+| **Qdrant dashboard** | `…/upm-match/qdrant/dashboard` | Enter `QDRANT_API_KEY` in the UI (top-right key icon) |
 
+Internal-only (no public route, reachable by service name on the Docker network):
 
-> `*.localhost` subdomains resolve automatically in modern browsers.
-> If a subdomain does not load, add it to `C:\Windows\System32\drivers\etc\hosts`:
-> ```
-> 127.0.0.1  qdrant.localhost lab.localhost minio.localhost traefik.localhost
-> ```
+| Service | Internal address | Used by |
+|---|---|---|
+| MinIO (S3) | `minio:9000` | app, all phases |
+| Ollama | `ollama:11434` | app, phase 06 |
+| Memgraph (Bolt) | `memgraph:7687` | Lab, phases 03/04 |
+| PostgreSQL | `postgres:5432` | Airflow |
+
+> For direct host access during local debugging, uncomment the `127.0.0.1:…` `ports:` blocks of `minio`, `memgraph`, `ollama` or `qdrant` in `docker-compose.yaml`.
+> They are commented so nothing but Nginx is exposed in production.
 
 ---
 
 ## Data pipeline (Airflow)
 
-The DAG `upm_match_pipeline` in `airflow/dags/upm_match.py` runs the 6 phases sequentially, with phases 05 and 06 running in parallel at the end:
+The DAG `upm_match_pipeline` runs the 6 phases, with 05 and 06 in parallel:
 
 ```
-01_find_ids -> 02_get_pdis_data -> 03_create_pdis -> 04_enrich_profile -> +-> 05_create_keywords
-                                                                          +-> 06_create_summaries
+01_find_ids => 02_get_pdis_data => 03_create_pdis => 04_enrich_profile => +=> 05_create_keywords
+                                                                          +=> 06_create_summaries
 ```
 
-To trigger it: http://localhost/airflow $\rightarrow$ DAG `upm_match_pipeline` $\rightarrow$ ▶ button.
-
-Dependencies are pre-installed in the Docker image, so the first task run starts immediately.
+Trigger it at `…/upm-match/airflow` $\Rightarrow$ DAG `upm_match_pipeline` $\Rightarrow$ ▶.
 
 ---
 
-## Architecture decisions
+## How each service is served under the subpath
 
-### Why Traefik as the reverse proxy
+The hard part of subpath routing is that single-page apps compile asset paths with an absolute prefix at build time.
+If you strip the prefix, the browser then asks for `/<domain>/assets/...` and gets a 404.
+The clean fix is for each app to be told its base path.
+Here is how each one is handled:
 
-The target is to migrate this infrastructure to K8s at some point. Traefik was chosen because:
-
-1. **Native dynamic discovery in K8s**: Traefik reads `Ingress` and `IngressRoute` resources automatically without per-service configuration. Nginx requires manual reloads or a separate controller.
-
-2. **Same mental model in Docker and K8s**: locally, routes are declared in `traefik/dynamic.yml`; in production they become `IngressRoute` CRDs. The transition is direct.
-
-3. **Declarative middlewares**: authentication, IP filtering, rate limiting and path stripping are declared alongside the routes in one file, with no `location` blocks or extra modules.
-
-4. **Built-in dashboard**: instant visibility of active routes without external tooling.
-
-**Note on Docker Desktop for Windows**: Traefik v3 uses the Docker Go SDK, which negotiates the API version starting from v1.24. 
-Docker Desktop 29.x requires a minimum of v1.40 and rejects that with HTTP 400. 
-For this reason the **file provider** is used instead of the Docker provider: Traefik reads routes from `traefik/dynamic.yml` without needing Docker socket access. 
-This limitation does not exist on Linux or K8s.
-
----
-
-### Why subdomains for GUIs and subpaths for APIs
-
-The split is a technical consequence of how modern web applications are built, not a stylistic choice.
-
-**Why subpaths break SPAs:**
-
-A SPA (Single Page Application) such as the Qdrant UI or MinIO Console is compiled with webpack/Vite. During the build, all asset paths (JS, CSS, fonts) are written with an absolute prefix. 
-The default is `/`, producing HTML like: 
-
-```html
-<script src="/assets/main-3f2a1b.js"></script>
-```
-
-When Traefik routes `localhost/qdrant` with `StripPrefix /qdrant`, Qdrant receives the request at `/`, serves the HTML and the browser tries to load `localhost/assets/main-3f2a1b.js`. 
-Traefik has no route for `/assets/...` $\rightarrow$ 404 $\rightarrow$ the page loads blank.
-
-The only clean fix is for the application to expose a `BASE_PATH` environment variable so the build compiles assets with that prefix. None of the SPAs in this stack support it.
-
-**Why subpaths work for some services:**
-
-| Service | Type | Why subpaths work |
+| Service | Strip prefix? | How it becomes base-path aware |
 |---|---|---|
-| UPM Match App | Flask app | `ProxyFix(x_prefix=1)` reads `X-Forwarded-Prefix: /app` sent by Traefik; `url_for()` generates correct paths; no compiled assets |
-| Airflow | Flask app | Respects `AIRFLOW__WEBSERVER__BASE_URL`: generates all URLs with the configured prefix, no StripPrefix needed |
-| Ollama | Pure REST API | Serves only JSON, no HTML assets $\rightarrow$ StripPrefix works |
-| MinIO S3 API | Pure REST API | Same as above |
+| **Flask app** | No | Blueprint mounted at `url_prefix=$APP_BASE_PATH`. `ProxyFix(x_proto)` for https. `url_for()` emits `/upm-match/...`. No compiled assets. |
+| **Airflow** | No | `AIRFLOW__WEBSERVER__BASE_URL=$PUBLIC_BASE_URL/airflow` + `ENABLE_PROXY_FIX`. Serves every URL/asset under the prefix natively. |
+| **Memgraph Lab** | No | `BASE_PATH=$APP_BASE_PATH/lab` env. v3.10.0 **accepts the multi-segment path** and emits `<base href="/upm-match/lab/">`. WebSocket headers forwarded for live logs. |
+| **Qdrant dashboard** | Yes | No base-path support. Served via strip + `sub_filter` + a small injected shim. See below. |
 
-**Why subdomains work for all services:**
+Longest-prefix wins in Nginx, so `…/airflow`, `…/lab` and `…/qdrant/` match before the app's catch-all `…/upm-match/`.
 
-With `Host('qdrant.localhost')`, Traefik forwards traffic without modifying the path. 
-Qdrant receives requests at `/`, serves HTML with `<script src="/assets/main.js">` and the browser requests `qdrant.localhost/assets/main.js`. 
-Traefik routes that to Qdrant too (same `Host` rule) $\rightarrow$ 200. 
-No conflicts.
+### Qdrant dashboard (the stubborn one)
 
-In Kubernetes this maps directly to Ingress `spec.rules[].host` per service.
+Qdrant's SPA assumes it lives at the domain root, in two independent ways, so it needs three coordinated tricks (all in the `…/qdrant/` location):
+
+1. **Strip** `…/qdrant` $\Rightarrow$ Qdrant root, so the REST API is reachable at `…/qdrant/<endpoint>` and the SPA at `…/qdrant/dashboard`.
+
+2. **Static assets** are emitted as absolute `/dashboard/...` (HTML `<script>`/`<link>`, web workers, module preloads, `openapi.json`, and CSS `@font-face`).
+A `sub_filter` rewrites every `/dashboard/` $\Rightarrow$ `…/qdrant/dashboard/` across `text/html`, `text/javascript`, `application/json` and `text/css` (upstream compression is disabled with `Accept-Encoding ""` so `sub_filter` can see the body).
+Only `/dashboard/` (with trailing slash) is rewritten and never the bare `/dashboard`, which would corrupt the app's `…replace(/dashboard$/…)` logic.
+
+3. **REST calls** are built at runtime from `origin + port`, **discarding the path**, so the client hits `/<endpoint>` at the root, which in production never reaches us.
+A tiny shim injected into `<head>` (before the bundle) patches `fetch`/`XMLHttpRequest` to re-prefix same-origin requests not already under `…/upm-match/` with `…/qdrant`.
+Cross-origin calls are left untouched.
+
+Sections use **hash routing** (`…/dashboard#/collections`), so the URL path stays `…/qdrant/dashboard` and refresh/deep-links never 404.
+Enter `QDRANT_API_KEY` via the key icon (top-right) to authenticate.
+One harmless leftover: a Qdrant-Cloud-only `cloud/data.json` request 401s in the console — that endpoint does not exist in the self-hosted build.
+
+### Why preserve the prefix (no strip)
+
+Stripping would force every app to reconstruct its public path from an `X-Forwarded-Prefix` header (which not all of them honour).
+Preserving it means each app sees the real path and just needs to know its own base, simpler and more robust.
+The container Nginx therefore uses `proxy_pass` **without a path**.
+
+### Two robustness details in the container Nginx
+
+- **`absolute_redirect off`**: the container only knows its internal `:80`, not the public host/port.
+Relative `Location` headers let the browser keep the original scheme/host/port (otherwise local redirects would drop `:1234`).
+- **`proxy_set_header Host $http_host`** and a `map` that prefers the incoming **`X-Forwarded-Proto`** over `$scheme`: between host and container the traffic is plain http, so we propagate the public scheme the host Nginx sent (https) and the exact Host (with port locally), falling back to `$scheme`/`$host` for direct local access.
 
 ---
 
-## Security middlewares
+## Security middlewares (disabled)
 
-Middlewares are defined in `traefik/dynamic.yml` but disabled. To activate them:
+Both are pre-written and commented in `nginx/default.conf.template`:
 
-**1. IP AllowList** (for APIs such as Qdrant or Ollama):
+1. **IP allow-list**: `allow … / deny all;` to restrict who reaches the stack.
+2. **Basic Auth**: generate `htpasswd -B -c infra/nginx/.htpasswd admin`, mount it and uncomment `auth_basic` (server-wide or per `location`).
 
-Uncomment the definition in `traefik/dynamic.yml`:
-```yaml
-    api-allowlist:
-      ipAllowList:
-        sourceRange:
-          - "127.0.0.1/32"
-          - "192.168.1.0/24"
-```
+They are intentionally left off for now (to be decided here or upstream later).
 
-Then add it to the target router:
-```yaml
-    qdrant:
-      ...
-      middlewares: [api-allowlist]
-```
+After editing the template, recreate Nginx:
 
-**2. Basic Auth** (for GUIs such as Memgraph Lab):
-
-Generate the hash:
 ```bash
-docker run --rm httpd:2.4-alpine htpasswd -nbB admin YOUR_PASSWORD
-# Output: admin:$2y$05$HASH_GENERATED
+docker compose --env-file .env -f infra/docker-compose.yaml up -d --force-recreate nginx
 ```
 
-Uncomment and replace the hash in `traefik/dynamic.yml` (no `$` escaping here —
-this file is not processed by Docker Compose):
-```yaml
-    gui-auth:
-      basicAuth:
-        users:
-          - "admin:$2y$05$HASH_GENERATED"
-```
+---
 
-Then add it to the target router:
-```yaml
-    lab:
-      ...
-      middlewares: [gui-auth]
-```
+## Pending / fragile
 
-After any change to `traefik/dynamic.yml`, restart Traefik to reload it:
-```bash
-docker compose --env-file .env -f infra/docker-compose.yaml restart traefik
-```
+- **MinIO console** has no public route (commented in the template).
+It is another root-assuming SPA, and the console image (2025-09-07) ships a trimmed console (object browser only).
+If needed, set `MINIO_BROWSER_REDIRECT_URL=$PUBLIC_BASE_URL/console` and enable the `…/console/` location. Expect to iterate on strip VS. no-strip for its assets.
+Not required for the pipeline or the app.
+- The **Qdrant dashboard** shim relies on the dashboard building REST URLs from the page origin.
+If a future Qdrant version changes that, re-check the injected `<head>` shim against the network tab (it must keep API calls under `…/qdrant/`).

@@ -17,6 +17,8 @@ COPY utils/     utils/
 
 ENV PYTHONUNBUFFERED=1
 
+# Gunicorn listens on the app's fixed default port (5000). The Nginx upstream
+# (app:${APP_PORT}) must point at this same port — keep APP_PORT in sync.
 CMD ["uv", "run", "gunicorn", \
      "--bind", "0.0.0.0:5000", \
      "--workers", "2", \
