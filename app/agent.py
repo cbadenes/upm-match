@@ -2,8 +2,7 @@
 
 Two agents are provided:
   - extract_keywords: extracts compact English keyword lists from a research idea.
-  - enrich_query: translates and expands a research idea into an English paragraph
-    optimised for dense vector search against researcher profile summaries.
+  - enrich_query: translates and expands a research idea into an English paragraph optimised for dense vector search against researcher profile summaries.
 """
 
 from __future__ import annotations
@@ -83,8 +82,7 @@ def extract_keywords(idea: str) -> KeywordSet:
     raise RuntimeError(f"Agent returned unexpected type: {type(response.content)}")
 
 
-# ── Query enrichment agent ─────────────────────────────────────────────────────
-
+# Query enrichment agent
 _ENRICH_DESCRIPTION = (
     "You are a research query optimizer for an academic advisor matching system. "
     "Your output is used to search a database of researcher profile summaries written in English."

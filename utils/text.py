@@ -3,7 +3,7 @@
 import re
 from unicodedata import normalize as unicodedata_normalize
 
-# ── Markers used by clean_description ─────────────────────────────────────────
+# Markers used by clean_description
 
 PUBLICATION_TRAILING_MARKERS = [
     "(Summary)",
@@ -66,7 +66,7 @@ PUBLICATION_METADATA_REGEX = re.compile(
 )
 
 
-# ── Topic / keyword normalisation ──────────────────────────────────────────────
+# Topic / keyword normalisation
 
 
 def normalize_topic(topic: str) -> str:
@@ -89,7 +89,9 @@ def split_publication_keywords(value: object) -> list[str]:
     if value is None:
         return []
 
-    raw_values: list = value if isinstance(value, list) else re.split(r"[;|/]", str(value))
+    raw_values: list = (
+        value if isinstance(value, list) else re.split(r"[;|/]", str(value))
+    )
 
     keywords: list[str] = []
     seen: set[str] = set()
@@ -127,7 +129,7 @@ def choose_keyword_source(record: dict[str, object]) -> object | None:
     return None
 
 
-# ── Abstract / description cleaning ───────────────────────────────────────────
+# Abstract / description cleaning
 
 
 def clean_description(value: str | None) -> str | None:
@@ -155,16 +157,15 @@ def clean_description(value: str | None) -> str | None:
     if text.startswith(("©", "Copyright")):
         section_match = PUBLICATION_ABSTRACT_SECTION_REGEX.search(text)
         if section_match:
-            text = text[section_match.start():].strip()
+            text = text[section_match.start() :].strip()
 
-    if (
-        PUBLICATION_AUTHOR_START_REGEX.match(text)
-        and PUBLICATION_AUTHOR_CONTEXT_REGEX.search(text[:250])
-    ):
+    if PUBLICATION_AUTHOR_START_REGEX.match(
+        text
+    ) and PUBLICATION_AUTHOR_CONTEXT_REGEX.search(text[:250]):
         for marker in PUBLICATION_AUTHOR_BLOCK_MARKERS:
             marker_index = text.find(marker)
             if marker_index != -1:
-                text = text[marker_index + len(marker):]
+                text = text[marker_index + len(marker) :]
                 text = re.sub(r"^\s*;\s*", "", text)
                 break
 

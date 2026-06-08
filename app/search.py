@@ -124,9 +124,7 @@ def search_pdis(
     return _to_pdi_results(raw, all_keywords)
 
 
-# ── Dense summary search ───────────────────────────────────────────────────────
-
-
+# Dense summary search
 def _embed_for_summary(text: str) -> list[float]:
     """Embed a query text with the same Ollama model used to index researcher summaries."""
     client = _ollama.Client(host=_OLLAMA_HOST)

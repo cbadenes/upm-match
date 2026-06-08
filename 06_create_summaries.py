@@ -235,9 +235,7 @@ def _build_rolling_summary(
     return prev_profile
 
 
-# ── Qdrant dense helpers ───────────────────────────────────────────────────────
-
-
+# Qdrant dense helpers
 def _embed_text(text: str) -> list[float]:
     """Generate a dense embedding via Ollama's embed endpoint."""
     client = _ollama.Client(host=_OLLAMA_HOST)
@@ -309,9 +307,7 @@ def _upsert_point(
     logger.info("PDI {} upserted into dense summaries collection", researcher_id)
 
 
-# ── Main processing loop ───────────────────────────────────────────────────────
-
-
+# Main processing loop
 def run(
     researcher_ids: list[int],
     debug_output: Path | bool | None,
@@ -391,9 +387,7 @@ def run(
     return stats
 
 
-# ── Entry point ────────────────────────────────────────────────────────────────
-
-
+# Entry point
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Build rolling research biographies and index them in Qdrant.",
