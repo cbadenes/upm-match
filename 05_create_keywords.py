@@ -20,14 +20,16 @@ from __future__ import annotations
 import argparse
 import sys
 import time
+from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 from loguru import logger
 
 from dbs.vector import QdrantBackend, VectorPoint
+from dbs.vector.qdrant import SPARSE_MODEL_NAME
 from utils.logging import setup_logging
 from utils.researchers import load_enrichment, load_researcher_ids
-from utils.text import normalize_topic
+from utils.text import canonicalize_topics
 
 load_dotenv()
 
@@ -55,6 +57,7 @@ def run(
         existing_ids = db.get_all_ids(COLLECTION_NAME)
         logger.info("{} researchers already indexed", len(existing_ids))
 
+    indexed_at = datetime.now(timezone.utc).isoformat()
     batch: list[VectorPoint] = []
 
     def flush_batch() -> None:
@@ -85,7 +88,7 @@ def run(
             stats["no_enrichment"] += 1
             continue
 
-        topics = [normalize_topic(t) for t in enrichment.topics if t.strip()]
+        topics = canonicalize_topics(enrichment.topics)
         if not topics:
             full_name = (
                 f"{enrichment.first_name or ''} {enrichment.last_name or ''}".strip()
@@ -114,6 +117,8 @@ def run(
                     "name": full_name,
                     "topics": topics,
                     "since": enrichment.first_year or 0,
+                    "embedding_model": SPARSE_MODEL_NAME,
+                    "indexed_at": indexed_at,
                 },
             )
         )
@@ -137,6 +142,14 @@ def main() -> int:
         "--skip-existing",
         action="store_true",
         help="Skip researchers already indexed in Qdrant.",
+    )
+    parser.add_argument(
+        "--recreate",
+        action="store_true",
+        help=(
+            "Drop and recreate the collection before indexing so schema and "
+            "payload metadata changes are applied. Used by the scheduled full run."
+        ),
     )
     parser.add_argument(
         "--batch-size",
@@ -175,6 +188,9 @@ def main() -> int:
         logger.info("Loaded {} researcher IDs from MinIO", len(researcher_ids))
 
     db = QdrantBackend()
+    if args.recreate and db.collection_exists(COLLECTION_NAME):
+        logger.info("Recreating collection '{}' from scratch", COLLECTION_NAME)
+        db.delete_collection(COLLECTION_NAME)
     db.ensure_collection(COLLECTION_NAME, SPARSE_FIELD)
     before = db.count_points(COLLECTION_NAME)
     logger.info(

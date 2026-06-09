@@ -23,7 +23,11 @@ _HOST = os.environ.get("QDRANT_HOST", "localhost")
 _PORT = int(os.environ.get("QDRANT_PORT", "6333"))
 _API_KEY = _require_env("QDRANT_API_KEY")
 
-_SPARSE_MODEL_NAME = "Qdrant/bm42-all-minilm-l6-v2-attentions"
+# Sparse (BM42) embedding model. Configurable via env; public so indexing
+# scripts can record which model produced the sparse vectors.
+SPARSE_MODEL_NAME = os.environ.get(
+    "SPARSE_EMBED_MODEL", "Qdrant/bm42-all-minilm-l6-v2-attentions"
+)
 
 
 class QdrantBackend:
@@ -46,7 +50,7 @@ class QdrantBackend:
     def _model(self) -> SparseTextEmbedding:
         if self._embedder is None:
             logger.debug("Loading BM42 sparse embedding model (first use)...")
-            self._embedder = SparseTextEmbedding(_SPARSE_MODEL_NAME)
+            self._embedder = SparseTextEmbedding(SPARSE_MODEL_NAME)
             logger.debug("BM42 model ready")
         return self._embedder
 
@@ -248,17 +252,20 @@ class QdrantBackend:
         collection: str,
         vector: list[float],
         limit: int = 10,
+        using: str | None = None,
     ) -> list[SearchResult]:
-        """Search using the default (unnamed) dense vector field of the collection.
+        """Search a dense vector field of the collection.
 
         :param collection: Name of the Qdrant collection.
         :param vector: Pre-computed dense query vector.
         :param limit: Maximum number of results to return.
+        :param using: Named dense vector to query, or None for the default vector.
         :return: List of SearchResult objects sorted by similarity score descending.
         """
         results = self._client.query_points(
             collection_name=collection,
             query=vector,
+            using=using,
             limit=limit,
             with_payload=True,
         )
