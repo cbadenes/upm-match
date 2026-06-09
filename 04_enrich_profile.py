@@ -9,16 +9,12 @@ from __future__ import annotations
 import argparse
 import json
 import re
-import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
 from dotenv import load_dotenv
 from loguru import logger
-
-from utils.logging import setup_logging
-from utils.researchers import ENRICHMENT_KEY_TEMPLATE, load_researcher_ids
 
 from dbs import get_graph_db, minio
 from models import (
@@ -28,10 +24,31 @@ from models import (
     ResearcherPublication,
     ResearcherSubject,
 )
+from utils.logging import setup_logging
+from utils.researchers import ENRICHMENT_KEY_TEMPLATE, load_researcher_ids
+from utils.text import canonicalize_topics
 
 load_dotenv()
 
 MULTISPACE_RE = re.compile(r"\s+")
+
+# Only researchers linked (via :Works) to one of these Position nodes are persisted to MinIO.
+# The rest are still loaded in Memgraph but excluded from the curated bucket.
+TARGET_POSITION_IDS = {
+    "loc_16408",  # ETSISI - Departamento de Sistemas Informáticos
+    "loc_16409",  # ETSIST - Departamento de Ingeniería Telemática y Electrónica
+    "loc_16410",  # ETSIST - Departamento de Lingüística Aplicada a la Ciencia y a la Tecnología
+    "loc_16411",  # ETSIST - Departamento en Ingeniería Audiovisual y Comunicaciones
+    "loc_16431",  # ETSII - Departamento de Arquitectura y Tecnología de Sistemas Informáticos
+    "loc_16432",  # ETSII - Departamento de Inteligencia Artificial
+    "loc_16433",  # ETSII - Departamento de Lenguajes e Ingeniería de Software
+    "loc_16437",  # ETSIT - Departamento de Electrónica física, Ingeniería Eléctrica y Física Aplicada
+    "loc_16438",  # ETSIT - Departamento de Ingeniería de Sistemas Telemáticos
+    "loc_16439",  # ETSIT - Departamento de Ingeniería Electrónica
+    "loc_16440",  # ETSIT - Departamento de Matemática Aplicada a Las Tecnologías de la Información y Las Comunicaciones
+    "loc_16441",  # ETSIT - Departamento de Señales, Sistemas y Radiocomunicaciones
+    "loc_16442",  # ETSIT - Departamento de Tecnología Fotónica y Bioingeniería
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -184,6 +201,20 @@ def build_researcher_row(
     )
 
 
+def researcher_has_target_position(graph, researcher_id: int) -> bool:
+    """Return True if the researcher is linked to one of the target Position nodes."""
+    graph_id = f"pdi_{researcher_id}"
+    rows = graph.query(
+        """
+        MATCH (r:Pdi {id: $researcher_id})-[:Works]->(pos:Position)
+        WHERE pos.id IN $position_ids
+        RETURN count(pos) AS matches
+        """,
+        {"researcher_id": graph_id, "position_ids": list(TARGET_POSITION_IDS)},
+    )
+    return bool(rows) and (rows[0].get("matches") or 0) > 0
+
+
 def query_researcher_records(graph, researcher_id: int) -> dict[str, Any]:
     """Load the researcher and its related nodes from Memgraph."""
     graph_id = f"pdi_{researcher_id}"
@@ -301,7 +332,7 @@ def build_publications(rows: list[dict[str, Any]]) -> list[ResearcherPublication
                 "type": none_if_empty(row.get("type")),
                 "year": extract_year(row.get("year")),
                 "source": none_if_empty(row.get("source")),
-                "keywords": unique_preserve_order(split_keywords(row.get("keywords"))),
+                "keywords": canonicalize_topics(split_keywords(row.get("keywords"))),
                 "coauthorship": [
                     author_id
                     for author_id in unique_preserve_order(
@@ -342,7 +373,7 @@ def build_last_year_projects(
                 "title": none_if_empty(row.get("title")),
                 "abstract": none_if_empty(row.get("abstract")),
                 "type": none_if_empty(row.get("type")),
-                "keywords": unique_preserve_order(split_keywords(row.get("keywords"))),
+                "keywords": canonicalize_topics(split_keywords(row.get("keywords"))),
                 "year": extract_year(row.get("year")),
             }
         )
@@ -358,7 +389,7 @@ def build_document(
     researcher_row = subgraph["researcher"]
     first_name = researcher_row.get("first_name")
     last_name = researcher_row.get("last_name")
-    topics = list(researcher_row.get("topics") or [])
+    topics = canonicalize_topics(researcher_row.get("topics") or [])
     positions = build_positions(subgraph.get("positions", []))
     publications = build_publications(subgraph.get("publications", []))
     subjects = build_subjects(subgraph.get("subjects", []))
@@ -429,6 +460,14 @@ def process_researcher(
     subgraph = query_researcher_records(graph, researcher_id)
     if not subgraph:
         logger.warning("Researcher {} not found in Memgraph", researcher_id)
+        return False
+
+    # In production mode only persist researchers tied to the target Position nodes.
+    # Debug mode bypasses the filter so any profile can be inspected.
+    if debug is None and not researcher_has_target_position(graph, researcher_id):
+        logger.info(
+            "Skipping {} — no relationship with target Position nodes", researcher_id
+        )
         return False
 
     document = build_document(researcher_id, subgraph)
