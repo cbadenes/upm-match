@@ -42,11 +42,10 @@ def search():
 
     Request body (JSON):
       - idea (str): free-text research idea in any language.
-      - mode (str, optional): search mode — 'keywords' (default), 'summary_direct',
-        or 'summary_enriched'.
+      - mode (str, optional): 'keywords' (default), 'summary_direct' or 'summary_enriched'.
       - limit (int, optional): number of results to return (default 10, max 20).
 
-    Response (JSON) — common fields:
+    Response (JSON) common fields:
       - mode: the mode that was used.
       - results: list of ranked PDI objects.
 
