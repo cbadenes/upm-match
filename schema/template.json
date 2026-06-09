@@ -1,0 +1,216 @@
+{
+    "datos_personales": {
+        "nombre": null,
+        "apellidos": null,
+        "nombre_completo": null,
+        "email": null,
+        "web_personal": null,
+        "redes_sociales": []
+    },
+    "identificadores_academicos": {
+        "orcid": null,
+        "researcher_id": null,
+        "scopus_author_id": null,
+        "google_scholar": null,
+        "research_gate": null,
+        "dialnet": null
+    },
+    "situacion_actual": {
+        "grupo_investigacion": {
+            "nombre": null,
+            "rol": null,
+            "fecha_inicio": null
+        },
+        "departamento": {
+            "nombre": null,
+            "institucion": null,
+            "categoria": null,
+            "fecha_inicio": null
+        },
+        "area_conocimiento": [
+            null
+        ]
+    },
+    "formacion_academica": [
+        {
+            "titulo": null,
+            "institucion": null,
+            "fecha": null,
+            "mencion": null
+        }
+    ],
+    "metricas_investigacion": {
+        "sexenios": {
+            "total": null,
+            "ultimo_concedido": null,
+            "_comment": "Añadir si son de investigacion, docencia o transferencia (?)"
+        },
+        "wos": {
+            "documentos": null,
+            "citas": null,
+            "h_index": null,
+            "q1": null,
+            "d1": null,
+            "ifna": null,
+            "ifnb": null,
+            "ifnesi": null,
+            "fecha_actualizacion": null
+        }
+    },
+    "proyectos_investigacion": [
+        {
+            "titulo": null,
+            "tipo": null,
+            "financiador": null,
+            "programa": null,
+            "coordinador": null,
+            "rol": null,
+            "fecha_inicio": null,
+            "fecha_fin": null
+        }
+    ],
+    "docencia": {
+        "direccion_trabajos": {
+            "tfg": null,
+            "tfm": null,
+            "tesis_doctoral": null,
+            "dea_master": null
+        },
+        "asignaturas": [
+            {
+                "nombre": null,
+                "fecha_inicio": null,
+                "fecha_fin": null
+            }
+        ],
+        "coordinacion": [
+            {
+                "asignatura": null,
+                "fecha_inicio": null,
+                "fecha_fin": null
+            }
+        ],
+        "gestion_academica": [
+            {
+                "cargo": null,
+                "entidad": null,
+                "institucion": null,
+                "fecha_inicio": null,
+                "fecha_fin": null
+            }
+        ]
+    },
+    "experiencia_profesional": [
+        {
+            "puesto": null,
+            "entidad": null,
+            "institucion": null,
+            "fecha_inicio": null,
+            "fecha_fin": null
+        }
+    ],
+    "tematicas_frecuentes": [],
+    "hitos_destacados": {
+        "primer_q1": {
+            "revista": null,
+            "año": null
+        },
+        "primer_proyecto_ip": {
+            "titulo": null,
+            "año": null
+        },
+        "premios_reconocimientos": [
+            {}
+        ]
+    },
+    "publicaciones": [
+        {
+            "identificacion": {
+                "titulo": null,
+                "doi": null,
+                "handle_upm": null,
+                "tipo": null
+            },
+            "revista": {
+                "nombre": null,
+                "volumen": null,
+                "numero": null,
+                "paginas": null,
+                "wos_cuartil": null,
+                "wos_posicion": null,
+                "wos_categoria": null,
+                "scopus_cuartial": null,
+                "scopus_categoria": null
+            },
+            "fechas": {
+                "recibido": null,
+                "aceptado": null,
+                "publicado_online": null,
+                "publicado_revista": null,
+                "tiempo_revision_dias": null
+            },
+            "autores": [
+                {
+                    "nombre": null,
+                    "orden": null,
+                    "es_primer_autor": null,
+                    "es_ultimo_autor": null,
+                    "es_correspondencia": null,
+                    "es_insitucional": null,
+                    "afiliaciones": []
+                }
+            ],
+            "contenido": {
+                "abstract": null,
+                "keywords": [],
+                "financiacion": []
+            },
+            "acceso": {
+                "open_access": null,
+                "licencia": null,
+                "apc_euros": null,
+                "acuerdo_formativo": null,
+                "url_repositorio_institucional": null
+            },
+            "impacto": {
+                "citas_wos": null,
+                "citas_scopus": null,
+                "citas_scholar": null,
+                "citas_scholar_evolucion": {},
+                "accesos_springer": null,
+                "altmetrics_score": null,
+                "plumx_capture": null,
+                "descargas_repositorio": null,
+                "visualizaciones_repositorio": null
+            },
+            "indexaciones": []
+        }
+    ],
+    "transferencia_e_impacto": {
+        "patentes": [],
+        "spin_offs": [],
+        "contratos_empresas": []
+    },
+    "liderazgo_cientifico": {
+        "revisiones_revistas": null,
+        "comites_cientificos": [],
+        "roles_editoriales": [],
+        "keynotes": []
+    },
+    "colaboraciones": {
+        "colaboradores": [
+            {}
+        ],
+        "paises": [
+            {}
+        ],
+        "instituciones": [
+            {}
+        ]
+    },
+    "indicadores_temporales": {
+        "evolucion_publicaciones": [],
+        "evolucion_citas": [],
+        "evolucion_tematicas": []
+    }
+}

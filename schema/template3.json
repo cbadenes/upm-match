@@ -1,0 +1,293 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "ResearcherEnrichmentProfile",
+    "description": "Documento de enriquecimiento generado por 04_enrich_profiles.py para cada investigador. Se persiste en MinIO bajo researchers/{id}/enrichment.json y opcionalmente como propiedades del nodo en Memgraph.",
+    "type": "object",
+    "required": [
+        "researcher_id",
+        "generated_at",
+        "corpus",
+        "keywords",
+        "summaries",
+        "unesco_categories",
+        "teaching_evidence",
+        "tutoring_evidence"
+    ],
+    "properties": {
+        "researcher_id": {
+            "type": "string",
+            "description": "Identificador del investigador (idPersonal del portal UPM). Clave primaria de trazabilidad."
+        },
+        "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp ISO 8601 de generación. Permite invalidar enriquecimientos obsoletos al regenerar datos."
+        },
+        "embedding_model": {
+            "type": "string",
+            "description": "Modelo usado para generar los embeddings en esta versión del documento. Ej: voyage-3, text-embedding-3-small.",
+            "examples": [
+                "voyage-3",
+                "voyage-3-lite",
+                "text-embedding-3-small"
+            ]
+        },
+        "corpus": {
+            "type": "object",
+            "description": "Texto agregado y normalizado extraído directamente del grafo. Es la materia prima de todo el enriquecimiento. Se persiste para poder regenerar representaciones sin volver a consultar el grafo.",
+            "properties": {
+                "publication_titles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Títulos de todas las publicaciones con Authorship del investigador."
+                },
+                "publication_descriptions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Descriptions de publicaciones. Pueden ser abstracts, resúmenes o estar vacíos; se filtran los nulos."
+                },
+                "publication_keywords": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Keywords de publicaciones, aplanadas y deduplicadas. Proceden del portal, no de extracción propia."
+                },
+                "researcher_topics": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Campo topics del nodo Researcher. Lista heterogénea de temas declarados por el PDI."
+                },
+                "subject_titles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Títulos de asignaturas del investigador vía relación Teaching."
+                },
+                "position_labels": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Concatenación de name + entity de cada Position vía relación Works."
+                },
+                "tutoring_titles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Títulos de TFGs/TFMs/tesis dirigidas. Vacío si no hay datos o no se han subido al portal. Ver nota sobre sesgo de datos en la documentación del script."
+                },
+                "tutoring_descriptions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Descriptions de TFGs/TFMs/tesis. Generalmente más informativas que los títulos para capturar temática."
+                },
+                "tutoring_keywords": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Keywords de TFGs/TFMs. Poco densas (1-2 por trabajo), pero útiles para la aproximación léxica."
+                }
+            },
+            "additionalProperties": false
+        },
+        "keywords": {
+            "type": "object",
+            "description": "Representación léxico-sintáctica del perfil. Base de la Aproximación 1.",
+            "required": [
+                "terms",
+                "source"
+            ],
+            "properties": {
+                "terms": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Lista de términos clave normalizados (minúsculas, singular preferido). Generada por LLM a partir del corpus. Mezcla inglés y español según el idioma predominante del investigador."
+                },
+                "source": {
+                    "type": "string",
+                    "enum": [
+                        "llm",
+                        "extraction",
+                        "hybrid"
+                    ],
+                    "description": "Indica si los keywords fueron generados por LLM, extraídos directamente del corpus o combinados."
+                },
+                "language": {
+                    "type": "string",
+                    "description": "Idioma predominante detectado en el corpus. Ej: es, en, mixed."
+                }
+            }
+        },
+        "summaries": {
+            "type": "object",
+            "description": "Resúmenes de texto libre para comparación semántica. Base de la Aproximación 2.",
+            "required": [
+                "research",
+                "teaching",
+                "global"
+            ],
+            "properties": {
+                "research": {
+                    "type": "string",
+                    "description": "Resumen de 2-3 frases sobre la actividad investigadora: líneas de investigación, publicaciones destacadas, temas recurrentes."
+                },
+                "teaching": {
+                    "type": "string",
+                    "description": "Resumen de 2-3 frases sobre la actividad docente: asignaturas impartidas, áreas de enseñanza, trabajos tutelados si los hay."
+                },
+                "global": {
+                    "type": "string",
+                    "description": "Resumen global de 3-4 frases que integra perfil investigador y docente. Es el texto principal para comparar con consultas de estudiantes."
+                }
+            }
+        },
+        "embeddings": {
+            "type": "object",
+            "description": "Vectores de los resúmenes. Se generan con el modelo indicado en embedding_model. Base vectorial de la Aproximación 2.",
+            "properties": {
+                "research": {
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    },
+                    "description": "Embedding del resumen de investigación."
+                },
+                "teaching": {
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    },
+                    "description": "Embedding del resumen docente."
+                },
+                "global": {
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    },
+                    "description": "Embedding del resumen global. Candidato principal para el semantic_scorer."
+                }
+            }
+        },
+        "unesco_categories": {
+            "type": "array",
+            "description": "Clasificación sparse en la taxonomía UNESCO de Ciencia y Tecnología. Base de la Aproximación 3. Se usa representación sparse (solo categorías relevantes) en lugar de vector denso para mayor interpretabilidad y menor coste de almacenamiento.",
+            "items": {
+                "type": "object",
+                "required": [
+                    "code",
+                    "label",
+                    "score"
+                ],
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "description": "Código UNESCO. Puede ser de nivel 1 (2 dígitos), nivel 2 (4 dígitos) o nivel 3 (6 dígitos). Se recomienda nivel 2 como equilibrio entre especificidad y cobertura.",
+                        "examples": [
+                            "12",
+                            "1203",
+                            "120304"
+                        ]
+                    },
+                    "label": {
+                        "type": "string",
+                        "description": "Etiqueta legible de la categoría en inglés (siguiendo la taxonomía oficial).",
+                        "examples": [
+                            "Mathematics",
+                            "Statistics",
+                            "Sampling theory"
+                        ]
+                    },
+                    "score": {
+                        "type": "number",
+                        "minimum": 0.0,
+                        "maximum": 1.0,
+                        "description": "Relevancia estimada por el LLM (0-1). No es una probabilidad estricta; es una puntuación relativa de afinidad."
+                    }
+                }
+            }
+        },
+        "teaching_evidence": {
+            "type": "object",
+            "description": "Evidencia estructural de actividad docente, extraída directamente del grafo sin LLM. Componente de la Aproximación 4.",
+            "properties": {
+                "subject_count": {
+                    "type": "integer",
+                    "description": "Número total de asignaturas distintas registradas vía relación Teaching."
+                },
+                "active_subjects": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Títulos de asignaturas con end_date nulo o posterior a la fecha de generación del enriquecimiento."
+                },
+                "historical_subjects": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Títulos de asignaturas ya finalizadas."
+                },
+                "subject_types": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Conjunto de valores únicos del campo type de los nodos Subject asociados."
+                }
+            }
+        },
+        "tutoring_evidence": {
+            "type": "object",
+            "description": "Evidencia de tutorización de trabajos académicos. NOTA DE SESGO: la ausencia de datos aquí NO implica falta de experiencia tutora; refleja la política de subida voluntaria al portal. Esta evidencia se trata como señal positiva aditiva, nunca como penalización. Componente de la Aproximación 4.",
+            "properties": {
+                "tfg_count": {
+                    "type": "integer",
+                    "description": "Número de TFGs registrados en el portal para este investigador."
+                },
+                "tfm_count": {
+                    "type": "integer",
+                    "description": "Número de TFMs registrados."
+                },
+                "thesis_count": {
+                    "type": "integer",
+                    "description": "Número de tesis doctorales registradas."
+                },
+                "has_tutoring_data": {
+                    "type": "boolean",
+                    "description": "True si hay al menos un trabajo tutorizado registrado. Facilita el filtrado sin contar los zeros."
+                },
+                "representative_titles": {
+                    "type": "array",
+                    "maxItems": 5,
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Hasta 5 títulos representativos de trabajos tutorizados. Seleccionados por recencia. Útiles para mostrar en la interfaz como evidencia explicable."
+                },
+                "topic_keywords": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Keywords consolidadas de todos los TFGs/TFMs/tesis. Poco densas individualmente, pero acumulan señal temática al agregar varios trabajos."
+                }
+            }
+        }
+    },
+    "additionalProperties": false
+}

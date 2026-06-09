@@ -1,0 +1,18 @@
+[
+  {
+    "id": "gold_001",
+    "description": "Desarrollo de un sistema de recomendación basado en grafos de conocimiento para emparejar estudiantes con directores de TFM, usando embeddings y búsqueda semántica sobre publicaciones científicas.",
+    "year": 2023,
+    "director": "pdi_308607",
+    "study_type": "TFM",
+    "knowledge_area": "Ciencias de la Computación e Inteligencia Artificial"
+  },
+  {
+    "id": "gold_002",
+    "description": "Análisis de la calidad del aire en entornos urbanos mediante redes de sensores IoT de bajo coste y modelos de aprendizaje automático para la predicción de contaminantes.",
+    "year": 2022,
+    "director": "pdi_000000",
+    "study_type": "TFG",
+    "knowledge_area": "Ingeniería Ambiental"
+  }
+]

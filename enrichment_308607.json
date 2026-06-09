@@ -1,0 +1,1879 @@
+{
+  "id": "pdi_308607",
+  "first_name": "Carlos",
+  "last_name": "Badenes Olmedo",
+  "first_year": 2015,
+  "topics": [
+    "knowledge graph",
+    "document retrieval",
+    "natural language processing",
+    "public procurement",
+    "linked data",
+    "ontology",
+    "antiretroviral drug",
+    "hiv",
+    "polypharmacy",
+    "cord-1",
+    "cord-19",
+    "dynamic topic model",
+    "topic interpretability",
+    "topic labelling",
+    "clustering",
+    "document similarity",
+    "hashing",
+    "information search and retrieval",
+    "open data"
+  ],
+  "positions": [
+    {
+      "id": "loc_16247",
+      "name": "Ontology Engineering Group",
+      "entity": "Grupo de investigacion",
+      "role": "Miembro",
+      "since": 2015
+    },
+    {
+      "id": "loc_16408",
+      "name": "SISTEMAS INFORMÁTICOS",
+      "entity": "Departamento Universitario",
+      "role": "Profesor Permanente Laboral",
+      "since": 2024
+    },
+    {
+      "id": "loc_16180",
+      "name": "Centro de I+D+i en Inteligencia Artificial (AI.nnovation Space)",
+      "entity": "Instituto o centro Universitario de Investigación",
+      "role": "Investigador",
+      "since": 2025
+    }
+  ],
+  "publications": [
+    {
+      "id": "pub_10443309",
+      "title": "ESQAD: A curriculum-aligned dataset for question answer generation in Spanish",
+      "abstract": "This paper presents ESQAD (Educational Spanish Question-Answer Dataset), an open-access resource for question-answer generation (QAG) in Spanish aligned with national curricula. ESQAD comprises 6980 expertcurated exam questions, 340 literary comprehension items, 47 legal FAQs, and 913 LLM-generated pairs validated in academic settings. The dataset covers diverse linguistic and cognitive features, including subject classification, question typologies, and Bloom-level complexity. We analyze lexical diversity, cognitive intent, and structure across subsets. The automatically generated portion was created with Bloom-guided prompts and large language models (LLMs), and evaluated through both computational metrics and classroom validation. Results show that cognitive-level control is reliable for factual recall but only partial for higher-order reasoning. All resources, including dataset, code, and validation tool, are publicly available. ESQAD provides a structured benchmark for curriculum-aware QAG in under-resourced languages, with applications in educational NLP, question generation, and adaptive learning",
+      "type": "Artículo",
+      "year": 2026,
+      "source": "KNOWLEDGE-BASED SYSTEMS. 335 115255-",
+      "keywords": [
+        "adaptive learning",
+        "bloom's taxonomy",
+        "educational technology",
+        "expert system",
+        "question answer generation"
+      ],
+      "coauthorship": [
+        "pdi_333052",
+        "pdi_338699"
+      ]
+    },
+    {
+      "id": "pub_10426908",
+      "title": "QuerIA: adaptive question generation and evaluation in higher education using large language models and contextual learning",
+      "abstract": "This paper presents QuerIA, a system that automates the generation and evaluation of educational questionnaires in Spanish using large language models (LLMs). QuerIA integrates semantic chunking with a simplified Bloom's taxonomy, enabling controllable variation of cognitive difficulty across multiple-choice (MCQ) and openended (OEQ) question formats. Instructional documents are segmented into coherent units, and pedagogically aligned prompts guide the generation of question-answer pairs. The system was deployed as a locally hosted web service at Universidad Polit & eacute,cnica de Madrid, ensuring institutional data governance and low-resource feasibility. During one academic semester, 341 participants from 17 faculties created nearly 6000 questions and provided more than 800 evaluations on clarity, alignment, and pedagogical value. Analyses show that the predefined difficulty levels correspond to distinct linguistic and psychometric patterns, and that user feedback confirms the clarity and educational usefulness of the generated items. QuerIA demonstrates that LLM-based question generation can be applied at scale in higher education, supporting formative assessment while offering open resources for future research",
+      "type": "Artículo",
+      "year": 2026,
+      "source": "EXPERT SYSTEMS WITH APPLICATIONS. 301 130140-",
+      "keywords": [
+        "adaptive learning",
+        "bloom's taxonomy",
+        "educational assessment",
+        "large language model",
+        "question generation"
+      ],
+      "coauthorship": [
+        "pdi_338699"
+      ]
+    },
+    {
+      "id": "pub_10243148",
+      "title": "Dynamic topic modelling for exploring the scientific literature on coronavirus: an unsupervised labelling technique",
+      "abstract": "The work presented in this article focusses on improving the interpretability of probabilistic topic models created from a large collection of scientific documents that evolve over time. Several time-dependent approaches based on topic models were compared to analyse the annual evolution of latent concepts in the CORD-19 corpus: Dynamic Topic Model, Dynamic Embedded Topic Model, and BERTopic. Then COVID-19 period (December 2019-present) has been analysed in greater depth, month by month, to explore the evolution of what is written about the disease. The evaluations suggest that the Dynamic Topic Model is the best choice to analyse the CORD-19 corpus. A novel topic labelling strategy is proposed for dynamic topic models to analyse the evolution of latent concepts. It incorporates content changes in both the annual evolution of the corpus and the monthly evolution of the COVID-19 disease. The generated labels are manually validated using two approaches: through the most relevant documents on the topic and through the documents that share the most semantically similar label topics. The labelling enables the interpretation of topics. The novel method for dynamic topic labelling fits the content of each topic and supports the semantics of the topics",
+      "type": "Artículo",
+      "year": 2025,
+      "source": "International Journal of Data Science and Analytics. 20 (3): 2551-2581",
+      "keywords": [
+        "cord-1",
+        "cord-19",
+        "coronaviru",
+        "coronaviruse",
+        "covid-19",
+        "dynamic topic model",
+        "interpretability",
+        "labeling technique",
+        "labeling",
+        "scientific literature",
+        "stem-cell transplantation",
+        "tim",
+        "topic interpretability",
+        "topic labeling",
+        "topic labelling",
+        "topic modeling"
+      ],
+      "coauthorship": [
+        "pdi_311414",
+        "pdi_336150"
+      ]
+    },
+    {
+      "id": "pub_10221325",
+      "title": "Comparing a LEGO® Serious Play Activity With a Traditional Lecture in Software Engineering Education",
+      "abstract": ", No Statement Available (Recognitions linked to item)",
+      "type": "Artículo",
+      "year": 2024,
+      "source": "IEEE Access. 12 74045-74053",
+      "keywords": [
+        "active learning",
+        "analytical model",
+        "computer science education",
+        "curriculum development",
+        "education",
+        "educational course",
+        "game-based learning",
+        "game",
+        "gamification",
+        "instrument",
+        "lego seriou play",
+        "soft skill",
+        "software engineering",
+        "software engineering education"
+      ],
+      "coauthorship": [
+        "pdi_304997",
+        "pdi_306683",
+        "pdi_307657",
+        "pdi_311549",
+        "pdi_333052"
+      ]
+    },
+    {
+      "id": "pub_10372792",
+      "title": "EU Contract Hub: Towards a More Accessible Public Procurement",
+      "abstract": "Public procurement is one of the pillars of the proper functioning of a country, given the direct impact it has on its economy. The European Union places great importance on the transparency and accessibility of data related to public procurement, giving public access to a significant part of public procurement contracts. The problem is that these data are often difficult for many users to consult and understand, in addition to being time consuming. In this paper, we present EU Contract Hub, a platform for efficient exploration and analysis of large amounts of data on public procurement in Europe. The tool incorporates an innovative ingestion pipeline that unifies and enriches the information of more than a million public contracts extracted from various formats into a single common structure. This unification of information enables the efficient analysis of large amounts of public procurement data, especially related to healthcare and its impact during the COVID-19 period, within the framework of the European project 'Procure: Public procurement assessment in the healthcare sector'. EU Contract Hub can be accessed through the platform page at https://procure.linkeddata.es/",
+      "type": "Conferencia Publicada",
+      "year": 2024,
+      "source": "CEUR Workshop Proceedings. 3967",
+      "keywords": [
+        "contract management",
+        "contract",
+        "digital statistical tool",
+        "direct impact",
+        "european union",
+        "public acces",
+        "public contract management",
+        "public contract",
+        "public procurement",
+        "public procurement consultation",
+        "statistical tool"
+      ],
+      "coauthorship": [
+        "pdi_311414",
+        "pdi_336722",
+        "pdi_338090"
+      ]
+    },
+    {
+      "id": "pub_10255847",
+      "title": "I Jornadas de Innovación Educativa 24 de junio de 2024: Libro de resúmenes",
+      "abstract": "Las Jornadas de Innovación Educativa organizadas en la Escuela Técnica Superior de Ingeniería de Sistemas Informáticos (ETSISI) de la Universidad Politécnica de Madrid (UPM) han sido un espacio clave para la reflexión y el intercambio de experiencias entre los docentes de nuestra escuela. A través de estas jornadas, no solo compartimos iniciativas innovadoras que estamos implementando en nuestras clases, sino que también nos enriquecemos mutuamente al ser fuente de inspiración para los demás, identificando nuevas estrategias pedagógicas y oportunidades de colaboración. Todo ello con la meta común de proporcionar a nuestros estudiantes experiencias educativas más enriquecedoras y adaptadas a las demandas del contexto actual. Durante el evento, se han presentado un total de trece trabajos que han sido agrupados en tres categorías principales: “Ludificación y aprendizaje basado en juegos”, donde se exploraron metodologías que fomentan la motivación y el compromiso a través del juego, “Aprendizaje potenciado mediante Inteligencia Artificial”, centrado en el uso de nuevas tecnologías basadas en Inteligencia Artificial para mejorar los procesos de enseñanza y aprendizaje, y “Aprendizaje basado en proyectos/retos, aprendizaje servicio y otros métodos activos de aprendizaje”, que promueven el aprendizaje práctico y colaborativo, conectando a los estudiantes con problemas y desafíos reales, en muchos casos de carácter social. Estas categorías reflejan el amplio abanico de metodologías activas que buscan transformar el proceso educativo, haciéndolo más dinámico, interactivo y centrado en el estudiante. Estamos muy satisfechos con la excelente acogida que han tenido las Jornadas de Innovación Educativa por parte del profesorado. La alta participación y el interés mostrado por los docentes han superado nuestras expectativas, lo que demuestra el creciente compromiso de la comunidad académica de la ETSISI con la mejora continua de la enseñanza. La gran asistencia, sumada a las enriquecedoras discusiones que se generaron, refleja no solo el entusiasmo por implementar nuevas metodologías, sino también el deseo de compartir conocimientos y experiencias para seguir avanzando juntos en la mejora de la calidad educativa",
+      "type": "Libro",
+      "year": 2024,
+      "source": null,
+      "keywords": [
+        "informatica"
+      ],
+      "coauthorship": [
+        "pdi_278977",
+        "pdi_306231",
+        "pdi_306683",
+        "pdi_307657",
+        "pdi_309353",
+        "pdi_309796",
+        "pdi_310171",
+        "pdi_311389",
+        "pdi_311549",
+        "pdi_311653",
+        "pdi_313040",
+        "pdi_331775",
+        "pdi_332424",
+        "pdi_332463",
+        "pdi_332830",
+        "pdi_332853",
+        "pdi_332907",
+        "pdi_332960",
+        "pdi_332965",
+        "pdi_333052",
+        "pdi_336467"
+      ]
+    },
+    {
+      "id": "pub_10250258",
+      "title": "Integración de la Inteligencia Artificial en la Educación Superior: Potencial, Desafíos y Oportunidades",
+      "abstract": "Este informe, titulado “Integración de la Inteligencia Artificial en la Educación Superior: Potencial, Desafíos y Oportunidades”, ofrece una visión integral sobre cómo la Inteligencia Artificial (IA) está impactando y puede impactar la educación superior. Este informe está situado en el contexto de julio de 2024, un momento de rápidos avances en IA. Está dirigido principalmente a educadores y busca ayudarles a adquirir las competencias básicas necesarias en el uso de la IA aplicado al proceso de enseñanza y aprendizaje. Esto les permitirá poder aprovechar al máximo las posibilidades que ofrecen estas herramientas y a su vez capacitar a los alumnos a usar la IA de un modo efectivo y responsable. Se destacan diversas áreas donde la IA puede transformar la educación, incluyendo la creación de contenido, la evaluación, la personalización del aprendizaje, los sistemas de tutoría inteligente, los asistentes y chatbots, y la intervención temprana mediante IA predictiva. En el apartado central del informe, se examina el uso actual de la IA en la Universidad Politécnica de Madrid (UPM) y otras instituciones educativas, presentando casos de estudio que ilustran aplicaciones prácticas que ya están sucediendo, de tal modo que sirvan de ejemplo o inspiración para educadores a la hora de integrar la IA en su práctica docente. Ejemplos de esto son el uso de ChatGPT en trabajos prácticos, asistentes virtuales en escape rooms educativas o generadores de cuestionarios adaptativos. Además, se describen diversas herramientas y tecnologías basadas en IA disponibles para educadores, tales como ChatGPT, Perplexity.ai, Gemini, Claude, DALL-E y Stable Diffusion, entre otras. El documento también aborda las oportunidades y desafíos que la IA presenta para los educadores. Las oportunidades incluyen la mejora en la personalización del aprendizaje, la evaluación, la creación de contenido y la provisión de retroalimentación inmediata. Sin embargo, asimismo se enfrentan desafíos importantes relacionados con aspectos éticos, sociales y medioambientales, los cuales deben ser considerados cuidadosamente para una implementación responsable. Finalmente, el informe sintetiza los hallazgos clave y reflexiona sobre el potencial y los retos de la IA en la educación superior, sugiriendo futuras líneas de investigación y acción para continuar explorando y aprovechando las capacidades de la IA en este ámbito. Durante todo el informe se ofrecen referencias y enlaces para quienes deseen profundizar más en el tema, así como videotutoriales sobre el uso de las principales herramientas de IA gratuitas",
+      "type": "Otro Material Docente",
+      "year": 2024,
+      "source": null,
+      "keywords": [
+        "educacion",
+        "informatica",
+        "telecomunicacione"
+      ],
+      "coauthorship": [
+        "pdi_302994",
+        "pdi_306683",
+        "pdi_309087",
+        "pdi_311549",
+        "pdi_332900"
+      ]
+    },
+    {
+      "id": "pub_10271879",
+      "title": "Integrating Artificial Intelligence in Higher Education: Potential, Challenges and Opportunities",
+      "abstract": "This report, titled \"Integrating Artificial Intelligence in Higher Education: Potential, Challenges, and Opportunities,\" provides a comprehensive view of how Artificial Intelligence (AI) is impacting and can impact higher education. This report is set in the context of June 2024, a time of rapid advances in AI. It is aimed primarily at educators and seeks to help them acquire the necessary core competencies in the use of AI applied to the teaching and learning process, to be able to take full advantage of the possibilities it offers and in turn empower students to use AI in a responsible way. It highlights several areas where AI can transform education, including content creation, assessment, personalization of learning, intelligent tutoring systems, assistants and chatbots, and early intervention through predictive AI. The central section of the report examines the current use of AI at the Universidad Politécnica de Madrid (UPM) and other educational institutions, presenting case studies that illustrate practical applications that are already happening, so as to serve as examples or inspiration for educators when integrating AI into their teaching practice. Examples are the use of ChatGPT in internships, virtual assistants in educational escape rooms, or adaptive quiz generators. In addition, it describes various AI-based tools and technologies available to educators, such as ChatGPT, Perplexity.ai, Gemini, Claude, DALL-E, and Stable Diffusion, among others. The report also addresses the opportunities and challenges that AI presents for educators. Opportunities include improved personalization of learning, assessment, content creation, and provision of immediate feedback. However, there are also significant challenges related to ethical, social, and environmental issues, which must be carefully considered for responsible implementation. Finally, the report synthesizes key findings and reflects on the potential and challenges of AI in higher education, suggesting future lines of research and action to further explore and leverage AI capabilities in this area. Throughout the report, many references and links are provided for those wishing to delve deeper into the topic, as well as video tutorials on the use of leading free AI tools",
+      "type": "Libro",
+      "year": 2024,
+      "source": null,
+      "keywords": [
+        "educacion",
+        "informatica"
+      ],
+      "coauthorship": [
+        "pdi_302994",
+        "pdi_306683",
+        "pdi_309087",
+        "pdi_311549",
+        "pdi_332900"
+      ]
+    },
+    {
+      "id": "pub_10317265",
+      "title": "Leveraging Large Language Models (LLMs) as Domain Experts in a Validation Process",
+      "abstract": "The explosion of information requires robust methods to validate knowledge claims. On the other hand, there is also an increase interest on understanding and creating methods that helps on the interpretation of machine learning models. Both approaches converge on the necessity of a validation step that clarifies or helps end-users to better understand if the decision or information provided by the model is what is needed or if there is some mismatch between what the artificial intelligent system is suggesting and reality. Large Language Models (LLMs), with their ability to process and synthesize vast amounts of text data, have emerged as potential tools for this purpose. This study explores the utility of LLMs in hypothesis validation in two different scenarios. The first relies on hypothesis generated from explanations obtained by XAI methods or by inherently explainable models. We propose a method to transform the inferences provided by a machine learning model into explanations in natural language, hence linking the symbolic and sub-symbolic areas. The second relies on hypothesis generated with techniques that automatically extract answers from text. The results show that LLMs can complement other XAI techniques and although all LLMs analyzed are able to provide truthfulness-related answers, not all are equally successful",
+      "type": "Conferencia Publicada",
+      "year": 2024,
+      "source": "CEUR Workshop Proceedings. 3846 142-153",
+      "keywords": [
+        "adversarial machine learning",
+        "artificial intelligent",
+        "contrastive learning",
+        "domain expert",
+        "end-user",
+        "explainable artificial intelligence",
+        "intelligent system",
+        "knowledge validation",
+        "language model",
+        "large language model",
+        "llms",
+        "machine learning model",
+        "robust method",
+        "validation proces"
+      ],
+      "coauthorship": [
+        "pdi_311414",
+        "pdi_333065"
+      ]
+    },
+    {
+      "id": "pub_10270972",
+      "title": "MuHeQA: Zero-shot question answering over multiple and heterogeneous knowledge bases",
+      "abstract": "There are two main limitations in most of the existing Knowledge Graph Question Answering (KGQA) algorithms. First, the approaches depend heavily on the structure and cannot be easily adapted to other KGs. Second, the availability and amount of additional domain-specific data in structured or unstructured formats has also proven to be critical in many of these systems. Such dependencies limit the applicability of KGQA systems and make their adoption difficult. A novel algorithm is proposed, MuHeQA, that alleviates both limitations by retrieving the answer from textual content automatically generated from KGs instead of queries over them. This new approach (1) works on one or several KGs simultaneously, (2) does not require training data what makes it is domain-independent, (3) enables the combination of knowledge graphs with unstructured information sources to build the answer, and (4) reduces the dependency on the underlying schema since it does not navigate through structured content but only reads property values. MuHeQA extracts answers from textual summaries created by combining information related to the question from multiple knowledge bases, be them structured or not. Experiments over Wikidata and DBpedia show that our approach achieves comparable performance to other approaches in single-fact questions while being domain and KG independent. Results raise important questions for future work about how the textual content that can be created from knowledge graphs enables answer extraction",
+      "type": "Artículo",
+      "year": 2024,
+      "source": "Semantic Web. 15 (5): 1547-1561",
+      "keywords": [
+        "knowledge graph",
+        "natural language processing",
+        "question answering"
+      ],
+      "coauthorship": [
+        "pdi_311414"
+      ]
+    },
+    {
+      "id": "pub_10259816",
+      "title": "Overview of FLARES at IberLEF 2024: Fine-grainedLanguage-based Reliability Detection in Spanish",
+      "abstract": ", This paper presents FLARES, a shared task organised in the frameworkof the evaluation campaign of Natural Language Processing systems in Spanish andother Iberian languages, IberLEF 2024. FLARES aims to detect patterns of re-liability in the language used in news that will allow the development of effectivetechniques for the future detection of misleading information. To this end, the 5W1Hjournalistic technique for detecting the relevant content of a news item is proposedas a basis, as well as an annotation guideline designed to detect linguistic reliability.Two subtasks are proposed: the first focusing on the identification of the 5W1Helements and the second focusing on the detection of reliability. A total of 7 par-ticipants registered in the shared task, of which 3 participated in the first subtaskand 4 in the second. The teams proposed various approaches, especially based onfine-tuning of encoding models and adjustment of instructions in decoding models",
+      "type": "Artículo",
+      "year": 2024,
+      "source": "Procesamiento de Lenguaje Natural. (73): 369-379",
+      "keywords": [
+        "language model",
+        "natural language processing",
+        "quality informa-tion",
+        "quality information",
+        "reliability detection"
+      ],
+      "coauthorship": [
+        "pdi_332882",
+        "pdi_336150"
+      ]
+    },
+    {
+      "id": "pub_10372787",
+      "title": "PODIO: A Political Discourse Ontology",
+      "abstract": "In this study, we present the POlitical DIscourse Ontology (PODIO) and the accompanying Knowledge Graph, both designed to enhance the formalization and accessibility of political discourse in digital media. The core contribution of this work is the development of a comprehensive ontological framework and its instantiation in a Knowledge Graph that systematically organizes and represents political discourse. This framework provides structured insights to better understand and analyze political debates on various digital platforms. PODIO is specifically engineered to address the complexities of political communication, enabling detailed analysis of political proposals, ideological foundations, target audiences, and the temporal context of discourse. Through the integration of diverse existing datasets into the Knowledge Graph, we demonstrate PODIO's effectiveness in encapsulating a broad spectrum of semantically annotated political discourses. © 2024 for this paper by its authors",
+      "type": "Conferencia Publicada",
+      "year": 2024,
+      "source": "CEUR Workshop Proceedings. 3967",
+      "keywords": [
+        "broad spectrum",
+        "digital platform",
+        "formalisation",
+        "graphic method",
+        "knowledge graph",
+        "ontological framework",
+        "ontology",
+        "ontology's",
+        "political communication",
+        "political debate",
+        "political discourse",
+        "target audience"
+      ],
+      "coauthorship": [
+        "pdi_311414",
+        "pdi_336150"
+      ]
+    },
+    {
+      "id": "pub_10372823",
+      "title": "Preface for Joint Proceedings of Posters, Demos, Workshops, and Tutorials of EKAW 2024",
+      "abstract": "The 24th International Conference on Knowledge Engineering and Knowledge Management (EKAW-24) took place in Amsterdam, the Netherlands. Topics of EKAW24 included semantic web, knowledge management, knowledge discovery, information integration, natural language processing, intelligent systems, e-business, ehealth, humanities, and cultural heritage. In addition, this year's conference invited research articles focusing on algorithms, tools, methodologies, and applications that leverage the interplay between knowledge and Language Models. The Joint Proceedings of Posters, Demos, Workshops, and Tutorials of EKAW 2024 group together contributions to the Posters and Demos and Workshops and Tutorials tracks of the conference",
+      "type": "Conferencia Publicada",
+      "year": 2024,
+      "source": "CEUR Workshop Proceedings. 3967",
+      "keywords": [
+        "amsterdam",
+        "cognitive aspect",
+        "domain-specific application",
+        "enterprise resource management",
+        "ethical and trustworthy knowledge engineering",
+        "knowledge acquisition",
+        "knowledge discovery",
+        "knowledge engineering and acquisition",
+        "knowledge management and governance",
+        "knowledge organization",
+        "knowledge transfer",
+        "language model",
+        "large language model",
+        "modeling language",
+        "natural language processing system",
+        "netherland",
+        "semantic-web",
+        "social and cognitive aspect of knowledge engineering"
+      ],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_10372786",
+      "title": "QuerIA: Contextual Learning-Driven Questionnaire Generation and Assessment based on Large Language Models",
+      "abstract": "This paper presents QuerIA, a system based on large language models (LLMs) and contextual learning, to automate the generation and evaluation of educational questionnaires. Central to QuerIA is its integration of Bloom's Taxonomy into the knowledge base of LLMs, enabling the transfer of structured educational objectives to dynamically generate questions that vary in cognitive difficulty. This approach facilitates nuanced customization of assessments that align with individual learning needs and cognitive levels. Using semantic segmentation and in-context learning techniques, QuerIA not only streamlines the creation of questionnaires, but also ensures the relevance and semantic integrity of the generated questions. Both the source code and the online service of QuerIA are publicly available. Our application of the Rasch model to evaluate the system confirms its capability to precisely adapt Bloom's hierarchical framework within the outputs of the LLM, thus achieving adequate control over the difficulty of questions",
+      "type": "Conferencia Publicada",
+      "year": 2024,
+      "source": "CEUR Workshop Proceedings. 3967",
+      "keywords": [
+        "adaptive learning",
+        "assessment system",
+        "bloom taxonomie",
+        "bloom's taxonomy",
+        "domain knowledge",
+        "knowledge acquisition",
+        "language model",
+        "multiple choice question",
+        "multiple choice question (mcq)",
+        "multiple-choice question",
+        "open ended question",
+        "open ended question (oeq)",
+        "open-ended question",
+        "questionnaire automation",
+        "semantic segmentation"
+      ],
+      "coauthorship": [
+        "pdi_338699"
+      ]
+    },
+    {
+      "id": "pub_10317259",
+      "title": "Spanish-language Platform for Drug-Disease Evidence Search based on Scientific Articles",
+      "abstract": "The COVID-19 pandemic propelled the development of several Natual Language Processing (NLP) resources. These resources, however, are mostly developed exclusively in English, and lack accessibility for non-expert users, such as practitioners. This paper presents a platform for the analysis of clinical documents in Spanish, especially those related to COVID-19. This platform takes text in Spanish as input and comprises three different NLP modules: a named entity recognition module capable of detecting diseases and chemicals, a term linking module that links the detected entities with existing medical terminologies, and an evidence search module that retrieves scientific articles evidencing the relationship between pairs of entities, both diseases and medications. A series of experiments using the SPACCC corpus were conducted to assess the efficiency of the platform and the quality of the results",
+      "type": "Conferencia Publicada",
+      "year": 2024,
+      "source": "CEUR Workshop Proceedings. 3846 91-98",
+      "keywords": [
+        "biomedical text",
+        "biomedical text processing",
+        "covid-19",
+        "language processing",
+        "named entity recognition",
+        "scientific article",
+        "search-based",
+        "spanish language",
+        "term extraction",
+        "term linking",
+        "text-processing"
+      ],
+      "coauthorship": [
+        "pdi_310361"
+      ]
+    },
+    {
+      "id": "pub_10317249",
+      "title": "The Vulnerable Identities Recognition Corpus (VIRC) for Hate Speech Analysis",
+      "abstract": "This paper presents the Vulnerable Identities Recognition Corpus (VIRC), a novel resource designed to enhance hate speech analysis in Italian and Spanish news headlines. VIRC comprises 880 headlines, manually annotated for vulnerable identities, dangerous discourse, derogatory expressions, and entities. Our experiments reveal that recent large language models (LLMs) struggle with the fine-grained identification of these elements, underscoring the complexity of detecting hate speech. VIRC stands out as the first resource of its kind in these languages, offering a richer annotation scheme compared to existing corpora. The insights derived from VIRC can inform the development of sophisticated detection tools and the creation of policies and regulations to combat hate speech on social media, promoting a safer online environment. Future work will focus on expanding the corpus and refining annotation guidelines to further enhance its comprehensiveness and reliability. © 2024 CEUR-WS. All rights reserved",
+      "type": "Conferencia Publicada",
+      "year": 2024,
+      "source": "CEUR Workshop Proceedings. 3878",
+      "keywords": [
+        "annotated corpora",
+        "annotated corpu",
+        "annotation scheme",
+        "detection tool",
+        "fine grained",
+        "hate speech",
+        "identity recognition",
+        "language model",
+        "policy and regulation",
+        "social media",
+        "speech analysi",
+        "speech enhancement",
+        "vulnerable identitie",
+        "vulnerable identity"
+      ],
+      "coauthorship": [
+        "pdi_336150"
+      ]
+    },
+    {
+      "id": "pub_10384457",
+      "title": "Automatic Topic Label Generation using Conversational Models",
+      "abstract": ", In probabilistic topic models, a topic is characterised by a set of words, with a probability associated to each of them. Even though it is not necessary to understand the meaning of topics to perform common downstream tasks where topic models are used, such as topic inference or document similarity, there have been attempts to uncover the semantics of topics by providing labels to them, consisting in a couple of concepts. In this paper we propose a methodology, Conversational Probabilistic Topic Labelling (CPTL), to study whether conversational models can be used to generate labels that describe probabilistic topics given their most representative keywords. We evaluate and compare the performance of a selection of conversational models for the topic label generation task with the performance of a task-specific language model trained to generate topic labels",
+      "type": "Conferencia Publicada",
+      "year": 2023,
+      "source": "K-CAP 2023 - Proceedings of the 12th Knowledge Capture Conference 2023. 17-24",
+      "keywords": [
+        "conversational mode",
+        "conversational model",
+        "probabilistic topic labelling",
+        "topic label",
+        "topic label generation"
+      ],
+      "coauthorship": [
+        "pdi_311414",
+        "pdi_336722"
+      ]
+    },
+    {
+      "id": "pub_10115097",
+      "title": "ELAINE: rELiAbility and evIdence-aware News vErifier",
+      "abstract": "Disinformation is one of the main problems of today’s society, and specifically the viralization of fake news. This research presents ELAINE, a hybrid proposal to detect the veracity of news items that combines content reliability information with external evidence. The external evidence is extracted from a scientific knowledge base that contains medical information associated with coronavirus, organized in a knowledge graph created from a CORD-19 corpus. The information is accessed using Natural Language Question Answering and a set of evidences are extracted and their relevance measured. By combining both reliability and evidence information, the veracity of the news items can be predicted, improving both accuracy and F1 compared with using only reliability information. These results prove that the approach presented is very promising for the veracity detection task. (Summary), Badenes-Olmedo C., Universidad Politécnica de Madrid, Saquete E., Universitat d'Alacant, Sepúlveda-Torres R., Universitat d'Alacant, Bonet-Jover A., Universitat d'Alacant (Authors with Filk)",
+      "type": "Conferencia Publicada",
+      "year": 2023,
+      "source": "CEUR Workshop Proceedings. 3525 15-27",
+      "keywords": [
+        "disinformation",
+        "knowledge graph",
+        "question answering",
+        "reliability"
+      ],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_10384456",
+      "title": "Lessons learned to enable question answering on knowledge graphs extracted from scientific publications: A case study on the coronavirus literature",
+      "abstract": ", The article presents a workflow to create a question-answering system whose knowledge base combines knowledge graphs and scientific publications on coronaviruses. It is based on the experience gained in modeling evidence from research articles to provide answers to questions in natural language. The work contains best practices for acquiring scientific publications, tuning language models to identify and normalize relevant entities, creating representational models based on probabilistic topics, and formalizing an ontology that describes the associations between domain concepts supported by the scientific literature. All the resources generated in the domain of coronavirus are available openly as part of the Drugs4COVID initiative, and can be (re)-used independently or as a whole. They can be exploited by scientific communities conducting research related to SARS-CoV-2/COVID-19 and also by therapeutic communities, laboratories, etc., wishing to find and understand relationships between symptoms, drugs, active ingredients and their documentary evidence",
+      "type": "Artículo",
+      "year": 2023,
+      "source": "JOURNAL OF BIOMEDICAL INFORMATICS. 142 104382-",
+      "keywords": [
+        "algorithm",
+        "answering service",
+        "article",
+        "automated pattern recognition",
+        "case-studie",
+        "chloroquine",
+        "cigarette smoking",
+        "coronaviru",
+        "coronaviru disease 2019",
+        "coronaviruse",
+        "covid-19",
+        "data mining",
+        "disease",
+        "evidence",
+        "gene ontology",
+        "glycosylation",
+        "health care personnel",
+        "human",
+        "knowledge",
+        "knowledge base",
+        "knowledge graph",
+        "lamivudine",
+        "language",
+        "machine learning",
+        "middle east respiratory syndrome coronaviru",
+        "modeling language",
+        "named entity recognition",
+        "natural language processing",
+        "natural language processing system",
+        "natural language",
+        "neutralizing antibody",
+        "nicotine",
+        "ontology",
+        "ontology's",
+        "open acces publishing",
+        "pattern recognition, automated",
+        "pregnancy",
+        "publication",
+        "question",
+        "question answering",
+        "question answering system",
+        "question-answering",
+        "questionnaire",
+        "sars-cov-2",
+        "scientific literature",
+        "scientific publication",
+        "severe acute respiratory syndrome coronaviru 2",
+        "smoke",
+        "therapeutic community",
+        "tobacco consumption",
+        "too",
+        "traditional medicine",
+        "work-flow",
+        "workflow"
+      ],
+      "coauthorship": [
+        "pdi_311414"
+      ]
+    },
+    {
+      "id": "pub_10042419",
+      "title": "MuHeQA: Zero-shot Question Answering over Multiple and Heterogeneous Knowledge Bases",
+      "abstract": "Semantic Web",
+      "type": "Artículo",
+      "year": 2023,
+      "source": "Semantic Web.",
+      "keywords": [
+        "administracao publica e de empresa, ciencia contabei e turismo",
+        "ciencia da computacao",
+        "ciencia ambientai",
+        "computer network and communication",
+        "computer science application",
+        "computer science, artificial intelligence",
+        "computer science, information system",
+        "computer science, theory & method",
+        "information system"
+      ],
+      "coauthorship": [
+        "pdi_311414"
+      ]
+    },
+    {
+      "id": "pub_9994384",
+      "title": "An Overview of Drugs, Diseases, Genes and Proteins in the CORD-19 Corpus [Una visión general de los Fármacos, Enfermedades, Genes y Proteínas en el corpus CORD-19]",
+      "abstract": "Several initiatives have emerged during the COVID-19 pandemic to gather scientific publications related to coronaviruses. Among them, the COVID-19 Open Research Dataset (CORD-19) has proven to be a valuable resource that provides full-text articles from the PubMed Central, bioRxiv and medRxiv repositories. Such a large amount of biomedical literature needs to be properly managed to facilitate and promote its use by health professionals, for example by tagging documents with the biomedical entities that appear on them. We created a biomedical named entity recognizer (NER) that normalizes (NEN) the drugs, diseases, genes and proteins mentioned in texts with the codes of the main standardization systems such as MeSH, ICD-10, ATC, SNOMED, ChEBI, GARD and NCBI. It is based on fine-tuning the BioBERT language model independently for each entity type using domain-specific datasets and an inverse index search to normalize the references. We have used the resultant BioNER+BioNEN system to process the CORD-19 corpus and offer an overview of the drugs, diseases, genes and proteins related to coronaviruses in the last fifty years. © 2022 Sociedad Española para el Procesamiento del Lenguaje Natural. (Summary), Badenes-Olmedo, C., Ontology Engineering Group, Universidad Politécnica de Madrid, Spain, Alonso, Á., Ontology Engineering Group, Universidad Politécnica de Madrid, Spain, Corcho, O., Ontology Engineering Group, Universidad Politécnica de Madrid, Spain (Authors with Filk)",
+      "type": "Artículo",
+      "year": 2022,
+      "source": "Procesamiento de Lenguaje Natural. 69 (69): 165-176",
+      "keywords": [
+        "bioentitie",
+        "document retrieval",
+        "normalization",
+        "ontology",
+        "named entity recognition",
+        "ner"
+      ],
+      "coauthorship": [
+        "pdi_311414"
+      ]
+    },
+    {
+      "id": "pub_9844216",
+      "title": "Data Quality Barriers for Transparency in Public Procurement",
+      "abstract": "Governments need to be accountable and transparent for their public spending decisions in order to prevent losses through fraud and corruption as well as to build healthy and sustainable economies. Open data act as a major instrument in this respect by enabling public administrations, service providers, data journalists, transparency activists, and regular citizens to identify fraud or uncompetitive markets through connecting related, heterogeneous, and originally unconnected data sources. To this end, in this article, we present our experience in the case of Slovenia, where we successfully applied a number of anomaly detection techniques over a set of open disparate data sets integrated into a Knowledge Graph, including procurement, company, and spending data, through a linked data-based platform called TheyBuyForYou. We then report a set of guidelines for publishing high quality procurement data for better procurement analytics, since our experience has shown us that there are significant shortcomings in the quality of data being published. This article contributes to enhanced policy making by guiding public administrations at local, regional, and national levels on how to improve the way they publish and use procurement-related data, developing technologies and solutions that buyers in the public and private sectors can use and adapt to become more transparent, make markets more competitive, and reduce waste and fraud, and providing a Knowledge Graph, which is a data resource that is designed to facilitate integration across multiple data silos by showing how it adds context and domain knowledge to machine-learning-based procurement analytics",
+      "type": "Artículo",
+      "year": 2022,
+      "source": "Information (Switzerland). 13 (2): 99-",
+      "keywords": [
+        "anomaly detection",
+        "data integration",
+        "fraud and corruption",
+        "knowledge graph",
+        "linked open data",
+        "ontology",
+        "public procurement"
+      ],
+      "coauthorship": [
+        "pdi_311414"
+      ]
+    },
+    {
+      "id": "pub_9974109",
+      "title": "EBOCA: Evidences for BiOmedical Concepts Association Ontology",
+      "abstract": "There is a large number of online documents data sources available nowadays. The lack of structure and the differences between formats are the main difficulties to automatically extract information from them, which also has a negative impact on its use and reuse. In the biomedical domain, the DISNET platform emerged to provide researchers with a resource to obtain information in the scope of human disease networks by means of large-scale heterogeneous sources. Specifically in this domain, it is critical to offer not only the information extracted from different sources, but also the evidence that supports it. This paper proposes EBOCA, an ontology that describes (i) biomedical domain concepts and associations between them, and (ii) evidences supporting these associations, with the objective of providing an schema to improve the publication and description of evidences and biomedical associations in this domain. The ontology has been successfully evaluated to ensure there are no errors, modelling pitfalls and that it meets the previously defined functional requirements. Test data coming from a subset of DISNET and automatic association extractions from texts has been transformed according to the proposed ontology to create a Knowledge Graph that can be used in real scenarios, and which has also been used for the evaluation of the presented ontology",
+      "type": "Conferencia Publicada",
+      "year": 2022,
+      "source": "Syntactic ASP Forgetting with Forks. 13514 152-166",
+      "keywords": [
+        "biomedical domain",
+        "biomedicine",
+        "data-source",
+        "evidence",
+        "extract information",
+        "human disease",
+        "knowledge graph",
+        "on-line document",
+        "ontology",
+        "ontology's",
+        "provenance",
+        "reuse",
+        "semantic"
+      ],
+      "coauthorship": [
+        "pdi_303799",
+        "pdi_312024",
+        "pdi_332861",
+        "pdi_335958"
+      ]
+    },
+    {
+      "id": "pub_9979846",
+      "title": "Summaries of Knowledge Graph Entities: First Steps to Measure the Relevance of Symptoms to Infer Diseases",
+      "abstract": "Knowledge Graphs (KG) are concerned as one of the most efficient and effective knowledge integration approaches. In health domain, they have proven to be valuable resources that link clinical concepts by meaningful relations. This graph-structured information is usually extensive, and the data density it generates may make it difficult to perform tasks that involve human judgement, where the complexity and amount of information provided must be reduced. Consequently, it is required to develop techniques to reduce that large amount of data to more concise forms that facilitate their usage, visualization and analysis. In this paper, we propose a method for distilling the information available in a knowledge graph by creating entity summaries in the form of bags-of-words (BoW). Specifically, we create summaries of symptoms and diseases to measure their presence in medical records of patients. Our evaluation is focused on a vital healthcare worldwide problem, the early diagnosis of HIV in medical records. The proposed method summarizes the KG entities that represent each sign and symptom of acute HIV infection as a BoW and measures its relevance in a set of medical records. A labelled dataset with clinical notes has been compiled to evaluate the method and the results, with a precision and recall close to 0.6, make us optimistic about its performance as only syntactic matching of terms has been considered",
+      "type": "Conferencia Publicada",
+      "year": 2022,
+      "source": "CEUR Workshop Proceedings. 3257 125-135",
+      "keywords": [
+        "bag-of-word representation",
+        "knowledge graph summarie",
+        "medical record",
+        "vih diagnosi"
+      ],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_9786686",
+      "title": "TheyBuyForYou platform and knowledge graph: Expanding horizons in public procurement with open linked data",
+      "abstract": "Public procurement is a large market affecting almost every organisation and individual, therefore, governments need to ensure its efficiency, transparency, and accountability, while creating healthy, competitive, and vibrant economies. In this context, open data initiatives and integration of data from multiple sources across national borders could transform the procurement market by such as lowering the barriers of entry for smaller suppliers and encouraging healthier competition, in particular by enabling cross-border bids. Increasingly more open data is published in the public sector, however, these are created and maintained in siloes and are not straightforward to reuse or maintain because of technical heterogeneity, lack of quality, insufficient metadata, or missing links to related domains. To this end, we developed an open linked data platform, called TheyBuyForYou, consisting of a set of modular APIs and ontologies to publish, curate, integrate, analyse, and visualise an EU-wide, cross-border, and cross-lingual procurement knowledge graph. We developed advanced tools and services on top of the knowledge graph for anomaly detection, cross-lingual document search, and data storytelling. This article describes the TheyBuyForYou platform and knowledge graph, reports their adoption by different stakeholders and challenges and experiences we went through while creating them, and demonstrates the usefulness of Semantic Web and Linked Data technologies for enhancing public procurement",
+      "type": "Artículo",
+      "year": 2022,
+      "source": "Semantic Web. 13 (2): 265-291",
+      "keywords": [
+        "big",
+        "knowledge graph",
+        "linked data",
+        "ontology",
+        "open data",
+        "public procurement"
+      ],
+      "coauthorship": [
+        "pdi_311414"
+      ]
+    },
+    {
+      "id": "pub_9350410",
+      "title": "A High-Level Ontology Network for ICT Infrastructures",
+      "abstract": "The ICT infrastructures of medium and large organisations that offer ICT services (infrastructure, platforms, software, applications, etc.) are becoming increasingly complex. Nowadays, these environments combine all sorts of hardware (e.g., CPUs, GPUs, storage elements, network equipment) and software (e.g., virtual machines, servers, microservices, services, products, AI models). Tracking, understanding and acting upon all the data produced in the context of such environments is hence challenging. Configuration management databases have been so far widely used to store and provide access to relevant information and views on these components and on their relationships. However, different databases are organised according to different schemas. Despite existing efforts in standardising the main entities relevant for configuration management, there is not yet a core set of ontologies that describes these environments homogeneously, and which can be easily extended when new types of items appear. This paper presents an ontology network created with the purpose of serving as an initial step towards an homogeneous representation of this domain, and which has been already used to produce a knowledge graph for a large ICT company",
+      "type": "Conferencia Publicada",
+      "year": 2021,
+      "source": "Syntactic ASP Forgetting with Forks. 12922 446-462",
+      "keywords": [
+        "knowledge graph",
+        "ontology network",
+        "configuration management database"
+      ],
+      "coauthorship": [
+        "pdi_311414",
+        "pdi_332918",
+        "pdi_333176"
+      ]
+    },
+    {
+      "id": "pub_9741685",
+      "title": "Impact of Text Length for Information Retrieval Tasks based on Probabilistic Topics",
+      "abstract": "Information retrieval has traditionally been approached using vector models to describe texts. In large document collections, these models need to reduce the dimensions of the vectors to make the operations manageable without compromising their performance. Probabilistic topic models (PTM) propose smaller vector spaces. Words are organized into topics and documents are related to each other from their topic distributions. As in many other AI techniques, the texts used to train the models have an impact on their performance. Particularly, we are interested on the impact that length of texts may have to create PTM. We have studied how it influences to semantically relate multilingual documents and to capture the knowledge derived from their relationships. The results suggest that the most adequate texts to train PTM should be of equal or greater length than those used to make inferences later and documents should be related by hierarchy-based similarity metrics at large-scale",
+      "type": "Artículo",
+      "year": 2021,
+      "source": "Procesamiento de Lenguaje Natural. 67 (67): 1-10",
+      "keywords": [
+        "document retrieval",
+        "hierarchical topic",
+        "probabilistic topic",
+        "text similarity"
+      ],
+      "coauthorship": [
+        "pdi_304741",
+        "pdi_311414"
+      ]
+    },
+    {
+      "id": "pub_9419354",
+      "title": "R4R: Template-based REST API Framework for RDF Knowledge Graphs",
+      "abstract": "Knowledge graphs (KGs) are increasingly being used to make structured information available on the Web, by means of REST APIs and/or SPARQL endpoints. In many cases, these REST APIs are generated on top of the SPARQL endpoints, using existing technology approaches that are based on proprietary configuration files or ontologies to create the APIs. These approaches may impose content-based or structural constraints when composing Web resources. To relax these constraints we propose R4R, a more exible solution based on Web standards and REST principles that creates and publishes customizable APIs exposing Web resources from SPARQL queries organized in file system directories. R4R features include individual and nested resources, paginated queries, optional fields, web authentication, query parameters and sorting lists",
+      "type": "Conferencia Publicada",
+      "year": 2021,
+      "source": "CEUR Workshop Proceedings. 2980",
+      "keywords": [
+        "api",
+        "knowledge graph",
+        "rest",
+        "sparql"
+      ],
+      "coauthorship": [
+        "pdi_311414"
+      ]
+    },
+    {
+      "id": "pub_9822300",
+      "title": "Drugs4Covid: Drug-driven Knowledge Exploitation based on Scientific Publications",
+      "abstract": "arXiv preprint arXiv",
+      "type": "Artículo",
+      "year": 2020,
+      "source": "COMMUNICATIONS OF THE ACM. :2012.01953",
+      "keywords": [
+        "administracao publica e de empresa, ciencia contabei e turismo",
+        "ciencia da computacao",
+        "computer science (all)",
+        "computer science (miscellaneou)",
+        "computer science, hardware & architecture",
+        "computer science, software engineering",
+        "computer science, software, graphic, programming",
+        "computer science, theory & method",
+        "general computer science"
+      ],
+      "coauthorship": [
+        "pdi_303799",
+        "pdi_310361"
+      ]
+    },
+    {
+      "id": "pub_10429991",
+      "title": "Enhancing Public Procurement in the European Union Through Constructing and Exploiting an Integrated Knowledge Graph",
+      "abstract": ", Public procurement is a large market affecting almost every organisation and individual. Governments need to ensure efficiency, transparency, and accountability, while creating healthy, competitive, and vibrant economies. In this context, we built a platform, consisting of a set of modular APIs and ontologies to publish, curate, integrate, analyse, and visualise an EU-wide, cross-border, and cross-lingual procurement knowledge graph. We developed end-user tools on top of the knowledge graph for anomaly detection and cross-lingual document search. This paper describes our experiences and challenges faced in creating such a platform and knowledge graph and demonstrates the usefulness of Semantic Web technologies for enhancing public procurement",
+      "type": "Conferencia Publicada",
+      "year": 2020,
+      "source": "Syntactic ASP Forgetting with Forks. 12507 430-446",
+      "keywords": [
+        "big",
+        "knowledge graph",
+        "linked data",
+        "ontology",
+        "public procurement"
+      ],
+      "coauthorship": [
+        "pdi_311414"
+      ]
+    },
+    {
+      "id": "pub_9810493",
+      "title": "Enhancing Public Procurement in the European Union Through Constructing and Exploiting an Integrated Knowledge Graph",
+      "abstract": "Enhancing Public Procurement in the European Union Through Constructing and Exploiting an Integrated Knowledge Graph",
+      "type": "Artículo",
+      "year": 2020,
+      "source": "Lecture Notes In Computer Science Book Series. 12507 430-446",
+      "keywords": [],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_10179687",
+      "title": "Integrating and analysing public procurement data through a knowledge graph: A demonstration in a nutshell",
+      "abstract": "This paper presents a demonstrator of a knowledge graph based approach for integrating and reconciling cross-border and cross- language procurement and company data from distributed data sources. The demonstrator also includes analysis of the resulting knowledge graph, exemplified in anomaly detection and cross-lingual search. © 2020 CEUR-WS. All rights reserved",
+      "type": "Conferencia Publicada",
+      "year": 2020,
+      "source": "CEUR Workshop Proceedings. 2721 34-38",
+      "keywords": [
+        "anomaly detection",
+        "cros language",
+        "cros-border",
+        "cros-lingual",
+        "data integration",
+        "distributed data source",
+        "graphic method",
+        "industrial management",
+        "knowledge graph",
+        "knowledge representation",
+        "linked data",
+        "public procurement",
+        "semantic web"
+      ],
+      "coauthorship": [
+        "pdi_311414"
+      ]
+    },
+    {
+      "id": "pub_8262889",
+      "title": "Large-scale semantic exploration of scientific literature using topic-based hashing algorithms",
+      "abstract": "Searching for similar documents and exploring major themes covered across groups of documents are common activities when browsing collections of scientific papers. This manual knowledge-intensive task can become less tedious and even lead to unexpected relevant findings if unsupervised algorithms are applied to help researchers. Most text mining algorithms represent documents in a common feature space that abstract them away from the specific sequence of words used in them. Probabilistic Topic Models reduce that feature space by annotating documents with thematic information. Over this low-dimensional latent space some locality-sensitive hashing algorithms have been proposed to perform document similarity search. However, thematic information gets hidden behind hash codes, preventing thematic exploration and limiting the explanatory capability of topics to justify content-based similarities. This paper presents a novel hashing algorithm based on approximate nearest-neighbor techniques that uses hierarchical sets of topics as hash codes. It not only performs efficient similarity searches, but also allows extending those queries with thematic restrictions explaining the similarity score from the most relevant topics. Extensive evaluations on both scientific and industrial text datasets validate the proposed algorithm in terms of accuracy and efficiency",
+      "type": "Artículo",
+      "year": 2020,
+      "source": "Semantic Web. 11 (5): 735-750",
+      "keywords": [
+        "clustering",
+        "document similarity",
+        "hashing",
+        "information search and retrieval",
+        "topic model"
+      ],
+      "coauthorship": [
+        "pdi_311414"
+      ]
+    },
+    {
+      "id": "pub_9810494",
+      "title": "Order matters: terminological saturation is best achievable using descending citation frequency datasets",
+      "abstract": "Order matters: terminological saturation is best achievable using descending citation frequency datasets",
+      "type": "Artículo",
+      "year": 2020,
+      "source": "Information Retrieval Journal.",
+      "keywords": [
+        "ciencia da computacao",
+        "ciencia sociale",
+        "computer science, information system",
+        "information system",
+        "library and information science"
+      ],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_6961749",
+      "title": "Polypharmacy and Drug-Drug Interactions in People Living With Human Immunodeficiency Virus in the Region of Madrid, Spain: A Population-Based Study",
+      "abstract": "BACKGROUND: Drug-drug interactions (DDIs) that involve antiretrovirals (ARVs) tend to cause harm if unrecognized, especially in the context of comorbidity and polypharmacy. METHODS: A linkage was established between the drug dispensing registry of Madrid and the Liverpool human immunodeficiency virus (HIV) DDI database (January 2017-June 2017). Polypharmacy was defined as the use of ≥5 non-HIV medications, and DDIs were classified by a traffic-light ranking for severity. RESULTS: A total of 22 945 people living with HIV (PLWH) and 6 613 506 individuals without HIV had received medications. ARV regimens were predominantly based on integrase inhibitors (51.96%). Polypharmacy was higher in PLWH (32.94%) than individuals without HIV (22.16%, P < .001), this difference was consistently observed across all age strata except for individuals ≥75 years. Polypharmacy was more common in women than men in both PLWH and individuals without HIV. The prevalence of contraindicated combinations involving ARVs was 3.18%. Comedications containing corticosteroids, quetiapine, or antithrombotic agents were associated with the highest risk for red-flag DDI, and the use of raltegravir- or dolutegravir-based antiretroviral therapy was associated with an adjusted odds ratio of 0.72 (95% confidence interval, .60-.88, P = .001) for red-flag DDI. CONCLUSIONS: Polypharmacy was more frequent among PLWH across all age groups except those aged ≥75 years and was more common in women. The detection of contraindicated medications in PLWH suggests a likely disconnect between hospital and community prescriptions. Switching to alternative unboosted integrase regimens should be considered for patients with risk of harm from DDIs",
+      "type": "Artículo",
+      "year": 2020,
+      "source": "CLINICAL INFECTIOUS DISEASES. 71 (2): 353-362",
+      "keywords": [
+        "antiretroviral drug",
+        "drugdrug interaction",
+        "hiv",
+        "polypharmacy",
+        "aged",
+        "drug interaction",
+        "female",
+        "hiv infection",
+        "human",
+        "male",
+        "pharmaceutical preparation",
+        "population study",
+        "spain"
+      ],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_9822305",
+      "title": "Polypharmacy and Drug–Drug Interactions in People Living With Human Immunodeficiency Virus in the Region of Madrid, Spain: A Population-Based Study",
+      "abstract": "Clinical Infectious Diseases",
+      "type": "Artículo",
+      "year": 2020,
+      "source": "Clinical Infectious Diseases. 71 (2), 353-362",
+      "keywords": [
+        "biodiversidade",
+        "biotecnologia",
+        "general medicine",
+        "immunology",
+        "infectiou disease",
+        "microbiology",
+        "microbiology (medical)"
+      ],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_6406178",
+      "title": "Potentially inappropriate medications in older adults living with HIV",
+      "abstract": "© 2020 British HIV Association Objectives: We assessed the prevalence of potentially inappropriate medication (PIM) among older (≥ 65 years) people living with HIV (O-PLWH) in the region of Madrid. Methods: We analysed the dispensation registry of community and hospital pharmacies from the Madrid Regional Health Service (SERMAS) for the period between 1 January and 30 June 2017, looking specifically at PIMs according to the 2019 Beers criteria. Co-medications were classified according to the Anatomical Therapeutic Chemical (ATC) classification system. Results: A total of 6 636 451 individuals received medications. Of these individuals, 22 945 received antiretrovirals (ARVs), and of these 1292 were O-PLWH. Overall, 1135 (87.8%) O-PLWH were taking at least one co-medication, and polypharmacy (at least five co-medications) was observed in 852 individuals (65.9%). A PIM was identified in 482 (37.3%) O-PLWH. Factors independently associated with PIM were polypharmacy [adjusted odds ratio (aOR) 7.08, 95% confidence interval (CI) 5.16–9.72] and female sex (aOR 1.75, 95% CI 1.30–2.35). The distribution of PIMs according to ATC drug class were nervous system drugs (n = 369, 28.6%), musculoskeletal system drugs (n = 140, 10.8%), gastrointestinal and metabolism drugs (n = 72, 5.6%), cardiovascular drugs (n = 61, 4.7%), respiratory system drugs (n = 13, 1.0%), antineoplastic and immunomodulating drugs (n = 10, 0.8%), and systemic anti-infectives (n = 2, 0.2%). Five drugs accounted for 84.8% of the 482O PLWH with PIMs: lorazepam (38.2%), ibuprofen (18.0%), diazepam (10.2%), metoclopramide (9.9%), and zolpidem (8.5%). Conclusions: Prescription of PIMs is highly prevalent in O-PLWH. Consistent with data in uninfected elderly people, the most frequently observed PIMs were benzodiazepines and nonsteroidal anti-inflammatory drugs. Targeted interventions are warranted to reduce inappropriate prescribing and polypharmacy in this vulnerable population. (Summary), López-Centeno B., Hospital General Universitario Gregorio Marañon, Badenes-Olmedo C., Universidad Politécnica de Madrid, Mataix-Sanjuan A., Hospital General Universitario Gregorio Marañon, Bellón J.M., Hospital General Universitario Gregorio Marañon, Pérez-Latorre L., Hospital General Universitario Gregorio Marañon, López J.C., Hospital General Universitario Gregorio Marañon, Benedí J., Universidad Complutense de Madrid, Khoo S., University of Liverpool, Marzolini C., Universitätsspital Basel, Calvo-Alcántara M.J., Hospital General Universitario Gregorio Marañon, Berenguer J., Hospital General Universitario Gregorio Marañon (Authors with Filk)",
+      "type": "Artículo",
+      "year": 2020,
+      "source": "HIV MEDICINE. 21 (8): 541-546",
+      "keywords": [
+        "aging",
+        "antiretroviral drug",
+        "hiv",
+        "polypharmacy",
+        "age",
+        "event",
+        "potentially inappropriate medication",
+        "stopp"
+      ],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_9822311",
+      "title": "Large-Scale Semantic Exploration of Scientific Literature using Topic-based Hashing Algorithms",
+      "abstract": "Semantic Web Journal",
+      "type": "Artículo",
+      "year": 2019,
+      "source": "Semantic Web Journal.",
+      "keywords": [],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_9822317",
+      "title": "Legal document retrieval across languages: topic hierarchies based on synsets",
+      "abstract": "arXiv preprint arXiv",
+      "type": "Artículo",
+      "year": 2019,
+      "source": "Communications Of The Acm. :1911.12637",
+      "keywords": [
+        "administracao publica e de empresa, ciencia contabei e turismo",
+        "ciencia da computacao",
+        "computer science (all)",
+        "computer science (miscellaneou)",
+        "computer science, hardware & architecture",
+        "computer science, software engineering",
+        "computer science, software, graphic, programming",
+        "computer science, theory & method",
+        "general computer science"
+      ],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_9810495",
+      "title": "Polypharmacy and Drug–Drug Interactions in People Living With Human Immunodeficiency Virus in the Region of Madrid, Spain: A Population-Based Study",
+      "abstract": "Polypharmacy and Drug–Drug Interactions in People Living With Human Immunodeficiency Virus in the Region of Madrid, Spain: A Population-Based Study",
+      "type": "Artículo",
+      "year": 2019,
+      "source": "Clinical Infectious Diseases.",
+      "keywords": [
+        "biodiversidade",
+        "biotecnologia",
+        "general medicine",
+        "immunology",
+        "infectiou disease",
+        "microbiology",
+        "microbiology (medical)"
+      ],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_5987725",
+      "title": "Potentially inappropriate medications in older adults with HIV in the region of Madrid, Spain",
+      "abstract": "Potentially inappropriate medications in older adults with HIV in the region of Madrid, Spain",
+      "type": "Meeting-Abstract",
+      "year": 2019,
+      "source": "HIV MEDICINE. 20 132-132",
+      "keywords": [
+        "biotecnologia",
+        "ciencia biologica ii",
+        "health policy",
+        "infectiou disease",
+        "medicina i",
+        "pharmacology (medical)"
+      ],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_9822312",
+      "title": "Potentially inappropriate medications in older adults with HIV in the region of Madrid, Spain",
+      "abstract": "HIV MEDICINE",
+      "type": "Artículo",
+      "year": 2019,
+      "source": "Hiv Medicine. 20, 132-132",
+      "keywords": [
+        "biotecnologia",
+        "ciencia biologica ii",
+        "health policy",
+        "infectiou disease",
+        "medicina i",
+        "pharmacology (medical)"
+      ],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_9810498",
+      "title": "Scalable Cross-lingual Document Similarity through Language-specific Concept Hierarchies",
+      "abstract": "Scalable Cross-lingual Document Similarity through Language-specific Concept Hierarchies",
+      "type": "Artículo",
+      "year": 2019,
+      "source": "Proceedings Of The 10th International Conference On Knowledge Capture (K-Cap). 147-153",
+      "keywords": [],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_6300820",
+      "title": "Scalable Cross-lingual Document Similarity through Language-specific Concept Hierarchies",
+      "abstract": "With the ongoing growth in number of digital articles in a wider set of languages and the expanding use of different languages, we need annotation methods that enable browsing multi-lingual corpora. Multilingual probabilistic topic models have recently emerged as a group of semi-supervised machine learning models that can be used to perform thematic explorations on collections of texts in multiple languages. However, these approaches require theme-aligned training data to create a language-independent space. This constraint limits the amount of scenarios that this technique can offer solutions to train and makes it difficult to scale up to situations where a huge collection of multi-lingual documents are required during the training phase. This paper presents an unsupervised document similarity algorithm that does not require parallel or comparable corpora, or any other type of translation resource. The algorithm annotates topics automatically created from documents in a single language with cross-lingual labels and describes documents by hierarchies of multi-lingual concepts from independently-trained models. Experiments performed on the English, Spanish and French editions of JCR-Acquis corpora reveal promising results on classifying and sorting documents by similar content",
+      "type": "Conferencia Publicada",
+      "year": 2019,
+      "source": "PROCEEDINGS OF THE 10TH INTERNATIONAL CONFERENCE ON KNOWLEDGE CAPTURE (K-CAP '19). 147-153",
+      "keywords": [
+        "cros-lingual semantic similarity",
+        "large-scale text analysi",
+        "topic model"
+      ],
+      "coauthorship": [
+        "pdi_311414"
+      ]
+    },
+    {
+      "id": "pub_5498478",
+      "title": "Split green fluorescent protein as a tool to study infection with a plant pathogen, Cauliflower mosaic virus",
+      "abstract": "The split GFP technique is based on the auto-assembly of GFP when two polypeptides-GFP1-10 (residues 1-214, the detector) and GFP11 (residues 215-230, the tag)-both non-fluorescing on their own, associate spontaneously to form a fluorescent molecule. We evaluated this technique for its efficacy in contributing to the characterization of Cauliflower mosaic virus (CaMV) infection. A recombinant CaMV with GFP11 fused to the viral protein P6 (a key player in CaMV infection and major constituent of viral factory inclusions that arise during infection) was constructed and used to inoculate transgenic Arabidopsis thaliana expressing GFP1-10. The mutant virus (CaMV11P6) was infectious, aphid-transmissible and the insertion was stable over many passages. Symptoms on infected plants were delayed and milder. Viral protein accumulation, especially of recombinant 11P6, was greatly decreased, impeding its detection early in infection. Nonetheless, spread of infection from the inoculated leaf to other leaves was followed by whole plant imaging. Infected cells displayed in real time confocal laser scanning microscopy fluorescence in wild type-looking virus factories. Thus, it allowed for the first time to track a CaMV protein in vivo in the context of an authentic infection. 11P6 was immunoprecipitated with anti-GFP nanobodies, presenting a new application for the split GFP system in protein-protein interaction assays and proteomics. Taken together, split GFP can be an attractive alternative to using the entire GFP for protein tagging",
+      "type": "Artículo",
+      "year": 2019,
+      "source": "PLoS One. 14 (3): e0213087-",
+      "keywords": [
+        "aphid transmission",
+        "expression",
+        "localization",
+        "movement",
+        "p6 protein",
+        "system",
+        "viral gene-product"
+      ],
+      "coauthorship": [
+        "pdi_308399"
+      ]
+    },
+    {
+      "id": "pub_5515033",
+      "title": "Cross-Evaluation of Automated Term Extraction Tools by Measuring Terminological Saturation",
+      "abstract": "This paper reports on cross-evaluating the two software tools for automated term extraction (ATE) from English texts: NaCTeM TerMine and UPM Term Extractor. The objective was to find the most fitting software for extracting the bags of terms to be the part of our instrumental pipeline for exploring terminological saturation in text document collections in a domain of interest. The choice of these particular tools from the bunch of the other available is explained in our review of the related work in ATE. The approach to measure terminological saturation is based on the use of the THD algorithm developed in frame of our OntoElect methodology for ontology refinement. The paper presents the suite of instrumental software modules, experimental workflow, 2 synthetic and 3 real document collections, generated datasets, and set-up of our experiments. Next, the results of the cross-evaluation experiments are presented, analyzed, and discussed. Finally the paper offers some conclusions and recommendations on the use of ATE software for measuring terminological saturation in retrospective text document collections",
+      "type": "Conferencia Publicada",
+      "year": 2018,
+      "source": "Communications In Computer And Information Science. 826 135-163",
+      "keywords": [
+        "automated term extraction",
+        "experimental cros-evaluation",
+        "ontoelect",
+        "retrospective document collection",
+        "software tool",
+        "software tool experimental cros-evaluation",
+        "terminological saturation",
+        "terminological saturation retrospective document collection"
+      ],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_10009562",
+      "title": "Cross-evaluation of automated term extraction tools by measuring terminological saturation",
+      "abstract": "Information and Communication Technologies in Education, Research, and …",
+      "type": "Artículo",
+      "year": 2018,
+      "source": "Information and Communication Technologies in Education, Research, and ….",
+      "keywords": [],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_4102542",
+      "title": "Polypharmacy and drug-drug interactions in HIV-infected subjects in the region of Madrid (Spain): a population-based study",
+      "abstract": "Polypharmacy and drug-drug interactions in HIV-infected subjects in the region of Madrid (Spain): a population-based study",
+      "type": "Meeting-Abstract",
+      "year": 2018,
+      "source": "Journal of the International AIDS Society. 21",
+      "keywords": [
+        "administracao publica e de empresa, ciencia contabei e turismo",
+        "biotecnologia",
+        "general medicine",
+        "immunology",
+        "infectiou disease",
+        "planejamento urbano e regional",
+        "demografia",
+        "public health, environmental and occupational health"
+      ],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_9810496",
+      "title": "Polypharmacy and drug-drug interactions in HIV-infected subjects in the region of Madrid (Spain): a population-based study",
+      "abstract": "Polypharmacy and drug-drug interactions in HIV-infected subjects in the region of Madrid (Spain): a population-based study",
+      "type": "Artículo",
+      "year": 2018,
+      "source": "Journal Of The International Aids Society. 21 (8): 140-141",
+      "keywords": [
+        "administracao publica e de empresa, ciencia contabei e turismo",
+        "biotecnologia",
+        "general medicine",
+        "immunology",
+        "infectiou disease",
+        "planejamento urbano e regional",
+        "demografia",
+        "public health, environmental and occupational health"
+      ],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_9822303",
+      "title": "Polypharmacy in HIV-infected and non-HIV-infected individuals in the region of Madrid (Spain): A population-based study",
+      "abstract": "X Congreso Nacional GeSIDA",
+      "type": "Artículo",
+      "year": 2018,
+      "source": "Communications Of The Acm.",
+      "keywords": [
+        "administracao publica e de empresa, ciencia contabei e turismo",
+        "ciencia da computacao",
+        "computer science (all)",
+        "computer science (miscellaneou)",
+        "computer science, hardware & architecture",
+        "computer science, software engineering",
+        "computer science, software, graphic, programming",
+        "computer science, theory & method",
+        "general computer science"
+      ],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_9810500",
+      "title": "The Influence of the Order of Adding Documents to Datasets on Terminological Saturation",
+      "abstract": "The Influence of the Order of Adding Documents to Datasets on Terminological Saturation",
+      "type": "Artículo",
+      "year": 2018,
+      "source": "Technical Report Ts-Rtdc-Tr-2018-1.",
+      "keywords": [],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_4013529",
+      "title": "An initial Analysis of Topic-based Similarity among Scientific Documents based on their Rhetorical Discourse Parts",
+      "abstract": "Summaries and abstracts of research papers have been traditionally used for many purposes by scientists, research practitioners, editors, programme committee members or reviewers (e.g. to identify relevant papers to read or publish, cite them, explore new fields and disciplines). As a result, many paper repositories only store or expose abstracts, what may limit the capacity of finding the right paper for a specific research purpose. Given the size limitations and the concise nature of abstracts, they usually omit explicit references to some contributions and impacts of the paper. Therefore for certain information retrieval tasks they cannot be considered as the most appropriate excerpt of the paper to base these operations on. In this paper we have studied other kinds of summaries, built upon textual fragments falling under certain categories of the scientific discourse, such as outcome, background, approach, etc, in order to decide which one is more appropriate in order to substitute the original text. In particular, two novel measures are proposed: (1) internal-representativeness, which evaluates how well a summary describes what the full-text is about and (2) external-representativeness, which evaluates the potential of a summary to discover related texts. Results suggest that summaries explaining the method of a scientific article express a more accurate description of the full-content than others. In addition, more relevant related articles are also discovered from summaries describing the method, together with those containing the background knowledge or the outcomes of the research paper. (Summary), Badenes-Olmedo C., Universidad Politecnica de Madrid, Redondo-García J., Amazon Research, Corcho O., Universidad Politecnica de Madrid (Authors with Filk)",
+      "type": "Conferencia Publicada",
+      "year": 2017,
+      "source": "CEUR Workshop Proceedings. 1931 15-22",
+      "keywords": [
+        "ciencia da computacao",
+        "computer science (all)",
+        "computer science (miscellaneou)",
+        "engenharia iii",
+        "general computer science"
+      ],
+      "coauthorship": [
+        "pdi_311414"
+      ]
+    },
+    {
+      "id": "pub_9810489",
+      "title": "An initial Analysis of Topic-based Similarity among Scientific Documents based on their Rhetorical Discourse Parts",
+      "abstract": "An initial Analysis of Topic-based Similarity among Scientific Documents based on their Rhetorical Discourse Parts",
+      "type": "Artículo",
+      "year": 2017,
+      "source": "Proceedings Of The 1st Workshop On Enabling Open Semantic Science(Semsci 2017), Co-Located With The 16th International Semantic Web Conference (Iswc 2017).",
+      "keywords": [],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_9822315",
+      "title": "Cross-Evaluation of Automated Term Extraction Tools",
+      "abstract": "Technical Report TS-RTDC-TR-",
+      "type": "Artículo",
+      "year": 2017,
+      "source": "Communications Of The Acm. -2017-1, 30.09. 2017, Dept of Computer Science …",
+      "keywords": [
+        "administracao publica e de empresa, ciencia contabei e turismo",
+        "ciencia da computacao",
+        "computer science (all)",
+        "computer science (miscellaneou)",
+        "computer science, hardware & architecture",
+        "computer science, software engineering",
+        "computer science, software, graphic, programming",
+        "computer science, theory & method",
+        "general computer science"
+      ],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_9822306",
+      "title": "Cross-evaluation of automated term extraction tools by measuring terminological saturation",
+      "abstract": "International Conference on Information and Communication Technologies in …",
+      "type": "Artículo",
+      "year": 2017,
+      "source": "Communications Of The Acm.",
+      "keywords": [
+        "administracao publica e de empresa, ciencia contabei e turismo",
+        "ciencia da computacao",
+        "computer science (all)",
+        "computer science (miscellaneou)",
+        "computer science, hardware & architecture",
+        "computer science, software engineering",
+        "computer science, software, graphic, programming",
+        "computer science, theory & method",
+        "general computer science"
+      ],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_9822307",
+      "title": "Distributing Text Mining tasks with librAIry",
+      "abstract": "Proceedings of the",
+      "type": "Artículo",
+      "year": 2017,
+      "source": "Communications Of The Acm. 2017 ACM Symposium on Document Engineering, 63-66",
+      "keywords": [
+        "administracao publica e de empresa, ciencia contabei e turismo",
+        "ciencia da computacao",
+        "computer science (all)",
+        "computer science (miscellaneou)",
+        "computer science, hardware & architecture",
+        "computer science, software engineering",
+        "computer science, software, graphic, programming",
+        "computer science, theory & method",
+        "general computer science"
+      ],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_9810491",
+      "title": "Distributing Text Mining tasks with librAIry",
+      "abstract": "Distributing Text Mining tasks with librAIry",
+      "type": "Artículo",
+      "year": 2017,
+      "source": "Proceedings Of The 2017 Acm Symposium On Document Engineering (Doceng). 63-66",
+      "keywords": [],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_4013526",
+      "title": "Distributing text mining tasks with librairy",
+      "abstract": "ACM. We present librAIry, a novel architecture to store, process and analyze large collections of textual resources, integrating existing algorithms and tools into a common, distributed, high-performance work.ow. Available text mining techniques can be incorporated as independent plug&play modules working in a collaborative manner into the framework. In the absence of a pre-de.ned .ow, librAIry leverages on the aggregation of operations executed by di.erent components in response to an emergent chain of events. Extensive use of Linked Data (LD) and Representational State Transfer (REST) principles are made to provide individually addressable resources from textual documents. We have described the architecture design and its implementation and tested its e.ectiveness in real-world scenarios such as collections of research papers, patents or ICT aids, with the objective of providing solutions for decision makers and experts in those domains. Major advantages of the framework and lessons-learned from these experiments are reported",
+      "type": "Conferencia Publicada",
+      "year": 2017,
+      "source": "DocEng 2017 - Proceedings of the 2017 ACM Symposium on Document Engineering. 63-66",
+      "keywords": [
+        "data integration",
+        "large-scale text analysi",
+        "nlp",
+        "scholarly data",
+        "text mining"
+      ],
+      "coauthorship": [
+        "pdi_311414"
+      ]
+    },
+    {
+      "id": "pub_9810492",
+      "title": "Efficient Clustering from Distributions over Topics",
+      "abstract": "Efficient Clustering from Distributions over Topics",
+      "type": "Artículo",
+      "year": 2017,
+      "source": "Proceedings Of The 9th International Conference On Knowledge Capture (K-Cap).",
+      "keywords": [],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_4013534",
+      "title": "Efficient clustering from distributions over topics",
+      "abstract": "held by the owner/author(s). There are many scenarios where we may want to find pairs of textually similar documents in a large corpus (e.g. a researcher doing literature review, or an R&D project manager analyzing project proposals). To programmatically discover those connections can help experts to achieve those goals, but brute-force pairwise comparisons are not computationally adequate when the size of the document corpus is too large. Some algorithms in the literature divide the search space into regions containing potentially similar documents, which are later processed separately from the rest in order to reduce the number of pairs compared. However, this kind of unsupervised methods still incur in high temporal costs. In this paper, we present an approach that relies on the results of a topic modeling algorithm over the documents in a collection, as a means to identify smaller subsets of documents where the similarity function can then be computed. This approach has proved to obtain promising results when identifying similar documents in the domain of scientific publications. We have compared our approach against state of the art clustering techniques and with different configurations for the topic modeling algorithm. Results suggest that our approach outperforms (> 0.5) the other analyzed techniques in terms of efficiency",
+      "type": "Conferencia Publicada",
+      "year": 2017,
+      "source": "Proceedings of the Knowledge Capture Conference, K-CAP 2017.",
+      "keywords": [
+        "large-scale text analysi",
+        "scholarly data",
+        "semantic similarity",
+        "topic model"
+      ],
+      "coauthorship": [
+        "pdi_311414"
+      ]
+    },
+    {
+      "id": "pub_9822304",
+      "title": "Efficient clustering from distributions over topics",
+      "abstract": "Proceedings of the Knowledge Capture Conference",
+      "type": "Artículo",
+      "year": 2017,
+      "source": "Communications Of The Acm. 1-8",
+      "keywords": [
+        "administracao publica e de empresa, ciencia contabei e turismo",
+        "ciencia da computacao",
+        "computer science (all)",
+        "computer science (miscellaneou)",
+        "computer science, hardware & architecture",
+        "computer science, software engineering",
+        "computer science, software, graphic, programming",
+        "computer science, theory & method",
+        "general computer science"
+      ],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_5653894",
+      "title": "Hybrid techniques for knowledge-based NLP: Knowledge graphs meet machine learning and all their friends",
+      "abstract": "held by the owner/author(s). Many different artificial intelligence techniques can be used to explore and exploit large document corpora that are available inside organizations and on the Web. While natural language is symbolic in nature and the first approaches in the field were based on symbolic and rule-based methods, like ontologies, semantic networks and knowledge bases, most widely used methods are currently based on statistical approaches, including linear methods, such as support vectors machines or probabilistic topic models, and nonlinear ones such as neural networks. Each of these two main schools of thought in natural language processing, knowledge-based and statistical, have their limitations and strengths and there is an increasing trend that seeks to combine them in complementary ways to get the best of both worlds. This tutorial will cover the foundations and modern practical applications of knowledge-based and statistical methods, techniques and models and their combination for exploiting large document corpora. The tutorial will first focus on the foundations of many of the techniques that can be used to this purpose, including knowledge graphs, word embeddings, neural network methods, and probabilistic topic models, and will then show how these techniques are being effectively combined in practical applications, including commercial projects where the instructors currently participate",
+      "type": "Conferencia Publicada",
+      "year": 2017,
+      "source": "CEUR Workshop Proceedings. 2065 69-70",
+      "keywords": [
+        "embedding",
+        "hybrid natural language processing",
+        "knowledge graph",
+        "topic model",
+        "vecisgrafo"
+      ],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_9822318",
+      "title": "K-CAP2017 Satellites: Workshops and Tutorials",
+      "abstract": "Proceedings of the Knowledge Capture Conference",
+      "type": "Artículo",
+      "year": 2017,
+      "source": "COMMUNICATIONS OF THE ACM. 1-6",
+      "keywords": [
+        "administracao publica e de empresa, ciencia contabei e turismo",
+        "ciencia da computacao",
+        "computer science (all)",
+        "computer science (miscellaneou)",
+        "computer science, hardware & architecture",
+        "computer science, software engineering",
+        "computer science, software, graphic, programming",
+        "computer science, theory & method",
+        "general computer science"
+      ],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_9810499",
+      "title": "Semantic Saturation in Retrospective Text Document Collections",
+      "abstract": "Semantic Saturation in Retrospective Text Document Collections",
+      "type": "Artículo",
+      "year": 2017,
+      "source": "Proceedings Of The 13th International Conference Icteri 2017.",
+      "keywords": [],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_9822310",
+      "title": "Semantic saturation in retrospective text document collections",
+      "abstract": "Proceedings of ICTERI",
+      "type": "Artículo",
+      "year": 2017,
+      "source": "Communications Of The Acm. 2017 PhD Symposium, CEUR-WS, Kyiv, Ukraine, 16-17",
+      "keywords": [
+        "administracao publica e de empresa, ciencia contabei e turismo",
+        "ciencia da computacao",
+        "computer science (all)",
+        "computer science (miscellaneou)",
+        "computer science, hardware & architecture",
+        "computer science, software engineering",
+        "computer science, software, graphic, programming",
+        "computer science, theory & method",
+        "general computer science"
+      ],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_5643165",
+      "title": "Semantic saturation in retrospective text document collections",
+      "abstract": "This paper presents the motivation for, planning of, and very first results of the PhD project by the first author. The objective of the project is to experimentally assess the representativeness (completeness), for knowledge extraction, of a retrospective textual document collection. The collection is chosen to describe a single well circumscribed subject domain. The approach to assess completeness is based on measuring the saturation of the semantic (terminological) footprint of the collection. The goal of this experimental study is to check if the saturation-based approach is valid. The project is performed at the Dept. of Computer Science of Zaporizhzhya National University in cooperation with BWT Group, Universidad Politecnica de Madrid, and Springer-Verlag GmbH",
+      "type": "Conferencia Publicada",
+      "year": 2017,
+      "source": "CEUR Workshop Proceedings. 1851 1-8",
+      "keywords": [
+        "completenes",
+        "knowledge extraction from text",
+        "ontoelect",
+        "retrospective document collection",
+        "semantic saturation",
+        "text mining"
+      ],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_9822319",
+      "title": "librAIry/eval-similarity-calculation.(2017)",
+      "abstract": ". 2017, (): . DOI:",
+      "type": "Artículo",
+      "year": 2017,
+      "source": "Communications Of The Acm.",
+      "keywords": [
+        "administracao publica e de empresa, ciencia contabei e turismo",
+        "ciencia da computacao",
+        "computer science (all)",
+        "computer science (miscellaneou)",
+        "computer science, hardware & architecture",
+        "computer science, software engineering",
+        "computer science, software, graphic, programming",
+        "computer science, theory & method",
+        "general computer science"
+      ],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_9822322",
+      "title": "FarolApp: Live Linked Data on Light Pollution.",
+      "abstract": "International Semantic Web Conference (Posters & Demos)",
+      "type": "Artículo",
+      "year": 2016,
+      "source": "Communications Of The Acm. 18",
+      "keywords": [
+        "administracao publica e de empresa, ciencia contabei e turismo",
+        "ciencia da computacao",
+        "computer science (all)",
+        "computer science (miscellaneou)",
+        "computer science, hardware & architecture",
+        "computer science, software engineering",
+        "computer science, software, graphic, programming",
+        "computer science, theory & method",
+        "general computer science"
+      ],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_4013503",
+      "title": "FarolApp: Live linked data on light pollution",
+      "abstract": "FarolApp is a mobile web application that aims to increase the awareness of light pollution by generating illustrative maps for cities and by encouraging citizens and public administrations to provide street light information in an ubiquitous and interactive way using online street views. In addition to the maps, FarolApp builds on existing sources to generate and provide up-to-date data by crowdsourced user annotations. Generated data is available as dereferenceable Linked Data resources in several RDF formats and via a queryable SPARQL endpoint. We pro- pose Live Linked Data, a new approach to publish data about city infras- tructures trying to keep them synchronized leveraging the collaboration of citizens. The demo presented in this paper illustrates how FarolApp maintains continuously evolving Linked Data that reect the current sta- tus of city street light infrastructures and use that data to generate light pollution maps",
+      "type": "Conferencia Publicada",
+      "year": 2016,
+      "source": "CEUR Workshop Proceedings. 1690",
+      "keywords": [
+        "crowdsourcing",
+        "evolution",
+        "light pollution",
+        "linked data"
+      ],
+      "coauthorship": [
+        "pdi_308962",
+        "pdi_311414"
+      ]
+    },
+    {
+      "id": "pub_9938305",
+      "title": "Repository of indexed ROs",
+      "abstract": "Deliverable",
+      "type": "Artículo",
+      "year": 2015,
+      "source": "Deliverable.",
+      "keywords": [],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_9822320",
+      "title": "Integrating and Analysing Public Procurement Data through a Knowledge Graph: A Demonstration in a Nutshell",
+      "abstract": null,
+      "type": "Artículo",
+      "year": null,
+      "source": "Communications Of The Acm.",
+      "keywords": [
+        "administracao publica e de empresa, ciencia contabei e turismo",
+        "ciencia da computacao",
+        "computer science (all)",
+        "computer science (miscellaneou)",
+        "computer science, hardware & architecture",
+        "computer science, software engineering",
+        "computer science, software, graphic, programming",
+        "computer science, theory & method",
+        "general computer science"
+      ],
+      "coauthorship": []
+    },
+    {
+      "id": "pub_9822308",
+      "title": "Repository of indexed ROs",
+      "abstract": "Deliverable",
+      "type": "Artículo",
+      "year": null,
+      "source": "Communications Of The Acm.",
+      "keywords": [
+        "administracao publica e de empresa, ciencia contabei e turismo",
+        "ciencia da computacao",
+        "computer science (all)",
+        "computer science (miscellaneou)",
+        "computer science, hardware & architecture",
+        "computer science, software engineering",
+        "computer science, software, graphic, programming",
+        "computer science, theory & method",
+        "general computer science"
+      ],
+      "coauthorship": []
+    }
+  ],
+  "subjects": [
+    {
+      "name": "Data Science & Advanced Analytics",
+      "start_year": 2019,
+      "end_year": 2020
+    },
+    {
+      "name": "Key Scientific And Technological Issues In Business",
+      "start_year": 2020,
+      "end_year": 2021
+    },
+    {
+      "name": "Formal Languages, Automata And Computing",
+      "start_year": 2020,
+      "end_year": 2020
+    },
+    {
+      "name": "Web Semántica Y Buscadores",
+      "start_year": 2022,
+      "end_year": 2025
+    },
+    {
+      "name": "Introducción Al Procesamiento De Lenguaje Natural",
+      "start_year": 2023,
+      "end_year": 2023
+    },
+    {
+      "name": "Key Scientific And Technological Issues In Business",
+      "start_year": 2023,
+      "end_year": 2023
+    },
+    {
+      "name": "Fundamentos De Ingeniería Del Software",
+      "start_year": 2023,
+      "end_year": 2023
+    },
+    {
+      "name": "Infraestructuras De Big Data",
+      "start_year": 2023,
+      "end_year": 2025
+    },
+    {
+      "name": "Trabajo Fin De Grado",
+      "start_year": 2023,
+      "end_year": 2024
+    },
+    {
+      "name": "Trabajo Fin De Master",
+      "start_year": 2023,
+      "end_year": 2024
+    },
+    {
+      "name": "Descubrimiento De Conocimiento En Datos Complejos",
+      "start_year": 2023,
+      "end_year": 2025
+    },
+    {
+      "name": "Fundamentos De Ingenieria De Software",
+      "start_year": 2023,
+      "end_year": 2025
+    },
+    {
+      "name": "Fundamentos De Ingenieria Del Software",
+      "start_year": 2023,
+      "end_year": 2025
+    },
+    {
+      "name": "Gestión De Sistemas De Datos Masivos",
+      "start_year": 2023,
+      "end_year": 2025
+    }
+  ],
+  "last_year_projects": [
+    {
+      "id": "tft_10407239",
+      "title": "Alternativa ligera a los LLMs en la Generación de Grafos de Conocimiento: Mejoras a partir de OpenIE",
+      "abstract": "Este proyecto propone un enfoque ligero para la generación de grafos de conocimiento a partir de texto, evitando el uso de grandes modelos de lenguaje. La base del sistema es un grafo inicial (Baseline) generado mediante OpenIE, que se enriquece a través de un conjunto de estrategias organizadas en tres bloques: expansión de cobertura, homogeneización y refinamiento, y mejora de precisión. Estas estrategias buscan mejorar la calidad del grafo en términos de precisión, cobertura y similitud estructural, evaluadas tanto en el plano léxico como en el semántico, respecto a un grafo de referencia (Gold). Para evaluar el rendimiento del enfoque propuesto, se compara su resultado tanto con el grafo Gold elaborado manualmente, como con el grafo Baseline original. Los resultados muestran mejoras significativas en la mayoría de las métricas. En concreto, la precisión semántica se incrementa en un 96.8 %, la precisión léxica en un 70.6 %, y la similitud estructural con el grafo Gold mejora un 89.3% en el plano semántico y un 60.4% en el plano léxico. En cuanto a la cobertura, se observa un aumento del 15.4% en el plano semántico, mientras que la cobertura léxica se mantiene constante. Aunque el sistema final no alcanza el rendimiento de los enfoques basados en modelos de lenguaje, los resultados obtenidos validan la efectividad del enfoque propuesto y confirman su capacidad para reducir de manera significativa la brecha de calidad frente a soluciones más complejas y costosas. Abstract: This project proposes a lightweight approach for generating knowledge graphs from text, avoiding the use of large language models. The system is based on an initial graph (Baseline) generated using OpenIE, which is enriched through a set of strategies organized into three blocks: coverage expansion, homogenization and refinement, and precision improvement. These strategies aim to enhance the quality of the graph in terms of precision, coverage, and structural similarity, all evaluated on both lexical and semantic levels with respect to a reference graph (Gold). To assess the performance of the proposed approach, its results are compared to both the manually created Gold graph and the original Baseline graph. The results show significant improvements in most metrics. Specifically, semantic precision increases by 96.8 %, lexical precision by 70.6 %, and structural similarity with the Gold graph improves by 89.3% in the semantic dimension and 60.4% in the lexical one. Regarding coverage, there is a 15.4% improvement in the semantic dimension, while lexical coverage remains unchanged. Although the final system does not match the performance of large language model-based approaches, the results validate the effectiveness of the proposed lightweight method and confirm its ability to significantly reduce the quality gap compared to more complex and resource-intensive solutions",
+      "type": "TFG",
+      "keywords": [
+        "informatica"
+      ],
+      "year": 2025
+    },
+    {
+      "id": "tft_10397143",
+      "title": "Aplicación de grandes modelos de lenguaje en la identificación y adaptación de estructuras gramaticales complejas en textos de Lectura Fácil",
+      "abstract": "Este proyecto de fin de grado analiza la capacidad de los grandes modelos de lenguaje para aplicar la metodología de Lectura Fácil (E2R) a textos en inglés a partir de conocimientos previamente adquiridos en español. La motivación principal de esto radica en explorar si los últimos avances en grandes modelos de lenguaje pueden facilitar la adaptación de textos complejos, promoviendo una mayor accesibilidad informativa a aquellas personas con dificultades de lectura. El objetivo principal de este estudio ha sido evaluar la capacidad de estos modelos para identificar y adaptar dos estructuras gramaticales específicas: aposiciones nominales y cláusulas adjetivas no restrictivas. Para ello, se ha diseñado un experimento basado en un conjunto de datos construido a partir de tweets etiquetados mediante una combinación de reglas simbólicas adaptadas al inglés y un proceso de anotación humano. Se han seleccionado seis grandes modelos de lenguaje actuales y accesibles, y se han definido métricas específicas para evaluar su desempeño tanto en tareas de identificación (accuracy, precision, recall, f1- score) como de adaptación (similitud semántica), siguiendo las directrices de los métodos E2R. Los resultados muestran que los modelos presentan un desempeño limitado en la tarea de identificación, con precisiones solo ligeramente superiores al azar, pero un rendimiento más aceptable en la tarea de adaptación, aunque con limitaciones en la transformación estructural de los textos. La conclusión principal es que, si bien los grandes modelos de lenguaje actuales son capaces de preservar el significado semántico de los textos tras la tarea de adaptación, su capacidad para interpretar y transformar estructuras gramaticales específicas sigue siendo insuficiente en contextos multilingües exigentes. El estudio destaca la importancia de desarrollar nuevas estrategias de evaluación que combinen medidas semánticas y sintácticas, y sugiere líneas futuras de investigación, como la incorporación de modelos más potentes y la ampliación del corpus de estructuras gramaticales evaluadas. Finalmente, el proyecto se inscribe en un marco de responsabilidad social y ambiental, priorizando soluciones accesibles y sostenibles que contribuyan a la inclusión y democratización del acceso al conocimiento. Abstract: This bachelor's thesis analyzes the ability of large language models to apply the Easy-to-Read (E2R) methodology to English texts based on knowledge previously acquired in Spanish. The main motivation of this lies in exploring whether recent advances in large language models can facilitate the adaptation of complex texts, thereby promoting greater informational accessibility for individuals with reading difficulties. The primary objective of this thesis was to evaluate the ability of these models to identify and adapt two specific grammatical structures: nominal appositions and non-restrictive adjective clauses. To this end, an experiment was designed based on a dataset built from tweets extracted from the \"ActuallyAutistic Twitter dataset,\" labeled through a combination of symbolic rules adapted to English and a human annotation process. Six current and accessible large language models were selected, and specific metrics were defined to evaluate their performance in both identification tasks (accuracy, precision, recall, f1-score) and adaptation tasks (semantic similarity), following the guidelines of E2R methods. The results show that the models exhibit limited performance in the identification task, with precision only slightly above random chance, but a more acceptable performance in the adaptation task, although with limitations in the structural transformation of texts. The main conclusion is that while current large language models are capable of preserving the semantic meaning of texts after the adaptation task, their ability to interpret and transform specific grammatical structures remains insufficient in demanding multilingual contexts. The study highlights the importance of developing new evaluation strategies that combine semantic and syntactic measures and suggests future research directions, such as incorporating more powerful models and expanding the corpus of evaluated grammatical structures. Finally, the project is framed within a context of social and environmental responsibility, prioritizing accessible and sustainable solutions that contribute to inclusion and the democratization of knowledge access",
+      "type": "TFG",
+      "keywords": [
+        "informatica"
+      ],
+      "year": 2025
+    },
+    {
+      "id": "tft_10399764",
+      "title": "Desarrollo de un entorno visual para la verificación de software crítico en sistemas aeronáuticos",
+      "abstract": "Este trabajo de fin de grado se enmarca en el desarrollo de herramientas de verificación para sistemas críticos dentro del sector aeronáutico, concretamente en el contexto del subsistema TDS (Time Distribution System) para la estación de tierra de un RPAS (Remotely Piloted Aircraft System) de uso militar. Ante la dificultad de interpretar en tiempo real grandes volúmenes de datos técnicos almacenados en Redis durante las simulaciones, se propuso el desarrollo de una solución visual e interactiva integrada en Redis Insight, herramienta usada para la consulta de datos en Redis. La solución implementada consiste en una prueba de concepto funcional que simula un entorno operativo mediante una placa KR260 conectada a una antena. Los datos obtenidos se integran con entorno existente a través de un módulo en Go que los publica en Redis. Sobre esta base, se ha desarrollado el plugin visual integrado en Redis Insight, utilizando tecnologías web como React y TypeScript, que permite representar de forma visual y en tiempo real los distintos tipos de datos técnicos: tiempos, señales, posiciones y métricas simuladas. El sistema ofrece una arquitectura modular, fácilmente integrable con la arquitectura existente, y que permite a los usuarios crear visualizaciones personalizadas sin necesidad de modificar el código fuente del plugin. A través de su uso, se ha podido demostrar una mejora significativa en la interpretación de los datos de simulación, así como en la identificación de errores durante los procesos de verificación. El trabajo concluye con una reflexión sobre las limitaciones actuales del sistema y se proponen diversas líneas de trabajo futuro para extender sus capacidades y facilitar su adaptación a entornos reales de validación de software crítico. Abstract: This thesis focuses on the development of verification tools for safety-critical systems in the aerospace sector, specifically within the context of the TDS (Time Distribution System) subsystem for the GCS (Ground Control Station) of a military RPAS (Remotely Piloted Aircraft System). Given the difficulty of interpreting large volumes of technical data stored in Redis in real time during simulations, a visual and interactive solution integrated into Redis Insight, the tool used to query Redis data, was developed. The implemented solution is a functional proof of concept that simulates an operational environment using a KR260 board connected to an antenna. The collected data is integrated into the existing infrastructure through a Go module that publishes the data to Redis. Based on this foundation, a visual plugin for Redis Insight has been developed using web technologies such as React and TypeScript, enabling real-time graphical representation of various technical data types: time signals, status indicators, positional data, and simulated metrics. The system provides a modular architecture that is easily integrated with the existing setup, allowing users to create custom visualizations without modifying the plugin’s source code. Its use has demonstrated a significant improvement in the interpretation of simulation data and in the detection of anomalies during the software verification process. The thesis concludes with a discussion of the current system’s limitations and outlines several future work directions aimed at extending its capabilities and facilitating its deployment in real-world safety-critical software validation environments",
+      "type": "TFG",
+      "keywords": [
+        "informatica",
+        "medicina"
+      ],
+      "year": 2025
+    },
+    {
+      "id": "tft_10397145",
+      "title": "Desarrollo e Integración de una WebApp de Nutrición en Cloud con AWS y Snowflake",
+      "abstract": "El presente Trabajo de Fin de Grado consiste en el desarrollo de una aplicación web full-stack centrada en la nutrición, que permite a los usuarios obtener información nutricional precisa de productos alimentarios mediante el escaneo de códigos de barras. Esta funcionalidad se apoya en una base de datos alojada en Snowflake, con más de 4 millones de registros de productos alimentarios, proveniente de Open Food Facts y otras fuentes relevantes. El backend, desarrollado con FastAPI, está compuesto por varios módulos funcionales: escaneo de productos mediante Pyzbar (‘scan.py‘), un chatbot basado en Retrieval- Augmented Generation usando Snowflake Cortex AI y Mistral (‘chat.py‘), generación de etiquetas nutricionales (‘ nutrition-label.py‘), conexión con la base de datos y lógica principal. El frontend, construido con React, incluye todos los componentes y archivos necesarios para una interfaz moderna, intuitiva y dinámica. La aplicación está contenida en Docker y automatizada mediante un pipeline de despliegue continuo en AWS. Usando GitHub como repositorio principal, AWS CodePipeline gestiona el flujo desde el repositorio, construyendo la aplicación mediante Code-Build (con ‘Dockerfile‘ y ‘buildspec.yml‘), y desplegándola finalmente en AWS Elastic Beanstalk, donde queda disponible al público. Este proyecto representa una integración sólida entre tecnologías modernas de desarrollo web, cloud computing y big data, aplicadas al ámbito de la nutrición, con el potencial de ampliarse en el futuro hacia funcionalidades más avanzadas como el seguimiento nutricional personalizado o el análisis de hábitos de consumo. Abstract: This Final Degree Project presents the development of a full-stack web application focused on nutrition, allowing users to obtain accurate nutritional information about food products by scanning barcodes. This functionality relies on a Snowflake-hosted database containing over 4 million food product records sourced from Open Food Facts and other reputable sources. The backend, developed using FastAPI, is composed of several functional modules: barcode scanning with Pyzbar (‘scan.py‘), a RAG-based chatbot using Snowflake Cortex AI and the Mistral model (‘chat.py‘), nutritional label generation (‘nutrition-label.py‘), and database connection and core logic. The frontend, built with React, includes all components and files needed for a modern and responsive user interface. The entire application is containerized using Docker and deployed via a continuous integration and delivery pipeline on AWS. GitHub hosts the source repository, AWS CodePipeline orchestrates the flow, CodeBuild builds the application (using ‘Dockerfile‘ and ‘buildspec.yml‘), and Elastic Beanstalk handles the final deployment. This project represents a solid integration of modern web development, cloud computing, and big data technologies applied to the field of nutrition, with potential future extensions including personalized nutrition tracking or consumption habit analysis",
+      "type": "TFG",
+      "keywords": [
+        "informatica"
+      ],
+      "year": 2025
+    },
+    {
+      "id": "tft_10426779",
+      "title": "Diseño e implementación de una plataforma web asistida por IA para el control de la depresión en estudiantes",
+      "abstract": "El presente Trabajo Fin de Grado desarrolla el sistema NeuroStat, una plataforma web asistida por inteligencia artificial orientada al control y la evaluación del bienestar estudiantil. Su objetivo principal es detectar de manera temprana posibles síntomas de depresión en estudiantes universitarios a través del análisis de variables relacionadas con su entorno académico y personal. El sistema integra un modelo de regresión logística entrenado con datos simulados y anónimos, capaz de generar predicciones binarias sobre la presencia o ausencia de síntomas depresivos. Los usuarios pueden interactuar con la plataforma mediante un formulario estructurado o a través de un chatbot conversacional que interpreta las respuestas de forma empática. Los resultados se almacenan en una base de datos y se representan en un panel visual con indicadores clave del bienestar general. El proyecto combina un frontend desarrollado en React, un backend basado en FastAPI y un modelo predictivo implementado en Python. Además, se han considerado principios éticos, sociales y de sostenibilidad, alineados con los Objetivos de Desarrollo Sostenible (ODS) de las Naciones Unidas. NeuroStat ejemplifica cómo la Ingeniería de Computadores puede aplicarse de forma responsable al ámbito de la salud mental y el bienestar emocional. Abstract: This Final Degree Project presents NeuroStat, an AI-assisted web platform aimed at monitoring and evaluating student well-being. Its main objective is to detect early signs of depression among university students by analyzing academic and personal factors that may influence their mental health. The system integrates a logistic regression model trained with simulated and anonymous data, capable of producing binary predictions regarding the presence or absence of depressive symptoms. Users can interact with the platform through a structured form or a conversational chatbot that interprets their responses empathetically. All collected data are stored in a database and displayed in a dynamic dashboard that provides key indicators of overall well-being. The project combines a React-based frontend, a FastAPI backend, and a predictive model implemented in Python. Ethical and social considerations, aligned with the United Nations Sustainable Development Goals, have guided the development process. NeuroStat illustrates how Computer Engineering can responsibly contribute to mental health monitoring and emotional well-being through intelligent systems",
+      "type": "TFG",
+      "keywords": [
+        "informatica",
+        "medicina"
+      ],
+      "year": 2025
+    },
+    {
+      "id": "tft_10386894",
+      "title": "Diseño y evaluación de un sistema RAG multimodal sensible al contexto temporal para la exploración de contenidos audiovisuales",
+      "abstract": "Este Trabajo Fin de Máster presenta el diseño, desarrollo y evaluación de un sistema RAG (Retrieval-Augmented Generation) multimodal sensible al contexto temporal, orientado a facilitar la exploración y consulta de contenido audiovisual sobre el dominio del tenis. El objetivo principal del proyecto es construir una base de conocimiento a partir de documentos multimedia (PDFs, vídeos y podcasts) y evaluar la capacidad de un sistema RAG para ofrecer respuestas fundamentadas que incluyan referencias temporales precisas. Para ello, se ha llevado a cabo una pipeline completa que abarca la recopilación de datos, la transcripción automática con Whisper, la segmentación de los contenidos, la generación de embeddings semánticos, la indexación y la recuperación de información relevante. Se han explorado y comparado cuatro enfoques distintos de segmentación y alineación temporal, evaluando su impacto sobre la calidad de las respuestas generadas a través de métricas como BERTScore-F1, ROUGE-L y similitud del coseno. El sistema se ha probado con un dataset de evaluación diseñado manualmente, centrado en preguntas que requieren localizar eventos en el tiempo. Los resultados muestran que solo cuando se incorpora una transcripción con marcas temporales reales (formato .srt), el sistema es capaz de ofrecer respuestas coherentes y temporalmente precisas. Siguiendo ese enfoque se alcanzó un BERTScore-F1 medio de 0.91, un ROUGE-L de 0.73 y una similitud del coseno de 0.94, superando ampliamente a los enfoques anteriores, donde el uso de tiempos estimados o texto plano no logró guiar eficazmente al sistema. Estos resultados confirman que la alineación temporal precisa es clave para abordar preguntas sensibles al tiempo. Este trabajo no solo valida la viabilidad técnica de construir un sistema RAG multimodal con sensibilidad temporal, sino que también sienta las bases para futuras investigaciones orientadas a mejorar la recuperación y generación de información en contextos donde el eje cronológico es esencial. Abstract: This Master’s Thesis presents the design, development, and evaluation of a context-aware, multimodal Retrieval-Augmented Generation (RAG) system that facilitates exploration and querying of audiovisual content in the domain of tennis. The primary goal is to build a knowledge base from multimedia documents (PDFs, videos, and podcasts) and to assess the system’s ability to deliver well-grounded answers that include precise temporal references. An end-to-end pipeline was implemented, covering data collection, automatic transcription with Whisper, content segmentation, semantic embedding generation, indexing, and retrieval of relevant information. Four distinct approaches to segmentation and temporal alignment were explored and compared, and their impact on answer quality was measured using metrics such as BERTScore-F1, ROUGE-L, and cosine similarity. Evaluation was carried out on a manually designed dataset focused on questions that require locating events in time. Results show that only when a transcript with real time stamps (in .srt format) is incorporated does the system provide coherent and temporally accurate answers. Using this approach, the system achieved an average BERTScore-F1 of 0.91, a ROUGE-L of 0.73 and a cosine similarity of 0.94, significantly outperforming approaches that relied on estimated timings or plain text, which failed to guide the system effectively. These findings confirm that precise temporal alignment is crucial for addressing time-sensitive questions. Beyond validating the technical feasibility of building a time-aware multimodal RAG system, this work lays the foundation for future research aimed at improving information retrieval and generation in contexts where the chronological dimension is essential",
+      "type": "TFM",
+      "keywords": [
+        "informatica"
+      ],
+      "year": 2025
+    },
+    {
+      "id": "tft_10397146",
+      "title": "Sistema de apoyo al estudio basado en IA: creación automática y resolución de cuestionarios a partir de documentos académicos",
+      "abstract": "En este Trabajo de Fin de Grado se presenta el rediseño y la mejora de una aplicación web dedicada a la generación, gestión y resolución de cuestionarios educativos creados mediante inteligencia artificial. La herramienta, que previamente ya contaba con una versión funcional, ha sido reescrita desde cero con el objetivo de mejorar tanto su diseño como sus funcionalidades clave. La aplicación permite a los usuarios subir apuntes en formato PDF, los cuales son procesados por un backend ya existente para generar automáticamente cuestionarios con preguntas tipo test y de respuesta abierta, que posteriormente pueden ser resueltos, editados, organizados y exportados a otras plataformas educativas. Entre las funcionalidades previamente existentes destacan la exportación a formato Moodle XML y la posibilidad de resolver los cuestionarios generados. Sin embargo, en esta nueva versión se ha mejorado significativamente la experiencia de resolución, orientándola a un entorno más similar al de un examen tradicional, incorporando temporizador, navegación controlada, marcado de preguntas para revisión, una pantalla resumen con puntuación y otras funcionalidades que permiten trabajar con mayor similitud a lo que sería un examen real y, por tanto, permiten una mejor planificación y estudio de este. Otras funcionalidades para destacar serían aquellas destinadas a mejorar la experiencia del usuario, rediseñando la interfaz visual con un formato grid, y realizando mejoras en la clasificación y organización de los cuestionarios existentes, añadiendo buscadores en tiempo real y clasificación por materias de los cuestionarios. La aplicación ha sido desarrollada utilizando React y tecnologías modernas del ecosistema JavaScript, aplicando componentes reutilizables, arquitectura modular, diseño responsive y conexión asincrónica con la API backend mediante peticiones HTTP. Durante el desarrollo se han aplicado buenas prácticas de validación de formularios, control de errores con aviso al usuario y adaptabilidad a distintos dispositivos. El sistema ha sido validado con usuarios reales y pruebas funcionales, confirmando que el rediseño no solo conserva las capacidades del sistema anterior, sino que las amplía y mejora, convirtiéndolo en una herramienta más completa, robusta y alineada con las necesidades de docentes y estudiantes en entornos de estudio y evaluación. El proyecto manifiesta la posibilidad de construir soluciones educativas modernas mediante tecnologías accesibles y abiertas. Abstract: This Bachelor's Thesis presents the redesign and improvement of a web application dedicated to the creation, management, and resolution of educational quizzes generated through artificial intelligence. The tool, which previously had a functional version, has been rewritten from scratch with the aim of enhancing both its design and key functionalities. The application allows users to upload notes in PDF format, which are processed by an existing backend to automatically generate quizzes containing multiple-choice and open-ended questions. These quizzes can later be solved, edited, organized, and exported to other educational platforms. Among the previously existing features, the export to Moodle XML format and the ability to solve the generated quizzes stand out. However, this new version significantly improves the quiz-solving experience by simulating a more traditional exam environment. It introduces features such as a timer, controlled navigation, question marking for review, a summary screen with scores, and other functionalities that emulate real exam conditions more closely, thereby enabling better planning and study. Other noteworthy improvements include enhancements aimed at improving user experience, such as redesigning the visual interface using a grid layout and improving the classification and organization of existing quizzes. Real-time search functionality and subject-based categorization of quizzes have also been added. The application has been developed using React and modern technologies from the JavaScript ecosystem, implementing reusable components, modular architecture, responsive design, and asynchronous communication with the backend API via HTTP requests. Best practices have been followed throughout development, including form validation, user-friendly error handling, and adaptability to various devices. The system has been validated through real-user testing and functional evaluations, confirming that the redesign not only preserves the capabilities of the previous version but also expands and improves them. As a result, the application becomes a more complete, robust tool that aligns with the needs of both educators and students in learning and assessment contexts. This project demonstrates the potential for building modern educational solutions using accessible and open technologies",
+      "type": "TFG",
+      "keywords": [
+        "informatica"
+      ],
+      "year": 2025
+    },
+    {
+      "id": "tft_10384397",
+      "title": "Spanish QAG: Dataset y modelo QAG en contexto académico",
+      "abstract": "Este proyecto presenta el diseño e implementación de un sistema de generación automática de preguntas y respuestas (QAG) en español, orientado al ámbito educativo en España. La motivación principal surge de la clara desventaja que enfrenta la lengua española en el acceso a recursos de procesamiento de lenguaje natural, especialmente en tareas educativas. A pesar de ser uno de los idiomas más hablados del mundo, la mayoría de modelos y datasets disponibles están desarrollados en inglés, limitando la efectividad y aplicabilidad de estas tecnologías en contextos hispanohablantes. Para reducir esta brecha, el proyecto ha abordado dos líneas principales: la creación de un corpus educativo específico alineado con los estándares del sistema español, y el afinamiento de modelos de lenguaje de última generación. Se diseñó un sistema automatizado para la extracción estructurada de preguntas, respuestas y sus contextos desde documentos PDF, capaz de interpretar su formato y organización interna. Paralelamente, se recopilaron textos académicos desde diversas fuentes mediante scraping, lo que permitió vincular cada respuesta con un contexto educativo relevante, aunque no necesariamente literal. Esta aproximación, basada en el entendimiento más que en la coincidencia textual exacta, refuerza un enfoque pedagógico centrado en la comprensión. Además de crear un corpus académico desde cero, se tradujeron y adaptaron varios conjuntos de datos multilingües al español, alcanzando un total combinado de aproximadamente 140.000 pares pregunta-respuesta. Este conjunto integra datos previamente existentes con nuevos recursos específicamente contextualizados para el sistema educativo español. Durante la fase de modelado, se exploraron dos enfoques principales. El primero presentó limitaciones técnicas derivadas de su rigidez estructural y baja escalabilidad. El segundo permitió un afinamiento eficiente y flexible de modelos LLM, destacando Mistral-7B por su rendimiento superior. Este modelo fue inicialmente entrenado con un subconjunto de pares pregunta-respuesta en español, y posteriormente refinado específicamente para tareas académicas. Los resultados finales reflejan un alto grado de precisión semántica, con métricas como F1 y BERTScore superiores al 70 %, destacando especialmente en tareas conjuntas (QAG) frente a tareas individuales (QG o AG). Este proyecto supone un primer acercamiento sólido hacia el desarrollo de herramientas de IA educativa en español, demostrando la viabilidad de generar soluciones adaptadas a las necesidades concretas del sistema formativo nacional. Abstract: This project presents the design and implementation of a Spanish-language Question and Answer Generation (QAG) system, specifically aimed at the educational domain in Spain. The main motivation arises from the clear disadvantage faced by the Spanish language in accessing natural language processing resources, particularly in educational tasks. Despite being one of the most widely spoken languages in the world, most available models and datasets are developed in English, limiting the effectiveness and applicability of such technologies in Spanish-speaking contexts. To reduce this gap, the project focused on two main areas: the creation of an educational corpus aligned with the Spanish national curriculum, and the fine-tuning of state-of-the-art language models. An automated system was developed to extract structured questions, answers, and their contexts from PDF documents, capable of interpreting their internal format and organization. In parallel, academic content was scraped from various sources to associate each answer with a relevant educational context, even if not literally identical. This approach, based on comprehension rather than exact lexical matching, supports a pedagogical framework focused on understanding rather than rote memorization. In addition to building an academic dataset from scratch, several multilingual datasets were translated and adapted into Spanish, resulting in a combined total of approximately 140,000 question-answer pairs. This dataset merges pre-existing resources with new material contextualized to Spain’s educational system. In the modeling phase, two main approaches were explored. The first faced technical limitations due to structural rigidity and low scalability. The second enabled efficient and flexible fine-tuning of large language models (LLMs), with Mistral-7B delivering the best results. This model was initially trained with a subset of Spanish QA pairs and later refined specifically for academic tasks. Final results showed a high degree of semantic accuracy, with F1 and BERTScore metrics exceeding 70 %, and better performance in joint QAG tasks compared to isolated QG or AG tasks. This project represents a strong initial step toward the development of AI-based educational tools in Spanish, demonstrating the feasibility of building solutions tailored to the specific needs of the national educational system",
+      "type": "TFG",
+      "keywords": [
+        "educacion",
+        "informatica"
+      ],
+      "year": 2025
+    },
+    {
+      "id": "tft_10349089",
+      "title": "CuestionariosFACILE: Aplicación web para adaptar automáticamente cuestionarios de consumidores a lectura fácil",
+      "abstract": "La inclusión de personas con diferentes capacidades es un tema muy importante en muchos aspectos de la vida cotidiana, como la educación y el acceso a distintos productos y servicios. Las Personas con Capacidad Intelectual Reducida (PCIRs) enfrentan varios desafíos cada día a causa de su dificultad en la comprensión lectora. Para que las personas con discapacidad cognitiva puedan participar plenamente en la sociedad, es necesario que éstas sean capaces de leer y comprender bien los textos. Esto es muy importante, no sólo para el aprendizaje en distintas disciplinas, sino también para así poder permitir interacción social, acceso a información y poder tomar decisiones con conocimiento e información. La Metodología de Lectura Fácil fue desarrollada con el objetivo de abordar las dificultades mencionadas anteriormente. Esta metodología ayuda a facilitar la adaptación de textos mediante un conjunto de pautas. Gracias a ella es posible conseguir que los textos sean más accesibles para aquellas personas que presenten algún problema con la comprensión lectora. Adaptar estos textos puede llegar a resultar complicado ya que consume tiempo y recursos, debido a que tienen que estar involucrados expertos en la metodología y PCIRs. La tarea de lograr la inclusión se extiende a numerosos campos, como lo son los estudios sensoriales de consumidores, en los cuales es esencial que los cuestionarios sean accesibles para las PCIRs con el fin de obtener resultados precisos y sin sesgos. Con el objetivo de mejorar la accesibilidad cognitiva en los cuestionarios utilizados para los estudios sensoriales de consumidores, nuestra investigación se enfoca en el desarrollo de una aplicación web, CuestionariosFACILE, la cual permite la creación automática de versiones accesibles cognitivamente de estos cuestionarios. Abstract: Inclusion of people with different abilities is a very important issue in many aspects of daily life, such as education and access to different products and services. People with Reduced Intellectual Competence (PCIRs) face several challenges every day because of their difficulty in reading comprehension. In order for people with cognitive disabilities to be able to participate fully in society, they need to be able to read and understand texts well. This is very important, not only for learning in different disciplines, but also to enable social interaction, access to information and informed decision making. The Easy Reading Methodology was developed with the objective of addressing the difficulties mentioned above. This methodology helps to facilitate the adaptation of texts through a set of guidelines. Thanks to this methodology, it is possible to make texts more accessible to people with reading comprehension problems. Adapting these texts can be complicated, time-consuming and resource-intensive, as experts in the methodology and PCIRs have to be involved. The task of achieving inclusiveness extends to numerous fields, such as consumer sensory studies, where it is essential that questionnaires are accessible to PCIRs in order to obtain accurate and unbiased results. In order to improve the cognitive accessibility of questionnaires used for consumer sensory studies, our research focuses on the development of a web application, CuestionariosFACILE, which allows the automatic creation of cognitively accessible versions of these questionnaires",
+      "type": "TFG",
+      "keywords": [
+        "informatica"
+      ],
+      "year": 2024
+    },
+    {
+      "id": "tft_10267281",
+      "title": "Desarrollo de un sistema de extracción de información de documentos mediante RAG",
+      "abstract": "Este proyecto se centra en el desarrollo de un sistema de extracción de información mediante Retrieval Augmented Generation (RAG), utilizando modelos open-source para la recuperación de documentos y generación de respuestas. Los sistemas tradicionales de Recuperación de Información (IR) presentan limitaciones para comprender el contexto y generar respuestas dinámicas. RAG supera estas limitaciones al integrar técnicas de recuperación con modelos generativos, ofreciendo respuestas contextualizadas y precisas. El objetivo del proyecto fue explorar la aplicación de RAG en entornos con recursos computacionales limitados, utilizando modelos más pequeños que puedan ejecutarse en hardware convencional, alcanzando al menos un 90% de precisión., El estudio comenzó evaluando varios Modelos de Lenguaje (LLMs), seleccionando finalmente Mistral 7B, un modelo open-source por su equilibrio entre rendimiento y escalabilidad. Para implementar RAG, se utilizó LangChain y Ollama para ejecutar los modelos localmente, y Chroma para gestionar los embeddings vectoriales de los documentos. Una interfaz desarrollada con Gradio aseguró una interacción sencilla para el usuario. Se implementaron técnicas avanzadas de RAG como enrutamiento de consultas, integración de memoria y filtrado por metadatos, mejorando la eficiencia en la recuperación de información., El rendimiento del sistema se validó mediante un conjunto de pruebas utilizando Giskard, y las respuestas fueron evaluadas por un modelo más grande, LLama 70B, para medir su precisión. Si bien el sistema muestra potencial para diversos campos, presenta limitaciones como una calidad de respuestas inferior comparada con modelos más grandes y la incapacidad de procesar datos multimodales. En el futuro, se podría enfocar en optimizar los modelos para mejorar su rendimiento en este tipo de entornos., Abstract:, This project focuses on developing an information extraction system using Retrieval Augmented Generation (RAG), leveraging open-source models for efficient document retrieval and response generation. Traditional Information Retrieval (IR) systems have limitations in understanding context and generating dynamic responses. RAG overcomes this by integrating retrieval techniques with generative models, offering contextualized, accurate responses. The objective of this project was to explore RAG in environments with limited computational resources, using smaller models that can run on conventional hardware, achieving a minimum of 90% accuracy in retrieving relevant information., The study began by evaluating different Large Language Models (LLMs), ultimately selecting Mistral 7B, an open-source model, due to its balance of performance and scalability. To implement RAG, the project utilized LangChain and Ollama for executing models locally, as well as Chroma for managing the vectorized embeddings of the documents. An interface built using Gradio ensured user-friendly interaction. Key improvements included advanced RAG techniques such as query routing, memory integration, and query filtering by metadata, enhancing retrieval efficiency., System performance was validated through a set of test cases using Giskard, and responses were evaluated by a larger model, LLama 70B, for accuracy. While the system shows potential for use in various fields, its limitations include lower-quality responses compared to larger models and the inability to process multimodal data. Future work could focus on optimizing models for better performance in this environments",
+      "type": "TFG",
+      "keywords": [
+        "informatica"
+      ],
+      "year": 2024
+    },
+    {
+      "id": "tft_10249204",
+      "title": "Digitalización de un proceso de evaluación de menores de un centro de acogida mediante gamificación",
+      "abstract": "La gamificación emerge como una estrategia efectiva para transformar la dinámica de diversas actividades dotándolas de un enfoque más atractivo a través del uso de juegos o un enfoque lúdico. Este enfoque, pretende cambiar la manera en la que el participante ve la actividad. Mejorando así la productividad, el aprendizaje y facilita la evaluación de competencias., En este proyecto, se detalla la creación de un sistema que digitaliza el proceso de evaluación de un centro de protección de menores. Actualmente, el centro utiliza un sistema de penalización económica por conductas contrarias a las normas establecidas, reduciendo su paga semanal de acuerdo con la evaluación de los tutores. Todo esto se hace de manera manual escribiendo informes en los expedientes de los menores, lo cual puede resultar ineficiente y poco motivador., Con la implementación del nuevo sistema propuesto se pretende digitalizar este proceso e invertir la dinámica de evaluación mediante la gamificación. En lugar de la reducción de la asignación económica, se propone la acumulación de esta mediante comportamientos positivos por parte de los menores. Esta inversión en la dinámica no solo busca incentivar el buen comportamiento, sino también fomentar un ambiente más positivo y motivador para los menores., El sistema permitirá a los supervisores proporcionar retroalimentación en tiempo real sobre el desempeño de los menores en las actividades diarias. Esta retroalimentación incluye aspectos específicos que los menores pueden mejorar, así como el reconocimiento de sus logros y progresos. Los menores, en este sistema gamificado, actuarán como personajes de un juego. Tendrán que completar una serie de misiones diarias, que pueden incluir tareas académicas, actividades de desarrollo personal y comportamientos sociales positivos. Al completar estas misiones, ganarán puntos y recompensas según la evaluación de los tutores., Además de los beneficios directos para los menores, el sistema también proporciona ventajas administrativas. La digitalización del proceso de evaluación facilita la recopilación y análisis de datos, permitiendo un seguimiento más preciso del progreso individual y colectivo. Esto puede ayudar a los administradores del centro a identificar patrones, ajustar estrategias de intervención y mejorar la eficacia general del programa., Abstract:, Gamification emerges as an effective strategy to transform the dynamics of various activities by making them more attractive through the use of games or a playful approach. This approach aims to change the way participants perceive the activity, thereby improving productivity, learning, and facilitating competency evaluation., This project details the creation of a system that digitizes the evaluation process in a child protection center. Currently, the center uses an economic penalty system for behaviors contrary to established norms, reducing the weekly allowance according to the tutors' evaluation. This process is done manually by writing reports in the children's files, which can be inefficient and unmotivating., With the implementation of the proposed new system, the aim is to digitize this process and reverse the evaluation dynamics through gamification. Instead of reducing the economic allowance, the system proposes accumulating it through positive behaviors by the minors. This shift in dynamics not only seeks to incentivize good behavior but also to foster a more positive and motivating environment for the children., The system will allow supervisors to provide real-time feedback on the minors' performance in daily activities. This feedback includes specific areas where the minors can improve as well as recognition of their achievements and progress. In this gamified system, the children will act as game characters. They will need to complete a series of daily missions, which can include academic tasks, personal development activities, and positive social behaviors. By completing these missions, they will earn points and rewards based on the tutors' evaluations., In addition to the direct benefits for the children, the system also provides administrative advantages. Digitizing the evaluation process facilitates data collection and analysis, allowing for more precise tracking of individual and collective progress. This can help center administrators identify patterns, adjust intervention strategies, and improve the overall effectiveness of the program",
+      "type": "TFG",
+      "keywords": [
+        "informatica"
+      ],
+      "year": 2024
+    },
+    {
+      "id": "tft_10351543",
+      "title": "EU Contract Hub, an integrated search and analysis tool for public procurement contracts within the European Union",
+      "abstract": "Public procurement is the process by which a public body (such as a ministry or local authority) buys works, goods, or services from companies. It is an essential part of service delivery and a sizeable portion of internal Gross Domestic Product (GDP) in European member states. In this work, a data framework is developed to facilitate the analysis of trends in public procurement, with a special focus on healthcare procurement. It encompasses the complete data cycle, from the collection of contract information to their processing into a digital interactive tool: EU Contract Hub. This tool can be used to extract numerical and visual information from public procurement contracts. EU Contract Hub is based on a document-oriented storage, which optimizes searches for structured and unstructured data, allows us to quickly create data visualizations and integrate them into interactive dashboards, and enables textual searches within the contracts’ contents. This framework is accompanied by several analysis of the data on issues with quality, consistency, and interoperability, summarizing the context behind these problems, and presenting solutions to mitigate them. The data presented in our tool are extracted from Tenders Electronic Daily (TED), the online version of the ’Supplement to the Official Journal’ of the EU, dedicated to European public procurement. We extract the data in two formats: XML and CSV. The XML format contains all the data entered in the form, including descriptions, with new contracts downloaded daily, and only the Contract Award Notices are uploaded to the tool. The CSV format is more concise, but includes more precise value estimates. We leverage the data in both formats to extract the most precise amount of information about the contracts. We aim to collect all contracts in TED from 2018 until today, giving us access to information about more than 1.5 million contracts. Contract data is processed to remove outlier values, add useful information such as CPV descriptions, and incorporate attribute-based rules to characterize aspects like the Procurement Route. This structured and enhanced data are then indexed into a final, easy-to-use index that answers a series of predefined questions. We also automatically translate in English the title and descriptions of said contracts to expand the reach of the information to a larger audience, given that this information is mostly written in the native language of the procurement country. The EU Contract Hub service is hosted on a web domain and provides open access to query its data",
+      "type": "TFM",
+      "keywords": [
+        "informatica"
+      ],
+      "year": 2024
+    },
+    {
+      "id": "tft_10351542",
+      "title": "Sistema generador y evaluador automático de cuestionarios con control del nivel de dificultad en español basado en modelos de lenguaje de gran escala",
+      "abstract": "En este Trabajo de fin de Máster (TFM) presentamos un sistema innovador de generación y evaluación automática de cuestionarios (SGEC) capaz de generar cuestionarios controlando el nivel de dificultad en preguntas de opción múltiple y preguntas abiertas. El proceso se realiza sin intervención humana mediante técnicas de procesamiento del lenguaje natural en combinación con modelos de lenguaje de gran escala y aprendizaje contextual. La iniciativa surge ante la necesidad de optimizar la creación de cuestionarios educativos en idioma castellano, tarea que tradicionalmente consume tiempo y es susceptible a la subjetividad evaluadora del docente. Nuestro sistema no solo genera cuestionarios adaptados a tres niveles de dificultad, sino que también permite la autoevaluación, promoviendo así la autonomía y adaptabilidad en el aprendizaje. El sistema, desarrollado como servicio online basado en modelos de lenguaje, aborda varios desafíos específicos del ámbito educativo de habla hispana. Entre estos se incluyen la generación de cuestionarios personalizados y la adaptación de la dificultad de las preguntas según el nivel de conocimiento de los estudiantes. Los resultados de las encuestas realizadas para el sistema SGEC muestran una alineación adecuada con las categorías de dificultad propuestas. Además, los resultados de las evaluaciones muestran que el SGEC genera preguntas semánticamente correctas, sintácticamente precisas, y contextualmente relevantes. También se obtuvo una retroalimentación detallada y precisa sobre las respuestas de los estudiantes con el sistema de evaluación automática en preguntas abiertas. Finalmente, se revisan algunas limitaciones tecnológicas y de integración, y se proponen nuevas líneas de investigación para la mejora del sistema presentado",
+      "type": "TFM",
+      "keywords": [
+        "informatica"
+      ],
+      "year": 2024
+    },
+    {
+      "id": "tft_10351031",
+      "title": "Automatic topic label generation using conversational models",
+      "abstract": "La modelización probabilística de tópicos es una técnica de aprendizaje automático no supervisada que, dada un conjunto de documentos, es capaz de analizar, detectar y agrupar automáticamente palabras que mejor caracterizan tópicos comunes presentes en el conjunto. Sin embargo, muchas veces estamos interesados en saber qué relaciona estos documentos más allá de los patrones más característicos o conjuntos de palabras en el conjunto. En consecuencia, surgió la generación de etiquetas de tópicos, que buscaba generar una etiqueta que caracterizara el conjunto de documentos de forma más interpretable que un grupo de palabras que, a priori, no sabemos qué relación tienen entre sí. Actualmente, se siguen investigando nuevas formas de generar estas etiquetas de temas de manera automática y fácilmente comprensibles. A la vez, recientemente han aparecido Modelos de Lenguaje con fin conversacional, los cuales están entrenados para comprender y generar diálogos entre humanos y máquinas. Estos modelos presentan capacidades más allá de la habilidad de tener una conversación, como por ejemplo ChatGPT, que ha demostrado poder redactar de forma autónoma correos electrónicos o redacciones sobre un tema específico, por ejemplo. Los modelos conversacionales presentan un potencial aparente no solo para ser aplicados en tareas recreativas, sino que también pueden ser útiles para otras tareas, como se indica en la publicación de Sallam \"ChatGPT Utility in Healthcare Education, Research, and Practice: Systematic Review on the Promising Perspectives and Valid Concerns\" [1], donde el autor analiza 60 publicaciones que hablaban de los beneficios de usar ChatGPT en diferentes tareas, como el análisis eficiente de conjuntos de datos o la generación de código para la investigación en salud. Ante este hecho, el objetivo de este Proyecto Final de Máster es estudiar la capacidad que pueden tener los modelos conversacionales para generar automáticamente y de manera no supervisada etiquetas para tópicos probabilísticos, dado un conjunto de palabras clave representativas del tema, siguiendo una metodología a la cual nos referiremos como Etiquetado Conversacional de Tópicos Probabilísticos (CPTL o Conversational Probabilistic Topic Labelling en inglés). También comparamos el rendimiento de estos modelos conversacionales con el rendimiento de un modelo de lenguaje específico para tareas, entrenado para generar etiquetas de temas. ABSTRACT Probabilistic topic modelling is an unsupervised machine learning technique that, given a set of documents, is capable of scanning, detecting patterns of words and phrases, and automatically grouping words that best characterize a topic. Many times, however, we are interested in knowing what relates these documents beyond the most characteristic patterns or sets of words in the set. Consequently, the generation of topic labels appeared, which sought to generate a label that would characterize the set of documents in a more interpretable way than having a group of words that we, a priori, do not know the relationship they have with each other. Currently, new ways of generating these topic labels that are easily understandable automatically are still being investigated. At the same time, Neural Language Models based on Neural Networks with conversational purpose have recently emerged, which are trained to understand and generate dialogues between humans and machines. These models possess capabilities beyond the ability to engage in conversation, such as ChatGPT, which has demonstrated the ability to autonomously compose emails or write about a specific topic, for example. Conversational models present an apparent potential to not only have recreational applications, but can also be useful for other tasks, as stated in Sallam’s publication \"ChatGPT Utility in Healthcare Education, Research, and Practice: Systematic Review on the Promising Perspectives and Valid Concerns\" [1], where the author analysed 60 publications that talked about the benefits of using ChatGPT in different tasks, such as efficient analysis of datasets or code generation for health care research. Given this fact, the purpose of this Final Master’s Project is to study the capacity that conversational models may have to automatically and unsupervisedly generate tags for probabilistic topics given a set of keywords representative of the topic, following a methodology which we will refer as Conversational Probabilistic Topic Labelling (CPTL). We also compare the performance of these conversational models with the performance of a task-specific language model trained to generate topic labels",
+      "type": "TFM",
+      "keywords": [
+        "informatica"
+      ],
+      "year": 2023
+    },
+    {
+      "id": "tft_10351141",
+      "title": "Enabling support for complex questions in knowledge-graph question-answering systems by decomposition",
+      "abstract": "La tarea de question-answering (QA) en el procesamiento del lenguaje natural (NLP) se enfoca en crear sistemas informáticos que comprendan y respondan con precisión a consultas formuladas en lenguaje cotidiano. Estos sistemas emplean algoritmos avanzados para analizar preguntas, buscar en diversas fuentes y generar respuestas concisas y relevantes. QA facilita la comunicación intuitiva entre humanos y máquinas y mejora la recuperación de información. Las preguntas de un solo salto o simples se pueden responder directamente desde una sola fuente de información, mientras que las preguntas de varios saltos o complejas requieren información de múltiples fuentes. Las preguntas de varios saltos implican un razonamiento complejo, la comprensión de relaciones y la conexión de diferentes piezas de información, lo que las hace más desafiantes. Responder a ellas implica identificar información relevante, razonar y navegar por la ambigüedad, lo que supone un desafío para los sistemas de QA. Los sistemas de QA basados en Grafos de Conocimiento (KGQA) aprovechan grafos de conocimiento estructurados, que capturan atributos y relaciones de entidades, para proporcionar respuestas contextualmente apropiadas. MuHeQA es un algoritmo innovador de Preguntas y Respuestas basado en Grafos de Conocimiento (KGQA), como se describe en el trabajo de Badenes-Olmedo and Corcho (2023). Aborda las limitaciones comúnmente encontradas en los sistemas KGQA mediante la introducción de un enfoque único que opera simultáneamente en múltiples grafos de conocimiento, integrando de manera fluida fuentes de datos estructurados y no estructurados. Cabe destacar que MuHeQA se destaca por su independencia de dominio, ya que no se basa en datos de entrenamiento, lo que le permite adaptarse a diversos dominios sin necesidad de un entrenamiento específico extenso. Además, reduce la dependencia del esquema subyacente, ya que no navega a través de contenido estructurado, sino que se enfoca en leer los valores de las propiedades. Sin embargo, es importante tener en cuenta que MuHeQA actualmente enfrenta desafíos relacionados con la inferencia de un solo contexto, lo que puede dificultar su efectividad para manejar preguntas complejas. Para superar esta limitación, este proyecto tiene como objetivo mejorar MuHeQA mediante el aprovechamiento de técnicas de descomposición de preguntas, lo que le permite abordar preguntas complejas dividiéndolas en subpreguntas más simples y extrayendo respuestas de manera efectiva de los grafos de conocimiento. ABSTRACT The task of Question-answering (QA) in natural language processing (NLP) focuses on creating computer systems that understand and accurately respond to everyday language queries. These systems employ advanced algorithms to analyze questions, search diverse sources, and generate concise, relevant answers. QA facilitates intuitive human-machine communication and enhances information retrieval. Single-hop and multi-hop questions are used in natural language processing and information retrieval. Single-hop or simple questions can be answered directly from one source, while multi-hop or complex questions require information from multiple sources. Multi-hop questions involve complex reasoning, understanding relationships, and connecting different information pieces, making them more challenging. Answering them involves identifying relevant information, reasoning, and navigating ambiguity, presenting a challenge for QA systems. Knowledge Graph Question Answering (KGQA) systems leverage structured knowledge graphs, capturing entity attributes and relationships, to provide contextually appropriate responses. MuHeQA is an innovative Knowledge Graph-based Question Answering (KGQA) algorithm, as described in the work by Badenes-Olmedo and Corcho (2023). It addresses limitations commonly found in KGQA systems by introducing a unique approach that operates simultaneously on multiple knowledge graphs, seamlessly integrating structured and unstructured data sources. Notably, MuHeQA stands out for its domainindependence, as it does not rely on training data, making it adaptable to various domains without the need for extensive domain-specific training. Moreover, it reduces dependency on the underlying schema, as it does not navigate through structured content but instead focuses on reading property values. However, it is important to note that MuHeQA currently faces challenges related to single-context inference, which can hinder its effectiveness in handling complex questions. To overcome this limitation, this project aims to enhance MuHeQA by leveraging question decomposition techniques, enabling it to tackle complex questions by breaking them down into simpler sub-questions and effectively extracting answers from the knowledge graphs",
+      "type": "TFM",
+      "keywords": [
+        "informatica"
+      ],
+      "year": 2023
+    },
+    {
+      "id": "tft_10351111",
+      "title": "Implementación de un sistema de preguntas y respuestas basado en MuHeQA para la Agencia Ferroviaria Europea",
+      "abstract": "Los sistemas de preguntas y respuestas (QA, por sus siglas en inglés), son una útil herramienta de extracción de información de conjuntos de datos sin necesidad de utilizar lenguajes formales para su acceso. La información se obtiene mediante consultas en lenguaje natural, que son analizadas por el sistema QA, y se obtienen las respuestas consideradas más relevantes. Sus aplicaciones son en campos y conjuntos de datos muy diversos. En este trabajo se aplicará un sistema QA a los grafos de conocimiento de la Agencia Europea Ferroviaria (ERA, por sus siglas en inglés). La implementación estará basada en MuHeQA, un sistema QA que utiliza técnicas de procesamiento del lenguaje natural para encontrar recursos del grafo a partir de la consulta del usuario en vez de traducirla a una consulta en lenguaje formal. La implementación consiste en la configuración del sistema MuHeQA para adaptar sus primeros procesos al grafo de ERA. Estos procesos consisten en la generación de palabras clave a partir de la pregunta, la obtención de los recursos candidatos del grafo más relevantes y la generación de sentencias que contengan las respuestas a la pregunta. La identificación de los recursos del grafo se realizará mediante un índice inverso de Elasticsearch en vez de consultas en la web. La implementación ha pasado por distintas pruebas sobre los distintos recursos y tipos de preguntas posibles que pueda responder el sistema QA. A partir de los resultados, se realizarán modificaciones a la implementación para incluir nuevos recursos del grafo y mejorar la eficacia de las respuestas. Mediante un sistema generador automático de preguntas es posible evaluar el sistema QA mediante una cantidad significativa de recursos y propiedades. De esta manera, es posible encontrar problemas y comportamientos más genéricos de la implementación. Se aplican modificaciones que mejoran la identificación de los nombres de los recursos. La versión final obtiene resultados que demuestran la eficacia para responder varios tipos de preguntas, pero también limitaciones del sistema ante determinados recursos o propiedades. Las limitaciones descubiertas son recopiladas y sus posibles soluciones están relacionadas con la especificación del sistema MuHeQA para grafos concretos y la mejora de la estrategia de identificación de recursos. Una futura versión sería capaz de responder eficazmente a preguntas sobre la infraestructura ferroviaria europea. ABSTRACT Question-answering (QA) systems are a useful tool for extracting information from datasets without the need for formal languages for access. Information is obtained through queries in natural language, which are analysed by the QA system to provide the most relevant answers. These systems find applications in various fields and datasets. In this work, a QA system will be applied to the knowledge graphs of the European Railway Agency (ERA). The implementation will be based on MuHeQA, a QA system that uses natural language processing to find resources of the graph from the user query, instead of translating it to a formal language query. The implementation involves configurating the MuHeQA system to adapt its initial processes to the ERA graph. These processes include generating keywords from the question, obtaining the most relevant candidate resources from the graph, and generating sentences that contain the answers to the question. Resource identification in the graph will be performed using an Elasticsearch inverse index instead of queries on the web. The implementation has passed various tests on different resources and types of questions that the QA system can answer. Based on the results, modifications will be made to the implementation to include new graph resources and improve the effectiveness of the answers. Using an automatic question generator system, the QA system can be evaluated with a significant number of resources and properties. This allows for identifying more generic problems and behaviours of the implementation. Modifications are made to improve the identification of resource names. The final version achieves results that demonstrate effectiveness in answering various types of questions but also reveals limitations of the system with certain resources or properties. The discovered limitations are compiled, and possible solutions are related to the specification of the MuHeQA system for specific graphs and the improvement of the resource identification strategy. A future version would be able to effectively answer questions about the European railway infrastructure",
+      "type": "TFM",
+      "keywords": [
+        "informatica"
+      ],
+      "year": 2023
+    },
+    {
+      "id": "tft_9950636",
+      "title": "Aplicación para la exploración de contenidos de una base de datos orientada a documentos",
+      "abstract": "Este trabajo consiste en el diseño y desarrollo de una aplicación Web que facilita la gestión y exploración de documentos orientada a la búsqueda de documentos dentro de una base de datos nosql orientada a documentos (motor de búsqueda). El objetivo es acercar, facilitar y generar una “user-experience” intuitiva que acerque esta tecnología a usuarios no expertos. Esto quiere decir, que la clave del proyecto reside en que un usuario no experto pueda hacer operaciones sobre un motor de búsqueda analítica de documentos sin necesidad alguna de conocer con anterioridad ninguna tecnología usada en el desarrollo de la app. La construcción de esta aplicación se ha desarrollado aplicando distintas capas de software haciendo de este un proyecto con módulos independientes, funcionales y escalables de forma individual. Dentro de este documento se detalla el desarrollo de esta aplicación web en todas sus fases, tecnologías utilizadas, test y pruebas realizadas, conclusiones y posibles casos de mejora",
+      "type": "TFG",
+      "keywords": [
+        "informatica"
+      ],
+      "year": 2022
+    },
+    {
+      "id": "tft_9997341",
+      "title": "Application of Machine Learning Methodologies for the Detection of Neuroanatomical and Electrophysiological Factors Predisposing to Heavy Alcohol Consumption",
+      "abstract": null,
+      "type": "TFM",
+      "keywords": [],
+      "year": 2022
+    },
+    {
+      "id": "tft_9997342",
+      "title": "Definition of a Guide of Best Practices in the Creation and Updating of Knowledge Graphs from Scientific Literature on Coronaviruses and creation of a data actualization pipeline for Drugs4Covid",
+      "abstract": null,
+      "type": "TFM",
+      "keywords": [],
+      "year": 2022
+    },
+    {
+      "id": "tft_9997343",
+      "title": "Estudio Sistémico de Tipos Celulares Humanos",
+      "abstract": null,
+      "type": "TFM",
+      "keywords": [],
+      "year": 2022
+    },
+    {
+      "id": "tft_9997340",
+      "title": "Generation of an Annotated Corpus with Biomedical Entities",
+      "abstract": null,
+      "type": "TFM",
+      "keywords": [],
+      "year": 2022
+    },
+    {
+      "id": "tft_10350804",
+      "title": "Impact of SARS-CoV-2 on the coronavirus literature through dynamic topics",
+      "abstract": "The aim of this work is to study the impact of SARS-CoV-2 in the coronavirus literature. We want to analyze how this virus has erupted in a collection of coronavirus articles (CORD-19). We want to know how, if at all, it has changed the direction of the research line. This collection contains articles of all types of coronaviruses. We want to find how coronavirus research has evolved during the three most relevant coronavirus events: SARS-CoV-1, MERS-CoV and SARS-CoV-2 viruses. This task is in the domain of natural language processing, and dynamic topic models will be used to solve it. We will use three models to solve it, and their performance will be compared. The models we will use are: Dynamic Topic Model, BERTopic and Dynamic Embedded Topic Model. The dynamic topic models will be used to generate the evolution of the different topics of the corpus. By means of this, it is possible to observe which words are related within the topic to determine their relationship with each other. In addition, it is also possible to see the appearances or disappearances of words. The topics containing drugs or treatments will be analyzed to study the relationships between the words that generate the different models. The objective is to see if the topic in which the drugs are found is directly related to the disease or symptoms in the same topic",
+      "type": "TFM",
+      "keywords": [
+        "informatica",
+        "medicina"
+      ],
+      "year": 2022
+    },
+    {
+      "id": "tft_9935342",
+      "title": "Interfaz de usuario para acceso a sistema de pregunta-respuesta",
+      "abstract": "La búsqueda de respuestas o Question Answering es una de las principales vertientes del Procesamiento de Lenguaje Natural, la cual se ha beneficiado enormemente de los recientes avances de la Inteligencia Artificial y la Web Semántica. Una de sus pincipales variantes, el Knowledge Graph Question Answering (KGQA), tiene como objetivo responder preguntas en lenguaje natural a partir de consultas a bases de conocimiento estructuradas. La accesibilidad a los sistemas de pregunta-respuesta en el área del KGQA, así como las maneras de evaluarlos objetivamente, están todavía en desarrollo, dificultando el crecimiento de este campo. El objetivo de este proyecto será realizar un servicio que resuelva las cuestiones anteriormente planteadas. Para ello, hemos diseñado una aplicación en el lenguaje de programación Python que integra bajo un mismo servicio una interfaz web, una base de datos no relacional (MongoDB) para la gestión de conjuntos de datos de KGQA y un sistema de pregunta-respuesta con acceso API REST (mediante peticiones HTTP). Como resultado de este trabajo se ha desarrollado un servicio desplegable con Docker que facilita el uso de sistemas de pregunta-respuesta de KGQA por medio de una interfaz visual. Este permite al usuario realizar preguntas libres, introduciéndolas por teclado, o seleccionar la pregunta de entre uno de los conjuntos de datos de preguntas y respuestas subido previamente a la interfaz web. Tras recibir la respuesta del sistema, el usuario puede validar si las respuestas obtenidas son correctas, permitiendo así evaluar el sistema y generar nuevos conjuntos de datos anotados automáticamente. Por otro lado, también será posible obtener una serie de métricas sobre la fluidez de escritura y los tipos de preguntas de los conjuntos de datos subidos",
+      "type": "TFG",
+      "keywords": [
+        "informatica",
+        "matematica"
+      ],
+      "year": 2022
+    },
+    {
+      "id": "tft_9997345",
+      "title": "Predicción de Afinidad de Ligandos a partir de Descriptores 2D",
+      "abstract": null,
+      "type": "TFM",
+      "keywords": [],
+      "year": 2022
+    },
+    {
+      "id": "tft_9997346",
+      "title": "Predicting Mismatch Repair Deficiency in Ovarian Carcinomas",
+      "abstract": null,
+      "type": "TFM",
+      "keywords": [],
+      "year": 2022
+    },
+    {
+      "id": "tft_9997347",
+      "title": "Predictive Models for the Colorectal Cancer Relapse",
+      "abstract": null,
+      "type": "TFM",
+      "keywords": [],
+      "year": 2022
+    },
+    {
+      "id": "tft_10350667",
+      "title": "Relation extraction between biomedical entities from scientific texts",
+      "abstract": "The current growth in biomedical digital publications has made necessary the development of tools that are capable of synthetize the information. To this end, a specific task has become fundamental, the capability of extracting biomedical relations between named entities, such as genes, chemicals or diseases. BioRE (Biomedical Relation Extraction) has allowed investigators to build taxonomies based on biomedical relations, and facilitate the creation of ontologies and graph-based databases. Methods for extracting relations have evolved in recent years in a variety of approaches, from co-concurrence statistical methods and Rule-based methods, to Machine Learning and Deep Learning methods. Recent approaches are mainly based on pre training language models created from biomedical corpus. This work proposes BioREx a BioRE system based on the state-of-the-art, BioBert, which was fine-tuned with a dataset specifically adapted for this task. Our model is composed of two classifiers created from representations on biomedical data in to perform intra sentence relation classification between Genes-Diseases, Chemical-Disease and ChemicalsGenes. A web platform capable of extracting relations from biomedical text has been also created based on these classifiers. The BioRE solution was evaluated showing a F1 score of 82.37, 86.74 and 69.1 to classify Genes-Diseases, Chemical-Disease and Chemicals-Genes, respectively",
+      "type": "TFM",
+      "keywords": [
+        "informatica"
+      ],
+      "year": 2022
+    },
+    {
+      "id": "tft_9997348",
+      "title": "The Convergence between Artificial Intelligence and Sustainability",
+      "abstract": null,
+      "type": "TFG",
+      "keywords": [],
+      "year": 2022
+    },
+    {
+      "id": "tft_9997349",
+      "title": "The Impact of Natural Language Processing on the Travel and Tourism Industry",
+      "abstract": null,
+      "type": "TFG",
+      "keywords": [],
+      "year": 2022
+    },
+    {
+      "id": "tft_10350180",
+      "title": "Explainable QA over KG",
+      "abstract": "Durante los últimos años se ha observado que la gran mayoría de información ha pasado de estar contenida en textos de manera no estructurada, como enciclopedias, artículos de investigación o libros, a estar estructurada en grafos del conocimiento. Esta evolución ha añadido toda una nueva dimensión a la tarea de responder preguntas en lenguaje natural, surgiendo los sistemas de pregunta-respuesta basados en grafos de conocimiento que aportan una forma intuitiva de consultar fuentes de datos estructurados para usuarios no expertos. Aunque la información que responde a la pregunta está en el grafo de conocimiento, el desafío de estos sistemas reside en la complejidad para crear la consulta al grafo. Las técnicas de Extractive Question Answering podrían extraer la respuesta a partir de la pregunta y un texto en lenguaje natural que contenga la información de la entidad del KG. Entonces, ¿cómo funcionaría un sistema de preguntas y respuestas que generase un texto en lenguaje natural a partir de un grafo de conocimiento para responder en lenguaje natural a una pregunta también formulada en lenguaje natural? Este sistema tendría las tres tareas típicas de los sistemas de pregunta-respuesta, que son el análisis de la pregunta, recuperación de información y extracción de la respuesta. En la primera se identificarían las entidades de la pregunta y se enlazarían con sus recursos correspondientes del grafo de conocimiento. La segunda tarea se encargará de realizar la consulta al grafo y redactar un texto en lenguaje natural con dicha información. Finalmente, se extraerá la respuesta a partir del texto y la pregunta utilizando técnicas de Extractive Question Answering. La solución se ha desarrollado como una API REST basado en spaCy [42] para la identificación de entidades, DBpedia Spotlight [49] para el mapeo de recursos, una consulta en SPARQL [27] para extraer la información, se apoya en el grafo de conocimiento DBpedia [23] y utiliza BERT [39] para extraer la respuesta. Además, se han realizado otras implementaciones en idioma español o con otras tecnologías como Stanza [45] y grafos del conocimiento como Wikidata [22]. Los resultados, al evaluar las respuestas generadas sobre un conjunto de prueba, han revelado algunas limitaciones cómo que la precisión disminuye en las preguntas complejas con varias entidades respecto a las simples, cómo la falta de contexto restringe la desambiguación de entidades o el texto redactado en lenguaje natural puede ser mejorado si se realizara de manera semi supervisada. Por el contrario, el sistema facilita la utilización de distintas tecnologías gracias a su arquitectura extensible, se desenvuelve bien en preguntas de dominio general, admite cualquier grafo de conocimiento como base de información y tiene soporte para múltiples idiomas",
+      "type": "TFM",
+      "keywords": [
+        "informatica"
+      ],
+      "year": 2021
+    },
+    {
+      "id": "tft_10350197",
+      "title": "Named entity recognition and normalization in biomedical literature: a practical case in SARS-CoV-2 literature",
+      "abstract": "Las tareas de recuperación de información se han convertido en una herramienta esencial para la investigación biomédica. La tendencia creciente en el número de publicaciones ha hecho necesario desarrollar e implementar estas herramientas para ayudar a los investigadores a mantenerse al día con los últimos avances en su campo. Una de las tareas de minería de texto más fundamentales en la recuperación de información en el área biomédica es el reconocimiento de entidades nombradas biomédicas, como enfermedades, sustancias químicas o genes, lo que se conoce comúnmente como BioNER. Como complemento a este reconocimiento, las entidades detectadas suelen vincularse a bases de datos curadas en un proceso denominado linkeo o normalización de entidades (BioNEN). Las metodologías aplicadas en BioNER han ido evolucionando durante años hasta llegar al estado del arte actual, que se basa fundamentalmente en el uso de modelos de lenguaje como BERT que son preentrenados en el campo biomédico para especificar su conocimiento subyacente. La revisión realizada recorrerá cómo se realizan las tareas de NER y como ha sido su evolución hasta llegar a estos modelos del estado del arte actual. Esta revisión nos ha ayudado a implementar un sistema que se basa en el actual modelo del estado del arte, BioBERT. Un modelo BioBERT se ha puesto a punto para realizar la tarea NER para cada una de las clases de entidades consideradas: enfermedades, productos químicos y genética. Los resultados han sido normalizados mediante una búsqueda de índice inverso en una base de datos construida con la unión y mapeo de términos de múltiples fuentes. Este sistema se aplica en dos casos prácticos, uno como pieza central en una plataforma web a la que se pueden enviar textos para ser procesados por el sistema y otro para procesar el corpus CORD-19, compuesto por artículos relacionados con el SARS-CoV-2. Se ha evaluado el sistema, mostrando una puntuación F1 de 0,86 en PGxCorpus (en Micro-Average para coincidencias parciales, los resultados variarán ligeramente dependiendo del escenario considerado). Con un análisis de errores, concluimos que la mayoría de los errores se observaron debido a la detección incorrecta de los límites de las entidades",
+      "type": "TFM",
+      "keywords": [
+        "genetica",
+        "informatica",
+        "medicina"
+      ],
+      "year": 2021
+    },
+    {
+      "id": "tft_10350715",
+      "title": "Propuesta de un modelo de asociación de tópicos",
+      "abstract": "En el presente proyecto se propone un algoritmo que busca mejorar el orden de relevancia, de los documentos recuperados como respuesta a la consulta de similitud de documentos a uno dado. Este proyecto de fin de máster se enfocó en tomar en cuenta el orden de relevancia, de la similitud de un par de documentos, proporcionados por un usuario, como una retroalimentación, a un sistema de recuperación de información. En primera instancia, se analizó la precisión de la relevancia que tiene el sistema de recuperación de información actual y se buscó una mejora mediante la combinación de tópicos de un par de documentos que se consideran altamente similares. Una vez que se obtuvo el patrón de combinación de tópicos entre un documento y sus similares recuperados, que mejora el posicionamiento de resultados situando a los más relevantes en el top, se procedió a diseñar el algoritmo que siga este patrón. El juego inicial de tópicos y su mejora fueron dados mediante una retroalimentación, de niveles de relevancia de los documentos recuperados como similares a un documento, proporcionada por un sistema de crowdsourcing existente que proporciona la media de la opinión de usuarios sobre la similitud entre documentos. El algoritmo que da vida a estas combinaciones de tópicos obtenidos previamente proporciona como salida reglas de asociaciones de tópicos. Como fase final del proyecto, se realizaron pruebas empíricas aplicando las reglas a un conjunto de documentos de prueba y se analizó la precisión de la recuperación de documentos similares a un documento query, una vez modificadas sus anotaciones de tópicos. Obteniendo de esta manera los resultados y conclusiones del proyecto",
+      "type": "TFM",
+      "keywords": [
+        "informatica"
+      ],
+      "year": 2021
+    },
+    {
+      "id": "tft_10348204",
+      "title": "Aplicación web de visualización de corpus documentales basado en tecnologías semánticas",
+      "abstract": "This era of information is evolving. Every day, people get forced to adapt their personal devices and technologies for the overwhelming amounts of data which are larger and larger. At the same time we need the proper systems to hold this data secured and protected, it is necessary to develop new services which allow us to acquire enough knowledge about our datasets’ most simple and general characteristics and properties. That is why this project, which originally has been developed as a Final Degree Project, is meant for bringing to light the amount of utilities – served by web technologies -, which let us to completely analyze our own document corpus by means of interactive graphs. It will be possible thanks to technologies made for this purpose of managing data and access to information about sets of documents, instead of making an analysis of just individual units. For the main action of saving and giving the web application a way to retrieve data in a very powerful and reusable form, Elasticsearch is chosen to be the element to act as a database. For the graphs and data visualizations, D3.js will be the JavaScript tool that will provide the functions and SVG element design to create the diagrams that will represent the document sets data. Finally, the website will be implemented as a client-side Angular framework web app, which will satisfy the compatibility between Elasticsearch and D3.js thanks to its ECMAScript 6 (ES6) language base and its Model-View-Controller and component fundamental architecture",
+      "type": "TFG",
+      "keywords": [
+        "informatica"
+      ],
+      "year": 2019
+    },
+    {
+      "id": "tft_9189632",
+      "title": "Aplicación web de visualización de corpus, documentales basado en tecnologías semánticas",
+      "abstract": "This era of information is evolving. Every day, people get forced to adapt their personal devices and technologies for the overwhelming amounts of data which are larger and larger. At the same time we need the proper systems to hold this data secured and protected, it is necessary to develop new services which allow us to acquire enough knowledge about our datasets’ most simple and general characteristics and properties. That is why this project, which originally has been developed as a Final Degree Project, is meant for bringing to light the amount of utilities – served by web technologies -, which let us to completely analyze our own document corpus by means of interactive graphs. It will be possible thanks to technologies made for this purpose of managing data and access to information about sets of documents, instead of making an analysis of just individual units. For the main action of saving and giving the web application a way to retrieve data in a very powerful and reusable form, Elasticsearch is chosen to be the element to act as a database. For the graphs and data visualizations, D3.js will be the JavaScript tool that will provide the functions and SVG element design to create the diagrams that will represent the document sets data. Finally, the website will be implemented as a client-side Angular framework web app, which will satisfy the compatibility between Elasticsearch and D3.js thanks to its ECMAScript 6 (ES6) language base and its Model-View-Controller and component fundamental architecture",
+      "type": "TFG",
+      "keywords": [
+        "informatica"
+      ],
+      "year": 2019
+    }
+  ],
+  "generated_at": "2026-05-29T16:18:00.467141Z"
+}
