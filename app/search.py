@@ -15,6 +15,7 @@ load_dotenv()
 COLLECTION_NAME = "researcher_keywords"
 SPARSE_FIELD = "keywords_bm42"
 SUMMARY_COLLECTION = "researcher_summaries"
+SUMMARY_DENSE_VECTOR = "dense"
 DEFAULT_LIMIT = 10
 
 _OLLAMA_PORT = os.environ.get("OLLAMA_PORT", "11434")
@@ -183,5 +184,6 @@ def search_pdis_by_summary(
         collection=SUMMARY_COLLECTION,
         vector=embedding,
         limit=limit,
+        using=SUMMARY_DENSE_VECTOR,
     )
     return _to_pdi_results_summary(raw)

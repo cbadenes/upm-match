@@ -52,6 +52,7 @@ from models import (
 from utils.logging import setup_logging
 from utils.researchers import load_researcher_ids_with_signatures
 from utils.text import (
+    canonicalize_topics,
     choose_keyword_source,
     choose_publication_description,
     clean_description,
@@ -571,7 +572,9 @@ def build_last_year_project(df_ajax: pl.DataFrame) -> list[LastYearProject]:
         authors = [
             a.strip() for a in str(record.get("authors", "")).split(",") if a.strip()
         ]
-        keywords = split_publication_keywords(choose_keyword_source(record))
+        keywords = canonicalize_topics(
+            split_publication_keywords(choose_keyword_source(record))
+        )
 
         project = LastYearProject(
             id=f"{record['id']}",
@@ -677,9 +680,16 @@ def extract_topic_counts(html: str) -> dict[str, int]:
 
 
 def extract_topics(html: str) -> list[str]:
-    """Extract and rank the research topics from the `data1` JSON blob."""
+    """Extract, rank and canonicalise the research topics from `data1`.
+
+    Topics are ranked by descending count, then near-duplicate variants
+    (plurals / inflections) are merged so the list stored in the graph is
+    already clean. The frequency-ranked order is preserved by feeding the
+    ranked list (most-used first) into the canonicaliser.
+    """
     counts = extract_topic_counts(html)
-    return sorted(counts, key=lambda topic: counts[topic], reverse=True)
+    ranked = sorted(counts, key=lambda topic: counts[topic], reverse=True)
+    return canonicalize_topics(ranked)
 
 
 def build_publications(df_ajax: pl.DataFrame) -> list[Publication]:
@@ -780,7 +790,9 @@ def build_publications(df_ajax: pl.DataFrame) -> list[Publication]:
             ]
             if record.get("authors")
             else [],
-            keywords=split_publication_keywords(choose_keyword_source(record)),
+            keywords=canonicalize_topics(
+                split_publication_keywords(choose_keyword_source(record))
+            ),
             start_date=record.get("start_date"),
             end_date=record.get("end_date"),
         )

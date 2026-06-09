@@ -17,9 +17,11 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import time
 from collections import defaultdict
+from datetime import datetime, timezone
 from pathlib import Path
 
 import ollama as _ollama
@@ -48,7 +50,10 @@ _QDRANT_HOST = os.environ.get("QDRANT_HOST", "localhost")
 _QDRANT_PORT = int(os.environ.get("QDRANT_PORT", "6333"))
 _QDRANT_API_KEY = os.environ.get("QDRANT_API_KEY")
 COLLECTION_NAME = "researcher_summaries"
-# MAX_PUBS_PER_YEAR = 8  # cap per year to avoid overwhelming context on prolific years
+DENSE_VECTOR_NAME = "dense"
+# A single year with many publications can overflow the model context window and make Ollama drop the connection (losing the whole year).
+# When a year exceeds this many publications we feed them to the agent in successive batches so nothing is lost.
+PUBS_PER_BATCH = int(os.environ.get("SUMMARY_PUBS_PER_BATCH", "10"))
 
 _AGENT_DESCRIPTION = (
     "You are an academic research profiler building a cumulative picture of a researcher's expertise."
@@ -87,16 +92,57 @@ class ExpertiseUpdate(BaseModel):
     )
 
 
+_DEDUP_NORMALIZE_RE = re.compile(r"[^a-z0-9]+")
+
+
+def _dedup_key(text: str | None) -> str:
+    """Normalise a string for duplicate detection: lowercase, alnum-only."""
+    if not text:
+        return ""
+    return _DEDUP_NORMALIZE_RE.sub("", text.lower()).strip()
+
+
+def _dedupe_publications(publications: list) -> list:
+    """Drop near-duplicate publications, keeping the most informative copy.
+
+    Duplicates are detected by normalised title (falling back to the normalised
+    abstract prefix when the title is missing). The portal frequently exposes the
+    same work several times (e.g. preprint + journal, or across sources), which
+    wastes context and over-weights its domains in the rolling summary. When two
+    copies collide the one with the longer abstract is kept.
+    """
+    best: dict[str, object] = {}
+    order: list[str] = []
+    for pub in publications:
+        key = _dedup_key(pub.title) or _dedup_key(pub.abstract)[:120]
+        if not key:
+            key = f"__id__{pub.id}"  # no text at all: never merge distinct items
+        if key not in best:
+            best[key] = pub
+            order.append(key)
+        elif len(pub.abstract or "") > len(getattr(best[key], "abstract", "") or ""):
+            best[key] = pub
+    return [best[key] for key in order]
+
+
 def _group_pubs_by_year(
     enrichment: ResearcherEnrichmentDocument,
 ) -> dict[int, list[dict]]:
     """Return publications grouped by year, sorted chronologically.
 
-    Only keeps fields that are meaningful for summarization (title, abstract, keywords).
-    Publications with no year or no textual content are silently dropped.
+    Near-duplicate publications are removed first. Only keeps fields that are
+    meaningful for summarization (title, abstract, keywords). Publications with
+    no year or no textual content are silently dropped.
     """
+    publications = _dedupe_publications(enrichment.publications)
+    removed = len(enrichment.publications) - len(publications)
+    if removed:
+        logger.debug(
+            "{}: dropped {} near-duplicate publication(s)", enrichment.id, removed
+        )
+
     by_year: defaultdict[int, list[dict]] = defaultdict(list)
-    for pub in enrichment.publications:
+    for pub in publications:
         if not pub.year or pub.year <= 0:
             continue
         abstract = pub.abstract or ""
@@ -150,17 +196,25 @@ def _run_agent(prompt: str) -> ExpertiseUpdate | None:
     return None
 
 
+def _chunk(items: list[dict], size: int) -> list[list[dict]]:
+    """Split a list into consecutive chunks of at most `size` items."""
+    return [items[i : i + size] for i in range(0, len(items), size)]
+
+
 def _build_rolling_summary(
     enrichment: ResearcherEnrichmentDocument,
     debug_output: Path | bool | None,
-) -> str | None:
+) -> tuple[str, list[str]] | None:
     """Iterates over publication years and builds an accumulating biography.
 
-    Returns the final summary text, or None if no usable publications exist.
+    Returns (final summary text, final domains list), or None if no usable
+    publications exist. Years with more than PUBS_PER_BATCH publications are fed
+    to the agent in successive batches so a single prolific year cannot overflow
+    the context window and lose the whole year.
 
     debug_output semantics:
       None  - production mode, no intermediate output
-      True  - print each year's summary to stdout (no Qdrant write)
+      True  - print each batch's summary to stdout (no Qdrant write)
       Path  - write all intermediate summaries to a markdown file (no Qdrant write)
     """
     by_year = _group_pubs_by_year(enrichment)
@@ -171,6 +225,16 @@ def _build_rolling_summary(
         f"{enrichment.first_name or ''} {enrichment.last_name or ''}".strip()
         or str(enrichment.id)
     )
+
+    total_pubs = sum(len(pubs) for pubs in by_year.values())
+    logger.info(
+        "Generating rolling summary for {} ({}) — {} years, {} publications",
+        enrichment.id,
+        full_name,
+        len(by_year),
+        total_pubs,
+    )
+
     prev_domains: list[str] = []
     prev_profile: str | None = None
     md_lines: list[str] = []
@@ -179,60 +243,85 @@ def _build_rolling_summary(
         md_lines.append(f"# Research Biography: {full_name} ({enrichment.id})\n\n")
 
     for year, pubs in by_year.items():
-        pubs_json = json.dumps(pubs, ensure_ascii=False, indent=2)
-
-        if not prev_domains:
-            prompt = (
-                f"Researcher: {full_name}\n\n"
-                f"Abstracts ({year}, {len(pubs)} publication(s)):\n{pubs_json}\n\n"
-                "Extract the researcher's expertise domains and write the profile."
-            )
-        else:
-            domains_bullets = "\n".join(f"- {d}" for d in prev_domains)
-            prompt = (
-                f"Researcher: {full_name}\n\n"
-                f"Established expertise domains (all must appear in `domains` output):\n{domains_bullets}\n\n"
-                f"New abstracts ({year}, {len(pubs)} publication(s)):\n{pubs_json}\n\n"
-                "1. Add to `domains` any research areas in these abstracts NOT already in the established list.\n"
-                "2. Write the `profile` covering all domains."
-                "If new domains were added, end with one sentence introducing this new direction."
-                "If not, describe the researcher's expertise without any reference to time or change."
-            )
-
-        logger.debug(
-            "Summarizing {} — year {} ({} pubs)", enrichment.id, year, len(pubs)
-        )
-        result = _run_agent(prompt)
-
-        if result is None:
-            logger.warning(
-                "Agent produced no output for {} / year {} — keeping previous result",
+        batches = _chunk(pubs, PUBS_PER_BATCH)
+        multi_batch = len(batches) > 1
+        if multi_batch:
+            logger.debug(
+                "{} — year {} has {} pubs, processing in {} batches of <= {}",
                 enrichment.id,
                 year,
+                len(pubs),
+                len(batches),
+                PUBS_PER_BATCH,
             )
-            continue
 
-        prev_domains = result.domains
-        prev_profile = result.profile
-
-        if debug_output is True:
-            domains_str = ", ".join(result.domains)
-            print(f"\n--- {full_name} | Year {year} ({len(pubs)} pub(s)) ---")
-            print(f"Domains: [{domains_str}]")
-            print(result.profile)
-        elif isinstance(debug_output, Path):
-            domains_str = ", ".join(result.domains)
-            md_lines.append(
-                f"## Year {year} ({len(pubs)} publication(s))\n\n"
-                f"**Domains:** {domains_str}\n\n{result.profile}\n\n---\n\n"
+        for batch_idx, batch_pubs in enumerate(batches, 1):
+            pubs_json = json.dumps(batch_pubs, ensure_ascii=False, indent=2)
+            batch_label = (
+                f"{year} (batch {batch_idx}/{len(batches)})"
+                if multi_batch
+                else str(year)
             )
+
+            if not prev_domains:
+                prompt = (
+                    f"Researcher: {full_name}\n\n"
+                    f"Abstracts ({batch_label}, {len(batch_pubs)} publication(s)):\n{pubs_json}\n\n"
+                    "Extract the researcher's expertise domains and write the profile."
+                )
+            else:
+                domains_bullets = "\n".join(f"- {d}" for d in prev_domains)
+                prompt = (
+                    f"Researcher: {full_name}\n\n"
+                    f"Established expertise domains (all must appear in `domains` output):\n{domains_bullets}\n\n"
+                    f"New abstracts ({batch_label}, {len(batch_pubs)} publication(s)):\n{pubs_json}\n\n"
+                    "1. Add to `domains` any research areas in these abstracts NOT already in the established list.\n"
+                    "2. Write the `profile` covering all domains."
+                    "If new domains were added, end with one sentence introducing this new direction."
+                    "If not, describe the researcher's expertise without any reference to time or change."
+                )
+
+            logger.debug(
+                "Summarizing {} — {} ({} pubs)",
+                enrichment.id,
+                batch_label,
+                len(batch_pubs),
+            )
+            result = _run_agent(prompt)
+
+            if result is None:
+                logger.warning(
+                    "Agent produced no output for {} / {} — keeping previous result",
+                    enrichment.id,
+                    batch_label,
+                )
+                continue
+
+            prev_domains = result.domains
+            prev_profile = result.profile
+
+            if debug_output is True:
+                domains_str = ", ".join(result.domains)
+                print(
+                    f"\n--- {full_name} | {batch_label} ({len(batch_pubs)} pub(s)) ---"
+                )
+                print(f"Domains: [{domains_str}]")
+                print(result.profile)
+            elif isinstance(debug_output, Path):
+                domains_str = ", ".join(result.domains)
+                md_lines.append(
+                    f"## {batch_label} ({len(batch_pubs)} publication(s))\n\n"
+                    f"**Domains:** {domains_str}\n\n{result.profile}\n\n---\n\n"
+                )
 
     if isinstance(debug_output, Path) and md_lines:
         debug_output.parent.mkdir(parents=True, exist_ok=True)
         debug_output.write_text("".join(md_lines), encoding="utf-8")
         logger.info("Debug markdown written to {}", debug_output)
 
-    return prev_profile
+    if prev_profile is None:
+        return None
+    return prev_profile, prev_domains
 
 
 # Qdrant dense helpers
@@ -249,20 +338,42 @@ def _ensure_dense_collection(qdrant: QdrantClient, dim: int) -> None:
         return
     qdrant.create_collection(
         collection_name=COLLECTION_NAME,
-        vectors_config=qdrant_models.VectorParams(
-            size=dim,
-            distance=qdrant_models.Distance.COSINE,
-        ),
+        vectors_config={
+            DENSE_VECTOR_NAME: qdrant_models.VectorParams(
+                size=dim,
+                distance=qdrant_models.Distance.COSINE,
+            )
+        },
     )
     logger.info(
-        "Created Qdrant collection '{}' ({}-dim dense cosine)", COLLECTION_NAME, dim
+        "Created Qdrant collection '{}' (named vector '{}', {}-dim dense cosine)",
+        COLLECTION_NAME,
+        DENSE_VECTOR_NAME,
+        dim,
     )
+
+    # Payload indexes enable fast filtering in future hybrid/filtered searches.
+    for field_name, schema in (
+        ("first_year", qdrant_models.PayloadSchemaType.INTEGER),
+        ("last_year", qdrant_models.PayloadSchemaType.INTEGER),
+        ("positions", qdrant_models.PayloadSchemaType.KEYWORD),
+        ("domains", qdrant_models.PayloadSchemaType.KEYWORD),
+    ):
+        qdrant.create_payload_index(
+            collection_name=COLLECTION_NAME,
+            field_name=field_name,
+            field_schema=schema,
+        )
+    logger.info("Created payload indexes on first_year, last_year, positions, domains")
 
 
 def _build_payload(
     researcher_id: int,
     summary: str,
+    domains: list[str],
     enrichment: ResearcherEnrichmentDocument,
+    embedding_dim: int,
+    indexed_at: str,
 ) -> dict:
     full_name = f"{enrichment.first_name or ''} {enrichment.last_name or ''}".strip()
     last_year = max(
@@ -278,6 +389,7 @@ def _build_payload(
         "researcher_id": enrichment.id,
         "name": full_name,
         "summary": summary,
+        "domains": domains,
         "topics": enrichment.topics[:20],
         "first_year": enrichment.first_year,
         "last_year": last_year,
@@ -285,6 +397,11 @@ def _build_payload(
         "publication_count": len(enrichment.publications),
         "subject_count": len(enrichment.subjects),
         "last_year_project_count": len(enrichment.last_year_projects),
+        # Provenance metadata: which models produced the representation and text.
+        "summary_model": _SUMMARY_MODEL,
+        "embedding_model": _EMBED_MODEL,
+        "embedding_dim": embedding_dim,
+        "indexed_at": indexed_at,
     }
 
 
@@ -299,7 +416,7 @@ def _upsert_point(
         points=[
             qdrant_models.PointStruct(
                 id=researcher_id,
-                vector=embedding,
+                vector={DENSE_VECTOR_NAME: embedding},
                 payload=payload,
             )
         ],
@@ -312,6 +429,7 @@ def run(
     researcher_ids: list[int],
     debug_output: Path | bool | None,
     skip_existing: bool,
+    recreate: bool = False,
 ) -> dict[str, int]:
     stats: dict[str, int] = {
         "indexed": 0,
@@ -330,6 +448,9 @@ def run(
             url=f"http://{_QDRANT_HOST}:{_QDRANT_PORT}",
             api_key=_QDRANT_API_KEY,
         )
+        if recreate and qdrant.collection_exists(COLLECTION_NAME):
+            logger.info("Recreating collection '{}' from scratch", COLLECTION_NAME)
+            qdrant.delete_collection(COLLECTION_NAME)
         if skip_existing and qdrant.collection_exists(COLLECTION_NAME):
             records, _ = qdrant.scroll(
                 collection_name=COLLECTION_NAME,
@@ -352,15 +473,18 @@ def run(
 
         enrichment = _load_enrichment(researcher_id)
         if enrichment is None:
-            logger.debug("No enrichment.json for {}", researcher_id)
+            logger.warning(
+                "No enrichment JSON in bucket for {} — skipping", researcher_id
+            )
             stats["no_enrichment"] += 1
             continue
 
-        summary = _build_rolling_summary(enrichment, debug_output)
-        if summary is None:
+        result = _build_rolling_summary(enrichment, debug_output)
+        if result is None:
             logger.debug("No usable publications for {}", researcher_id)
             stats["no_publications"] += 1
             continue
+        summary, domains = result
 
         if debug_output:
             # Debug mode: count as processed but don't write to Qdrant
@@ -377,7 +501,14 @@ def run(
                 qdrant,
                 researcher_id,
                 embedding,
-                _build_payload(researcher_id, summary, enrichment),
+                _build_payload(
+                    researcher_id,
+                    summary,
+                    domains,
+                    enrichment,
+                    len(embedding),
+                    datetime.now(timezone.utc).isoformat(),
+                ),
             )
             stats["indexed"] += 1
         except Exception as exc:
@@ -416,6 +547,15 @@ def main() -> int:
         help="Skip researchers already indexed in Qdrant.",
     )
     parser.add_argument(
+        "--recreate",
+        action="store_true",
+        help=(
+            "Drop and recreate the collection before indexing so the named "
+            "vector, payload indexes and metadata are applied. Used by the "
+            "scheduled full run."
+        ),
+    )
+    parser.add_argument(
         "--verbose",
         "-v",
         action="store_true",
@@ -452,7 +592,7 @@ def main() -> int:
         logger.info("Loaded {} researcher IDs from MinIO", len(researcher_ids))
 
     t0 = time.monotonic()
-    stats = run(researcher_ids, debug_output, args.skip_existing)
+    stats = run(researcher_ids, debug_output, args.skip_existing, args.recreate)
     elapsed = time.monotonic() - t0
 
     logger.info(
