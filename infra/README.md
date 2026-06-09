@@ -84,9 +84,9 @@ docker compose --env-file .env -f infra/docker-compose.yaml up airflow-init --bu
 docker compose --env-file .env -f infra/docker-compose.yaml up -d --build
 
 # 3. Pull the Ollama models (only once)
-docker exec -it tfm_ollama ollama pull qwen2.5:7b-instruct
-docker exec -it tfm_ollama ollama pull nomic-embed-text-v2-moe
-docker exec -it tfm_ollama ollama pull <other_ollama_model>  # You must explicit it in .env to use it
+docker exec -it upm_match_ollama ollama pull qwen2.5:7b-instruct
+docker exec -it upm_match_ollama ollama pull nomic-embed-text-v2-moe
+docker exec -it upm_match_ollama ollama pull <other_ollama_model>  # You must explicit it in .env to use it
 ```
 
 ### Daily usage

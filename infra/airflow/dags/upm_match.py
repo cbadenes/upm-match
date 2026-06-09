@@ -73,16 +73,16 @@ with DAG(
 
     fase5 = BashOperator(
         task_id="05_create_keywords",
-        bash_command=f"cd {_PROJECT} && {_UV} 05_create_keywords.py --skip-existing",
+        bash_command=f"cd {_PROJECT} && {_UV} 05_create_keywords.py --recreate",
         execution_timeout=timedelta(hours=1),
-        doc_md="Indexes keywords in Qdrant (sparse BM42 collection `researcher_keywords`). --skip-existing skips already-indexed researchers.",
+        doc_md="Indexes keywords in Qdrant (sparse BM42 collection `researcher_keywords`). --recreate rebuilds the collection so schema/metadata refresh on every scheduled run.",
     )
 
     fase6 = BashOperator(
         task_id="06_create_summaries",
-        bash_command=f"cd {_PROJECT} && {_UV} 06_create_summaries.py",
+        bash_command=f"cd {_PROJECT} && {_UV} 06_create_summaries.py --recreate",
         execution_timeout=timedelta(hours=3),
-        doc_md="Generates rolling biographies with Ollama and indexes them in Qdrant (dense collection `researcher_summaries`).",
+        doc_md="Generates rolling biographies with Ollama and indexes them in Qdrant (dense collection `researcher_summaries`). --recreate rebuilds the collection so the named vector, payload indexes and metadata refresh on every scheduled run.",
     )
 
     fase1 >> fase2 >> fase3 >> fase4 >> [fase5, fase6]

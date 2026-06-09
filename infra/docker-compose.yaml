@@ -58,7 +58,7 @@ x-airflow-common: &airflow-common
     - ./airflow/dags:/opt/airflow/dags   # relative to infra/
     - ..:/opt/airflow/project            # project root
   networks:
-    - tfm_network
+    - upm_match_network
   logging:
     driver: json-file
     options:
@@ -71,7 +71,7 @@ services:
   # Reverse proxy (subpath router), which is the only externally published service.
   nginx:
     image: nginx:1.27-alpine
-    container_name: tfm_nginx
+    container_name: upm_match_nginx
     restart: unless-stopped
     environment:
       # Substituted into default.conf.template by the image's envsubst entrypoint.
@@ -91,7 +91,7 @@ services:
       - airflow-webserver
       - lab
     networks:
-      - tfm_network
+      - upm_match_network
     logging:
       driver: json-file
       options:
@@ -102,7 +102,7 @@ services:
   # Object storage
   minio:
     image: minio/minio:RELEASE.2025-09-07T16-13-09Z
-    container_name: tfm_minio
+    container_name: upm_match_minio
     restart: unless-stopped
     # Uncomment for direct host access during local development.
     # ports:
@@ -122,7 +122,7 @@ services:
     mem_limit: 512m
     cpus: 0.5
     networks:
-      - tfm_network
+      - upm_match_network
     logging:
       driver: json-file
       options:
@@ -136,7 +136,7 @@ services:
     # ports:
     #   - "127.0.0.1:${MEMGRAPH_PORT}:7687"   # Bolt protocol -> localhost:${MEMGRAPH_PORT}
     image: memgraph/memgraph-mage:3.8.1
-    container_name: tfm_memgraph
+    container_name: upm_match_memgraph
     restart: unless-stopped
     environment:
       - MEMGRAPH_USER=${MEMGRAPH_USERNAME}
@@ -152,7 +152,7 @@ services:
     mem_limit: 8g
     cpus: 2.0
     networks:
-      - tfm_network
+      - upm_match_network
     logging:
       driver: json-file
       options:
@@ -163,17 +163,17 @@ services:
   # Memgraph GUI (served under ${APP_BASE_PATH}/lab)
   lab:
     image: memgraph/lab:3.10.0
-    container_name: tfm_memgraph_lab
+    container_name: upm_match_memgraph_lab
     restart: unless-stopped
     environment:
-      - QUICK_CONNECT_MG_HOST=tfm_memgraph
+      - QUICK_CONNECT_MG_HOST=upm_match_memgraph
       - QUICK_CONNECT_MG_PORT=7687
       # Makes Lab serve all assets/links under the subpath (no strip in Nginx)
       - BASE_PATH=${APP_BASE_PATH}/lab
     depends_on:
       - memgraph
     networks:
-      - tfm_network
+      - upm_match_network
     logging:
       driver: json-file
       options:
@@ -184,7 +184,7 @@ services:
   # Local LLM
   ollama:
     image: ollama/ollama:0.30.0
-    container_name: tfm_ollama
+    container_name: upm_match_ollama
     restart: unless-stopped
     # Uncomment for direct host access during local development.
     # ports:
@@ -206,7 +206,7 @@ services:
     mem_limit: 8g
     cpus: 4.0
     networks:
-      - tfm_network
+      - upm_match_network
     logging:
       driver: json-file
       options:
@@ -217,7 +217,7 @@ services:
   # Vector database
   qdrant:
     image: qdrant/qdrant:v1.18.1
-    container_name: tfm_qdrant
+    container_name: upm_match_qdrant
     restart: unless-stopped
     # Uncomment for direct host access during local development.
     # ports:
@@ -234,7 +234,7 @@ services:
     mem_limit: 4g
     cpus: 2.0
     networks:
-      - tfm_network
+      - upm_match_network
     logging:
       driver: json-file
       options:
@@ -245,7 +245,7 @@ services:
   # Airflow metadata (PostgreSQL)
   postgres:
     image: postgres:17-alpine
-    container_name: tfm_postgres
+    container_name: upm_match_postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: airflow
@@ -261,7 +261,7 @@ services:
     mem_limit: 256m
     cpus: 0.5
     networks:
-      - tfm_network
+      - upm_match_network
     logging:
       driver: json-file
       options:
@@ -274,7 +274,7 @@ services:
     build:
       context: ..                       # project root
       dockerfile: infra/app/Dockerfile
-    container_name: tfm_app
+    container_name: upm_match_app
     restart: unless-stopped
     env_file: ../.env
     environment:
@@ -292,7 +292,7 @@ services:
       - qdrant
       - ollama
     networks:
-      - tfm_network
+      - upm_match_network
     logging:
       driver: json-file
       options:
@@ -303,7 +303,7 @@ services:
   # Airflow init (runs once then exits)
   airflow-init:
     <<: *airflow-common
-    container_name: tfm_airflow_init
+    container_name: upm_match_airflow_init
     restart: "no"
     depends_on:
       postgres:
@@ -327,7 +327,7 @@ services:
   # Airflow scheduler
   airflow-scheduler:
     <<: *airflow-common
-    container_name: tfm_airflow_scheduler
+    container_name: upm_match_airflow_scheduler
     restart: unless-stopped
     depends_on:
       airflow-init:
@@ -345,7 +345,7 @@ services:
   # Airflow webserver (served under ${APP_BASE_PATH}/airflow)
   airflow-webserver:
     <<: *airflow-common
-    container_name: tfm_airflow_webserver
+    container_name: upm_match_airflow_webserver
     restart: unless-stopped
     depends_on:
       airflow-init:
@@ -370,5 +370,5 @@ volumes:
 
 
 networks:
-  tfm_network:
+  upm_match_network:
     driver: bridge
