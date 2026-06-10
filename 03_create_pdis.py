@@ -60,9 +60,9 @@ from utils.text import (
     split_publication_keywords,
 )
 
-PUBLICATIONS_REGISTRY = {}  # In-memory storage for publications
-SUBJECTS_REGISTRY = {}  # In-memory storage for subjects
-LYP_REGISTRY = {}  # In-memory storage for LastYearProject records
+PUBLICATIONS_REGISTRY = {}  # Per-researcher publication COUNTS (not the objects)
+SUBJECTS_REGISTRY = {}  # Per-researcher subject COUNTS (not the objects)
+LYP_REGISTRY = {}  # Per-researcher LastYearProject COUNTS (not the objects)
 
 
 def normalize_last_name(value: Optional[str], fallback: str = "sin_apellido") -> str:
@@ -1040,10 +1040,11 @@ def process_researcher(
             df_ajax=df_ajax,
         )
 
-        # Register publications and subjects in memory
-        PUBLICATIONS_REGISTRY[researcher_id] = publications
-        SUBJECTS_REGISTRY[researcher_id] = subjects
-        LYP_REGISTRY[researcher_id] = last_year_projects
+        # Register only COUNTS in memory (keeping the full objects here for the
+        # whole dataset causes unbounded RAM growth -> OOM / exit code 137).
+        PUBLICATIONS_REGISTRY[researcher_id] = len(publications)
+        SUBJECTS_REGISTRY[researcher_id] = len(subjects)
+        LYP_REGISTRY[researcher_id] = len(last_year_projects)
 
         # Save according to storage backend
         success = False
@@ -1212,7 +1213,14 @@ def process_all_researchers(
         stats[status] = stats.get(status, 0) + 1
 
         if status == "processed":
-            results.append(result)
+            # Keep only a lightweight record.
+            # Appending the full result (profile, publications, subjects, edges...) retains the entire dataset in RAM and leads to OOM (exit code 137) on large batches.
+            results.append(
+                {
+                    "status": status,
+                    "researcher_id": result.get("researcher_id"),
+                }
+            )
 
         should_emit_progress = (
             total_rows > 1
@@ -1583,19 +1591,9 @@ def final_summary(args, results: list[dict], researchers: list[tuple]):
         else:
             logger.info("HTML source: local directory (data/raw/)")
 
-        total_pubs = (
-            sum(len(pubs) for pubs in PUBLICATIONS_REGISTRY.values())
-            if PUBLICATIONS_REGISTRY
-            else 0
-        )
-        total_subjects = (
-            sum(len(subjects) for subjects in SUBJECTS_REGISTRY.values())
-            if SUBJECTS_REGISTRY
-            else 0
-        )
-        total_lyp = (
-            sum(len(lyp) for lyp in LYP_REGISTRY.values()) if LYP_REGISTRY else 0
-        )
+        total_pubs = sum(PUBLICATIONS_REGISTRY.values())
+        total_subjects = sum(SUBJECTS_REGISTRY.values())
+        total_lyp = sum(LYP_REGISTRY.values())
         logger.info(
             "Final summary: {} researchers, {} total publications, {} total subjects, {} total last year projects",
             len(PUBLICATIONS_REGISTRY),

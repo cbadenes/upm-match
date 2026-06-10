@@ -313,8 +313,8 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-    mem_limit: 1g
-    cpus: 1.0
+    mem_limit: 4g
+    cpus: 2.0
 
 
   # Airflow webserver (served under ${APP_BASE_PATH}/airflow)
@@ -339,7 +339,6 @@ services:
 volumes:
   minio_data:
   memgraph_data:
-  ollama_data:
   qdrant_data:
   postgres_data:
 

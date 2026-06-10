@@ -51,14 +51,12 @@ with DAG(
         bash_command=f"cd {_PROJECT} && {_UV} 02_get_pdis_data.py",
         retries=2,
         retry_delay=timedelta(minutes=5),
-        execution_timeout=timedelta(hours=3),
         doc_md="Downloads profile and activity HTML for each researcher (async, concurrency=10, exponential backoff).",
     )
 
     fase3 = BashOperator(
         task_id="03_create_pdis",
         bash_command=f"cd {_PROJECT} && {_UV} 03_create_pdis.py",
-        execution_timeout=timedelta(hours=2),
         doc_md="Parses HTML files and builds the graph in Memgraph (nodes: Pdi, Publication, Position, Subject, LastYearProject).",
     )
 
@@ -67,21 +65,18 @@ with DAG(
         bash_command=f"cd {_PROJECT} && {_UV} 04_enrich_profile.py",
         retries=2,
         retry_delay=timedelta(minutes=15),
-        execution_timeout=timedelta(hours=4),
         doc_md="Enriches each researcher with Claude (keywords, summaries, UNESCO categories). Output: enrichment.json in MinIO.",
     )
 
     fase5 = BashOperator(
         task_id="05_create_keywords",
         bash_command=f"cd {_PROJECT} && {_UV} 05_create_keywords.py --recreate",
-        execution_timeout=timedelta(hours=1),
         doc_md="Indexes keywords in Qdrant (sparse BM42 collection `researcher_keywords`). --recreate rebuilds the collection so schema/metadata refresh on every scheduled run.",
     )
 
     fase6 = BashOperator(
         task_id="06_create_summaries",
         bash_command=f"cd {_PROJECT} && {_UV} 06_create_summaries.py --recreate",
-        execution_timeout=timedelta(hours=3),
         doc_md="Generates rolling biographies with Ollama and indexes them in Qdrant (dense collection `researcher_summaries`). --recreate rebuilds the collection so the named vector, payload indexes and metadata refresh on every scheduled run.",
     )
 
