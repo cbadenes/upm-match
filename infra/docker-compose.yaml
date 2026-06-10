@@ -51,14 +51,15 @@ x-airflow-common: &airflow-common
     MEMGRAPH_HOST: memgraph
     QDRANT_HOST: qdrant
     QDRANT_PORT: "6333"
-    OLLAMA_HOST: ollama
-    OLLAMA_PORT: "11434"
+    OLLAMA_HOST: ${OLLAMA_HOST}
+    OLLAMA_PORT: ${OLLAMA_PORT}
     APP_BASE_PATH: ${APP_BASE_PATH}      # used by the webserver healthcheck path below
   volumes:
     - ./airflow/dags:/opt/airflow/dags   # relative to infra/
     - ..:/opt/airflow/project            # project root
   networks:
     - upm_match_network
+    - ollama_network                     # to reach the existing Ollama container (${OLLAMA_HOST})
   logging:
     driver: json-file
     options:
@@ -182,36 +183,10 @@ services:
 
 
   # Local LLM
-  ollama:
-    image: ollama/ollama:0.30.0
-    container_name: upm_match_ollama
-    restart: unless-stopped
-    # Uncomment for direct host access during local development.
-    # ports:
-    #   - "127.0.0.1:${OLLAMA_PORT}:11434"   # -> localhost:${OLLAMA_PORT}
-    volumes:
-      - ollama_data:/root/.ollama
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    mem_limit: 8g
-    cpus: 4.0
-    networks:
-      - upm_match_network
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+  # NOTE: We no longer run our own Ollama container. 
+  # We connect to an existing one over an external network.
+  # The services that need it (app, airflow-*) join the ${OLLAMA_NETWORK} network and target the ${OLLAMA_HOST}:${OLLAMA_PORT} container.
+  # See the 'networks' section at the bottom and the Ollama vars in .env.
 
 
   # Vector database
@@ -286,13 +261,13 @@ services:
       MEMGRAPH_HOST: memgraph
       QDRANT_HOST: qdrant
       QDRANT_PORT: "6333"
-      OLLAMA_HOST: "http://ollama:11434"
-      OLLAMA_PORT: "11434"
+      OLLAMA_HOST: "http://${OLLAMA_HOST}:${OLLAMA_PORT}"   # external Ollama container (e.g. ollama_low)
+      OLLAMA_PORT: ${OLLAMA_PORT}
     depends_on:
       - qdrant
-      - ollama
     networks:
       - upm_match_network
+      - ollama_network                         # to reach the existing Ollama container (${OLLAMA_HOST})
     logging:
       driver: json-file
       options:
@@ -372,3 +347,9 @@ volumes:
 networks:
   upm_match_network:
     driver: bridge
+  # Pre-existing network where the Ollama container lives. 
+  # 'external: true' means Compose will NOT create it, it must already exist.
+  # Verify with: docker network ls | grep "$OLLAMA_NETWORK"
+  ollama_network:
+    external: true
+    name: ${OLLAMA_NETWORK}
