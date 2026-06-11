@@ -142,6 +142,29 @@ class VectorDataBase(Protocol):
         """
         ...
 
+    def search_hybrid(
+        self,
+        collection: str,
+        dense_vector: list[float],
+        dense_using: str,
+        sparse_field: str,
+        sparse_indices: list[int],
+        sparse_values: list[float],
+        limit: int = 10,
+    ) -> list[SearchResult]:
+        """Fuse a dense and a sparse query over one collection with native RRF.
+
+        :param collection: Name of the collection to search.
+        :param dense_vector: Pre-computed dense query vector.
+        :param dense_using: Named dense vector field to query.
+        :param sparse_field: Named sparse vector field to query.
+        :param sparse_indices: Sparse vector indices for the keyword leg.
+        :param sparse_values: Sparse vector values for the keyword leg.
+        :param limit: Maximum number of fused results to return.
+        :return: List of SearchResult objects sorted by fused relevance score.
+        """
+        ...
+
     def delete_collection(self, collection: str) -> bool:
         """Delete a collection entirely. Returns True on success.
         Use with caution, as this will remove all data in the collection.

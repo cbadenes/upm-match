@@ -8,7 +8,12 @@ from loguru import logger
 from dbs.vector import get_vector_db
 
 from .agent import enrich_query, extract_keywords
-from .search import PDIResult, search_pdis, search_pdis_by_summary
+from .search import (
+    PDIResult,
+    search_pdis,
+    search_pdis_by_summary,
+    search_pdis_hybrid,
+)
 
 bp = Blueprint("main", __name__)
 
@@ -32,8 +37,18 @@ def _serialise_result(r: PDIResult) -> dict:
 
 
 @bp.get("/")
-def index():
-    return render_template("index.html")
+def landing():
+    return render_template("landing.html", active_page="landing")
+
+
+@bp.get("/match")
+def match():
+    return render_template("match.html", active_page="match")
+
+
+@bp.get("/about")
+def about():
+    return render_template("about.html", active_page="about")
 
 
 @bp.post("/api/search")
@@ -87,6 +102,43 @@ def search():
                 "mode": "keywords",
                 "general_keywords": keywords.general,
                 "specific_keywords": keywords.specific,
+                "results": [_serialise_result(r) for r in results],
+            }
+        )
+
+    if mode == "hybrid":
+        # Sparse leg: keyword extraction. Dense leg: enriched query (falls back
+        # to the raw idea if enrichment fails) so the summaries (written in
+        # English) are matched on comparable text.
+        try:
+            keywords = extract_keywords(idea)
+        except Exception as exc:
+            logger.exception("Keyword extraction failed")
+            return jsonify({"error": f"Error al extraer keywords: {exc}"}), 500
+
+        enriched_query: str | None = None
+        dense_text = idea
+        try:
+            dense_text = enrich_query(idea)
+            enriched_query = dense_text
+        except Exception:
+            logger.warning("Query enrichment failed; using raw idea for dense leg")
+
+        try:
+            results = search_pdis_hybrid(
+                _db, keywords.general, keywords.specific, dense_text, limit=limit
+            )
+            logger.info("Hybrid search returned {} results", len(results))
+        except Exception as exc:
+            logger.exception("Qdrant hybrid search failed")
+            return jsonify({"error": f"Error en la búsqueda híbrida: {exc}"}), 500
+
+        return jsonify(
+            {
+                "mode": "hybrid",
+                "general_keywords": keywords.general,
+                "specific_keywords": keywords.specific,
+                "enriched_query": enriched_query,
                 "results": [_serialise_result(r) for r in results],
             }
         )

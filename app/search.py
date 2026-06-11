@@ -16,6 +16,7 @@ COLLECTION_NAME = "researcher_keywords"
 SPARSE_FIELD = "keywords_bm42"
 SUMMARY_COLLECTION = "researcher_summaries"
 SUMMARY_DENSE_VECTOR = "dense"
+SUMMARY_DOMAINS_SPARSE = "domains_bm42"
 DEFAULT_LIMIT = 10
 
 _OLLAMA_PORT = os.environ.get("OLLAMA_PORT", "11434")
@@ -187,3 +188,83 @@ def search_pdis_by_summary(
         using=SUMMARY_DENSE_VECTOR,
     )
     return _to_pdi_results_summary(raw)
+
+
+# Hybrid search (dense summary + sparse domains, fused with RRF)
+def _to_pdi_results_hybrid(
+    raw: list[SearchResult],
+    all_keywords: list[str],
+) -> list[PDIResult]:
+    """Convert hybrid search results to PDIResult objects.
+
+    Uses the phase-06 expertise `domains` (when present) for the matched-topics
+    interpretability, falling back to the phase-05 `topics`.
+
+    :param raw: SearchResult objects from the hybrid query.
+    :param all_keywords: Combined keyword list used for the sparse leg, for interpretability.
+    :return: List of PDIResult objects.
+    """
+    if not raw:
+        return []
+
+    max_score = raw[0].score or 1.0
+
+    results: list[PDIResult] = []
+    for rank, sr in enumerate(raw, 1):
+        payload = sr.payload
+        # Prefer the higher-quality LLM domains; fall back to aggregated topics.
+        topics: list[str] = payload.get("domains") or payload.get("topics") or []
+        matched = _matched_topics(all_keywords, topics)
+        results.append(
+            PDIResult(
+                rank=rank,
+                researcher_id=str(payload.get("researcher_id", "")),
+                name=payload.get("name") or "Unknown",
+                score=round(sr.score, 4),
+                score_pct=round((sr.score / max_score) * 100),
+                matched_topics=matched,
+                all_topics=topics[:12],
+                since=payload.get("first_year") or None,
+                summary=payload.get("summary"),
+            )
+        )
+    return results
+
+
+def search_pdis_hybrid(
+    db: QdrantBackend,
+    general_keywords: list[str],
+    specific_keywords: list[str],
+    dense_text: str,
+    limit: int = DEFAULT_LIMIT,
+) -> list[PDIResult]:
+    """Find the most relevant PDIs by fusing dense summary and sparse domain signals.
+
+    Runs a single Qdrant query over `researcher_summaries` that merges, with native
+    Reciprocal Rank Fusion:
+      - a dense leg: the embedded query text against the summary vector, and
+      - a sparse leg: the query keywords against the BM42 expertise-domains vector.
+
+    This combines semantic similarity (what the profile is *about*) with lexical
+    precision (specific expertise terms), which neither pure mode captures alone.
+
+    :param db: Initialised QdrantBackend instance.
+    :param general_keywords: Broad domain keywords for the sparse leg.
+    :param specific_keywords: Specific method/technique keywords for the sparse leg.
+    :param dense_text: Text to embed for the dense leg (raw or LLM-enriched idea).
+    :param limit: Number of top results to return.
+    :return: Ranked list of PDIResult objects.
+    """
+    sparse_terms = general_keywords + specific_keywords
+    sparse_indices, sparse_values = db.embed(sparse_terms) if sparse_terms else ([], [])
+    embedding = _embed_for_summary(dense_text)
+    raw = db.search_hybrid(
+        collection=SUMMARY_COLLECTION,
+        dense_vector=embedding,
+        dense_using=SUMMARY_DENSE_VECTOR,
+        sparse_field=SUMMARY_DOMAINS_SPARSE,
+        sparse_indices=sparse_indices,
+        sparse_values=sparse_values,
+        limit=limit,
+    )
+    return _to_pdi_results_hybrid(raw, sparse_terms)

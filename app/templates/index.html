@@ -3,7 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>UPM Match — Buscador de directores</title>
+  <title>UPM Match — Buscador de directores TFG / TFM / Tesis</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon-32.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon-512.png') }}">
+  <meta name="theme-color" content="#003087">
+  <meta name="description" content="Encuentra tu director de TFG, TFM o Tesis en la UPM mediante búsqueda semántica inteligente sobre perfiles de investigadores.">
+  <meta property="og:title" content="UPM Match">
+  <meta property="og:description" content="Sistema inteligente de recomendación de directores académicos en la Universidad Politécnica de Madrid.">
+  <meta property="og:image" content="{{ url_for('static', filename='horizontal-1200.png', _external=True) }}">
+  <meta property="og:type" content="website">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -42,6 +51,9 @@
         --tag-bg: #334155;
         --score-track: #334155;
       }
+      .li-stroke { stroke: #f1f5f9; }
+      .li-fill   { fill:   #f1f5f9; }
+      .lu        { color:  #f1f5f9; }
     }
 
     body {
@@ -50,33 +62,59 @@
       color: var(--text);
       line-height: 1.6;
       min-height: 100vh;
+      display: flex;
+      flex-direction: column;
     }
 
     header {
       background: var(--surface);
       border-bottom: 1px solid var(--border);
-      padding: 1rem 2rem;
+      padding: .85rem 2rem;
+    }
+
+    .logo-wrap {
       display: flex;
       align-items: center;
-      gap: 1rem;
+      gap: .75rem;
+      text-decoration: none;
     }
 
-    header .logo {
-      font-size: 1.25rem;
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      flex-shrink: 0;
+    }
+
+    .li-stroke { stroke: #003087; }
+    .li-fill   { fill:   #003087; }
+
+    .logo-wordmark {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.2;
+    }
+
+    .logo-name {
+      font-size: 1.2rem;
       font-weight: 700;
-      color: var(--accent);
-      letter-spacing: -0.02em;
+      letter-spacing: -.03em;
     }
 
-    header .subtitle {
-      font-size: .85rem;
+    .lu { color: #003087; }
+    .lm { color: #1D9E75; margin-left: .12em; }
+
+    .logo-tagline {
+      font-size: .75rem;
       color: var(--muted);
+      margin-top: 2px;
+      font-weight: 400;
     }
 
     .container {
       max-width: 960px;
       margin: 0 auto;
       padding: 2rem 1.5rem;
+      flex: 1;
     }
 
     .search-card {
@@ -179,7 +217,7 @@
 
     textarea {
       width: 100%;
-      min-height: 110px;
+      min-height: 6rem;
       padding: .75rem 1rem;
       border: 1px solid var(--border);
       border-radius: 8px;
@@ -187,7 +225,8 @@
       color: var(--text);
       font-family: inherit;
       font-size: .9rem;
-      resize: vertical;
+      resize: none;
+      overflow: hidden;
       transition: border-color .15s;
     }
 
@@ -443,15 +482,135 @@
     @media (prefers-color-scheme: dark) {
       .alert { background: #3b1515; border-color: #7f1d1d; color: #fca5a5; }
     }
+
+    /* ── Footer ── */
+    footer {
+      margin-top: 0;
+      border-top: 3px solid #003087;
+      background: var(--surface);
+      padding: 2rem;
+    }
+
+    .footer-inner {
+      max-width: 960px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 2.5rem;
+      flex-wrap: wrap;
+    }
+
+    .footer-logos {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-shrink: 0;
+    }
+
+    .footer-logo-bg {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+    }
+
+    .footer-logo-bg img {
+      height: 36px;
+      width: auto;
+      display: block;
+    }
+
+    .footer-vdivider {
+      width: 1px;
+      height: 36px;
+      background: var(--border);
+    }
+
+    .footer-pie { flex: 1; min-width: 260px; text-align: right; }
+
+    .footer-pie-badge {
+      display: inline-block;
+      font-size: .7rem;
+      font-weight: 600;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      color: #003087;
+      background: #e6f1fb;
+      border-radius: 4px;
+      padding: .2rem .55rem;
+      margin-bottom: .5rem;
+    }
+
+    .footer-pie-title {
+      font-size: .9rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: .3rem;
+      line-height: 1.4;
+    }
+
+    .footer-pie-title a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .footer-pie-title a:hover { text-decoration: underline; }
+
+    .footer-pie-meta {
+      font-size: .78rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .footer-pie-badge { color: #B5D4F4; background: #042C53; }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      header { padding: .85rem 1rem; }
+
+      .container { padding: 1.5rem 1rem; }
+
+      .mode-selector { width: 100%; }
+      .mode-btn { flex: 1; text-align: center; }
+
+      .result-card { grid-template-columns: 1.5rem 1fr; gap: .4rem .75rem; }
+
+      footer { padding: 1.5rem 1rem; }
+      .footer-inner { flex-direction: column; align-items: flex-end; gap: 1.25rem; }
+      .footer-logos { justify-content: flex-end; }
+      .footer-pie { min-width: 0; width: 100%; }
+    }
+
+    @media (max-width: 420px) {
+      .logo-tagline { display: none; }
+      .footer-logos { gap: .75rem; }
+      .footer-logo-bg img { height: 28px; }
+    }
   </style>
 </head>
 <body>
 
 <header>
-  <div>
-    <div class="logo">UPM Match</div>
-    <div class="subtitle">Encuentra tu director de TFG / TFM / Tesis</div>
-  </div>
+  <a href="#" class="logo-wrap" aria-label="UPM Match — inicio">
+    <svg class="logo-icon" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+      <path class="li-stroke" fill="none" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"
+            d="M8 52 L20 12 L32 36 L44 12 L56 52"/>
+      <circle class="li-fill" cx="8"  cy="52" r="6"/>
+      <circle class="li-fill" cx="20" cy="12" r="5"/>
+      <circle class="li-fill" cx="44" cy="12" r="5"/>
+      <circle class="li-fill" cx="56" cy="52" r="6"/>
+      <circle cx="32" cy="36" r="7.5" fill="#1D9E75"/>
+      <circle cx="32" cy="36" r="2.8" fill="#FAC775"/>
+    </svg>
+    <div class="logo-wordmark">
+      <span class="logo-name"><span class="lu">UPM</span><span class="lm">Match</span></span>
+      <span class="logo-tagline">Encuentra tu director de TFG / TFM / Tesis</span>
+    </div>
+  </a>
 </header>
 
 <div class="container">
@@ -462,9 +621,11 @@
     <!-- Mode selector -->
     <div class="mode-label">Modo de búsqueda</div>
     <div class="mode-selector">
-      <button class="mode-btn active" data-mode="keywords">Por keywords</button>
+      <button class="mode-btn active" data-mode="hybrid">Híbrido</button>
+      <button class="mode-btn" data-mode="keywords">Por keywords</button>
       <button class="mode-btn" data-mode="summary">Por resumen</button>
     </div>
+    <p class="hint" id="mode-hint">Combina resumen semántico y dominios de expertise (recomendado).</p>
 
     <!-- Summary sub-mode (hidden unless summary is selected) -->
     <div class="sub-mode" id="sub-mode">
@@ -481,9 +642,9 @@
       </div>
     </div>
 
-    <label class="field-label" for="idea">Describe tu idea de investigación</label>
-    <p class="hint">Puedes escribir en castellano, inglés o mezclar ambos. Cuanto más detallado, mejor.</p>
-    <textarea id="idea" placeholder="Ej. Quiero desarrollar un sistema que genere preguntas de evaluación automáticamente a partir de apuntes de clase usando modelos de lenguaje grande, siguiendo la taxonomía de Bloom…"></textarea>
+    <label class="field-label" for="idea">Describe tu idea de investigación o el área en la que buscas supervisor</label>
+    <p class="hint">Incluye el problema que quieres resolver, la metodología o tecnología que te interesa aplicar y el dominio de aplicación. Puedes escribir en castellano, inglés o mezclar ambos.</p>
+    <textarea id="idea" placeholder="Ej.: Me interesa desarrollar un sistema de detección temprana de dificultades de aprendizaje analizando registros de actividad en plataformas LMS como Moodle. Quiero aplicar modelos de clasificación supervisada combinados con técnicas de IA explicable (XAI) para que los resultados sean interpretables por el profesorado sin conocimientos técnicos avanzados. El dominio de aplicación sería la educación universitaria en ingeniería."></textarea>
     <div class="actions">
       <button type="submit" id="btn-search">Buscar directores</button>
       <div class="spinner" id="spinner"></div>
@@ -538,7 +699,13 @@
   const subModeWrap  = document.getElementById('sub-mode');
 
   // ── Mode state ─────────────────────────────────────────────────────────────
-  let currentMode = 'keywords'; // 'keywords' | 'summary'
+  let currentMode = 'hybrid'; // 'hybrid' | 'keywords' | 'summary'
+  const modeHintEl = document.getElementById('mode-hint');
+  const MODE_HINTS = {
+    hybrid:   'Combina búsqueda por keywords técnicas (BM42 + RRF) con similitud semántica sobre la biografía investigadora. Ofrece los resultados más completos y es el modo recomendado para la mayoría de casos.',
+    keywords: 'Extrae automáticamente términos técnicos de tu descripción y los contrasta con las líneas de investigación declaradas por cada PDI. Útil cuando conoces bien la terminología de tu área.',
+    summary:  'Calcula similitud semántica entre tu idea y la biografía investigadora generada para cada PDI a partir de sus publicaciones. Útil para ideas expresadas en lenguaje natural sin tecnicismos.',
+  };
 
   document.querySelectorAll('.mode-btn').forEach(modeBtn => {
     modeBtn.addEventListener('click', () => {
@@ -546,10 +713,12 @@
       modeBtn.classList.add('active');
       currentMode = modeBtn.dataset.mode;
       subModeWrap.classList.toggle('visible', currentMode === 'summary');
+      if (modeHintEl) modeHintEl.textContent = MODE_HINTS[currentMode] || '';
     });
   });
 
   function getSearchMode() {
+    if (currentMode === 'hybrid') return 'hybrid';
     if (currentMode === 'keywords') return 'keywords';
     const checked = document.querySelector('input[name="sub-mode"]:checked');
     return checked ? checked.value : 'summary_direct';
@@ -609,9 +778,9 @@
         </div>`;
     }
 
-    // Matched topics (keywords mode only)
+    // Matched topics (keywords and hybrid modes)
     let matchedHTML = '';
-    if (mode === 'keywords') {
+    if (mode === 'keywords' || mode === 'hybrid') {
       if (r.matched_topics && r.matched_topics.length > 0) {
         const tagEls = r.matched_topics
           .map(t => `<span class="tag tag-matched">${escHtml(t)}</span>`)
@@ -665,18 +834,20 @@
     clearError();
     const mode = data.mode || 'keywords';
 
-    // Keywords section
-    if (mode === 'keywords') {
+    // Keywords section (keywords + hybrid expose the extracted keyword lists)
+    if (data.general_keywords || data.specific_keywords) {
       makeTags(tagsGen, data.general_keywords || [], 'tag-general');
       makeTags(tagsSpc, data.specific_keywords || [], 'tag-specific');
       kwSection.style.display = 'block';
-      enrichedSec.style.display = 'none';
-    } else if (mode === 'summary_enriched' && data.enriched_query) {
-      enrichedText.textContent = data.enriched_query;
-      enrichedSec.style.display = 'block';
-      kwSection.style.display = 'none';
     } else {
       kwSection.style.display = 'none';
+    }
+
+    // Enriched query section (summary_enriched + hybrid expose the expanded query)
+    if (data.enriched_query) {
+      enrichedText.textContent = data.enriched_query;
+      enrichedSec.style.display = 'block';
+    } else {
       enrichedSec.style.display = 'none';
     }
 
@@ -722,6 +893,69 @@
   ideaEl.addEventListener('keydown', e => {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) doSearch();
   });
+
+  // ── Auto-resize textarea to fit placeholder or typed content ────────────────
+  function resizeIdea() {
+    if (ideaEl.value === '') {
+      const g = document.createElement('textarea');
+      const cs = getComputedStyle(ideaEl);
+      ['fontFamily','fontSize','fontWeight','lineHeight',
+       'paddingTop','paddingBottom','paddingLeft','paddingRight',
+       'borderTopWidth','borderBottomWidth','boxSizing'].forEach(p => {
+        g.style[p] = cs[p];
+      });
+      g.style.width  = ideaEl.getBoundingClientRect().width + 'px';
+      g.style.height = 'auto';
+      g.style.position   = 'fixed';
+      g.style.visibility = 'hidden';
+      g.style.top = '-9999px';
+      g.value = ideaEl.placeholder;
+      document.body.appendChild(g);
+      ideaEl.style.height = g.scrollHeight + 'px';
+      document.body.removeChild(g);
+    } else {
+      ideaEl.style.height = 'auto';
+      ideaEl.style.height = ideaEl.scrollHeight + 'px';
+    }
+  }
+
+  ideaEl.addEventListener('input', resizeIdea);
+  window.addEventListener('resize', resizeIdea);
+  resizeIdea();
 </script>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-logos">
+      <a href="https://www.etsisi.upm.es" target="_blank" rel="noopener" aria-label="E.T.S. de Ingeniería de Sistemas Informáticos">
+        <div class="footer-logo-bg">
+          <img src="https://www.upm.es/gsfs/SFS11384"
+               alt="ETSISI" height="36">
+        </div>
+      </a>
+      <div class="footer-vdivider" aria-hidden="true"></div>
+      <a href="https://www.upm.es" target="_blank" rel="noopener" aria-label="Universidad Politécnica de Madrid">
+        <div class="footer-logo-bg">
+          <img src="https://www.upm.es/gsfs/SFS46900"
+               alt="Universidad Politécnica de Madrid" height="36">
+        </div>
+      </a>
+    </div>
+    <div class="footer-pie">
+      <span class="footer-pie-badge">Proyecto de Innovación Educativa · IE26.6102 · 2025–2026</span>
+      <p class="footer-pie-title">
+        <a href="https://innovacioneducativa.upm.es/proyectos-ie/informacion?anyo=2025-2026&id=2018"
+           target="_blank" rel="noopener">
+          UPM Match: Sistema de Recomendación de Tutores y Colaboraciones
+        </a>
+      </p>
+      <p class="footer-pie-meta">
+        Línea E1 · Integración de la IA en la actividad docente<br>
+        Coordinado por Carlos Badenes Olmedo y Andrea Jesús Cimmino Arriaga · ETSISI, UPM
+      </p>
+    </div>
+  </div>
+</footer>
+
 </body>
 </html>

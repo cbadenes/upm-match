@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block title %}Sobre el proyecto — UPM Match{% endblock %}
+{% block description %}Qué es UPM Match, cómo funciona su pipeline de IA y el Proyecto de Innovación Educativa IE26.6102 que lo impulsa.{% endblock %}
+{% block og_title %}Sobre UPM Match{% endblock %}
+{% block og_description %}Arquitectura, tecnología y contexto del sistema de recomendación de tutores de la UPM.{% endblock %}
+
+{% block head %}
+<style>
+  /* ── About hero (compact) ── */
+  .about-hero {
+    position: relative; overflow: hidden;
+    padding: 3.5rem 1.5rem 3rem;
+    text-align: center;
+  }
+  .about-hero-content { position: relative; z-index: 1; max-width: 640px; margin: 0 auto; }
+  .about-hero h1 { font-size: clamp(1.5rem, 4vw, 2.5rem); margin-bottom: .75rem; }
+  .about-hero-sub { font-size: 15px; color: var(--muted); line-height: 1.65; text-wrap: pretty; }
+
+  /* ── Tech stack grid ── */
+  .tech-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr);
+    gap: 10px; margin-top: 1.25rem;
+  }
+  @media (min-width: 560px) { .tech-grid { grid-template-columns: repeat(3, 1fr); } }
+  .tech-chip {
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: var(--r-md); padding: 10px 14px;
+    font-size: 13px; font-weight: 500;
+  }
+  .tech-chip-label { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 4px; }
+  .tech-chip-value { color: var(--text); }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Hero ── -->
+<section class="about-hero" aria-labelledby="about-heading">
+  <div class="hero-backdrop" aria-hidden="true">
+    <div class="glow-orb glow-teal" style="opacity:.5"></div>
+    <svg class="dot-grid" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <pattern id="dots3" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
+          <circle cx="1" cy="1" r="1" fill="currentColor"/>
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#dots3)"/>
+    </svg>
+  </div>
+  <div class="about-hero-content">
+    <div class="pill-badge" style="margin-bottom:1rem">
+      <span class="pill-dot" aria-hidden="true"></span>
+      <span class="label-eyebrow">Sobre el proyecto</span>
+    </div>
+    <h1 id="about-heading">UPM Match</h1>
+    <p class="about-hero-sub">Sistema de recomendación de tutores y colaboraciones para estudiantes de la Universidad Politécnica de Madrid.</p>
+  </div>
+</section>
+
+<!-- ── Article ── -->
+<article class="about-article">
+
+  <!-- Qué es -->
+  <section aria-labelledby="que-es">
+    <div class="label-eyebrow" id="que-es">Qué es</div>
+    <p class="about-intro">
+      UPM Match conecta a estudiantes que buscan director de TFG, TFM o Tesis con los investigadores de la UPM
+      cuyas líneas de trabajo están más alineadas con sus intereses. Basta describir la idea libremente,
+      en castellano, inglés o una mezcla de ambos: el sistema se encarga de extraer los conceptos relevantes,
+      enriquecer la consulta y buscar en la base de conocimiento de perfiles investigadores.
+    </p>
+  </section>
+
+  <!-- Pipeline -->
+  <div class="about-divider" aria-hidden="true">
+    <div class="label-muted">Arquitectura</div>
+    <div style="flex:1; height:1px; background:var(--border)"></div>
+  </div>
+
+  <section aria-labelledby="pipeline-heading">
+    <h2 id="pipeline-heading">Pipeline de procesamiento</h2>
+    <p style="font-size:14px; color:var(--muted); margin-top:.5rem; line-height:1.65">
+      El sistema sigue un pipeline de seis fases que va desde la extracción de datos del Portal Científico
+      hasta la presentación de recomendaciones ordenadas por relevancia.
+    </p>
+
+    <div class="pipeline-list" style="margin-top:1.5rem">
+
+      <div class="pipeline-item">
+        <span class="pipeline-item-num">01</span>
+        <div class="pipeline-item-text">
+          <strong style="color:var(--text)">Extracción de datos.</strong>
+          Scraping del Portal Científico de la UPM: publicaciones, proyectos, líneas de investigación y
+          metadatos de cada PDI. Los datos se normalizan y almacenan en MinIO y Memgraph.
+        </div>
+      </div>
+
+      <div class="pipeline-item">
+        <span class="pipeline-item-num">02</span>
+        <div class="pipeline-item-text">
+          <strong style="color:var(--text)">Enriquecimiento del perfil.</strong>
+          Un agente LLM (Claude / Ollama) sintetiza las publicaciones de cada investigador en una
+          biografía investigadora estructurada en inglés, optimizada para búsqueda semántica.
+        </div>
+      </div>
+
+      <div class="pipeline-item">
+        <span class="pipeline-item-num">03</span>
+        <div class="pipeline-item-text">
+          <strong style="color:var(--text)">Indexación vectorial.</strong>
+          Los perfiles se indexan en Qdrant con dos representaciones complementarias:
+          vectores densos (embeddings semánticos) y vectores sparse BM42 (término-frecuencia neural),
+          que permiten búsqueda híbrida con fusión RRF.
+        </div>
+      </div>
+
+      <div class="pipeline-item">
+        <span class="pipeline-item-num">04</span>
+        <div class="pipeline-item-text">
+          <strong style="color:var(--text)">Análisis de la consulta.</strong>
+          La idea del estudiante se procesa con un agente de extracción de keywords (términos generales
+          y específicos del dominio) y, opcionalmente, con un agente de enriquecimiento que expande la
+          consulta a un párrafo técnico en inglés.
+        </div>
+      </div>
+
+      <div class="pipeline-item">
+        <span class="pipeline-item-num">05</span>
+        <div class="pipeline-item-text">
+          <strong style="color:var(--text)">Búsqueda híbrida.</strong>
+          La rama sparse contrasta las keywords con los temas de investigación declarados. La rama densa
+          calcula similitud coseno entre el embedding de la consulta y los embeddings de las biografías.
+          Ambas ramas se fusionan con Reciprocal Rank Fusion (RRF).
+        </div>
+      </div>
+
+      <div class="pipeline-item">
+        <span class="pipeline-item-num">06</span>
+        <div class="pipeline-item-text">
+          <strong style="color:var(--text)">Presentación de resultados.</strong>
+          Los PDIs se ordenan por puntuación de relevancia. Para cada uno se muestran los temas de
+          investigación que coinciden con la consulta, la puntuación numérica y, en los modos de resumen,
+          la biografía investigadora generada.
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Stack tecnológico -->
+  <div class="about-divider" aria-hidden="true">
+    <div class="label-muted">Tecnología</div>
+    <div style="flex:1; height:1px; background:var(--border)"></div>
+  </div>
+
+  <section aria-labelledby="stack-heading">
+    <h2 id="stack-heading">Stack tecnológico</h2>
+    <div class="tech-grid">
+      <div class="tech-chip">
+        <div class="tech-chip-label">Base de datos vectorial</div>
+        <div class="tech-chip-value">Qdrant</div>
+      </div>
+      <div class="tech-chip">
+        <div class="tech-chip-label">Grafo de conocimiento</div>
+        <div class="tech-chip-value">Memgraph</div>
+      </div>
+      <div class="tech-chip">
+        <div class="tech-chip-label">Almacenamiento</div>
+        <div class="tech-chip-value">MinIO</div>
+      </div>
+      <div class="tech-chip">
+        <div class="tech-chip-label">Embeddings / sparse</div>
+        <div class="tech-chip-value">BM42 · FastEmbed</div>
+      </div>
+      <div class="tech-chip">
+        <div class="tech-chip-label">Agente LLM</div>
+        <div class="tech-chip-value">Ollama + Agno</div>
+      </div>
+      <div class="tech-chip">
+        <div class="tech-chip-label">Web app</div>
+        <div class="tech-chip-value">Flask · Python</div>
+      </div>
+      <div class="tech-chip">
+        <div class="tech-chip-label">Fusión de rankers</div>
+        <div class="tech-chip-value">RRF</div>
+      </div>
+      <div class="tech-chip">
+        <div class="tech-chip-label">Orquestación</div>
+        <div class="tech-chip-value">Apache Airflow</div>
+      </div>
+      <div class="tech-chip">
+        <div class="tech-chip-label">Infraestructura</div>
+        <div class="tech-chip-value">Docker · uv</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PIE section -->
+  <div class="about-section" aria-labelledby="pie-heading">
+    <h2 id="pie-heading">Proyecto de Innovación Educativa</h2>
+    <p>
+      UPM Match se desarrolla en el marco del Proyecto de Innovación Educativa
+      <strong>IE26.6102</strong> de la Universidad Politécnica de Madrid,
+      financiado en la convocatoria 2025–2026 dentro de la Línea E1
+      «Integración de la IA en la actividad docente».
+    </p>
+    <p>
+      El proyecto también sirve como trabajo de fin de máster en el
+      Máster Oficial en Aprendizaje Automático y Datos Masivos de la ETSISI, integrando en un sistema real
+      técnicas de recuperación de información densa y sparse, procesamiento
+      de lenguaje natural con LLMs y diseño de pipelines de datos.
+    </p>
+
+    <div class="pie-card">
+      <span class="pie-badge">IE26.6102 · 2025–2026</span>
+      <p class="pie-title">
+        <a href="https://innovacioneducativa.upm.es/proyectos-ie/informacion?anyo=2025-2026&id=2018"
+           target="_blank" rel="noopener">
+          UPM Match: Sistema de Recomendación de Tutores y Colaboraciones ↗
+        </a>
+      </p>
+      <p class="pie-meta">
+        Línea E1 · Integración de la IA en la actividad docente<br>
+        Coordinado por <strong style="color:var(--text)">Carlos Badenes Olmedo</strong>
+        y <strong style="color:var(--text)">Andrea Jesús Cimmino Arriaga</strong>
+      </p>
+      <!-- <div class="pie-logos">
+        <a href="https://www.etsisi.upm.es" target="_blank" rel="noopener" aria-label="ETSISI">
+          <div class="pie-logo-bg">
+            <img src="https://www.upm.es/gsfs/SFS11384" alt="ETSISI" height="28"/>
+          </div>
+        </a>
+        <a href="https://www.upm.es" target="_blank" rel="noopener" aria-label="Universidad Politécnica de Madrid">
+          <div class="pie-logo-bg">
+            <img src="https://www.upm.es/gsfs/SFS46900" alt="UPM" height="28"/>
+          </div>
+        </a>
+      </div> -->
+    </div>
+  </div>
+
+</article>
+
+{% endblock %}

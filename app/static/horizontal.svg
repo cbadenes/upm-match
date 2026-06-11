@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 160" width="1200" height="400" role="img" aria-label="UPM Match">
+  <title>UPM Match</title>
+  <!-- Icon -->
+  <g transform="translate(24,40) scale(1.25)">
+    <g fill="none" stroke="#0072CE" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 52 L20 12 L32 36 L44 12 L56 52"/>
+    </g>
+    <g fill="#0072CE">
+      <circle cx="8"  cy="52" r="5"/>
+      <circle cx="20" cy="12" r="4"/>
+      <circle cx="44" cy="12" r="4"/>
+      <circle cx="56" cy="52" r="5"/>
+    </g>
+    <circle cx="32" cy="36" r="6" fill="#1D9E75"/>
+    <circle cx="32" cy="36" r="2" fill="#FAC775"/>
+  </g>
+  <!-- Wordmark -->
+  <g font-family="Inter, 'DM Sans', 'Plus Jakarta Sans', system-ui, sans-serif" fill="#0072CE">
+    <text x="130" y="92" font-size="56" font-weight="500" letter-spacing="-0.5">UPM<tspan fill="#00A9E0" dx="10" letter-spacing="0">Match</tspan></text>
+    <text x="132" y="122" font-size="18" font-weight="400" letter-spacing="1.2" fill="#0072CE" fill-opacity="0.7">Research. Connect. Discover.</text>
+  </g>
+</svg>

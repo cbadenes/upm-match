@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block title %}UPM Match — Encuentra tu director de TFG, TFM o Tesis{% endblock %}
+{% block description %}Buscador semántico que conecta estudiantes de la UPM con investigadores afines a sus intereses.{% endblock %}
+{% block og_title %}UPM Match{% endblock %}
+{% block og_description %}Encuentra tu director de TFG, TFM o Tesis mediante búsqueda semántica sobre perfiles de investigadores de la UPM.{% endblock %}
+
+{% block head %}
+<style>
+  /* ── Landing hero ── */
+  .hero {
+    position: relative; overflow: hidden;
+    padding: 6rem 1.5rem 5rem;
+    text-align: center;
+  }
+  .hero-content { position: relative; z-index: 1; max-width: 700px; margin: 0 auto; }
+  .hero h1 {
+    margin-bottom: 1.25rem;
+    background: linear-gradient(160deg, #fff 40%, var(--ia-teal) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero-sub {
+    font-size: clamp(1rem, 2.5vw, 1.2rem);
+    color: var(--muted); max-width: 52ch;
+    margin: 0 auto 2.5rem; line-height: 1.7;
+    text-wrap: pretty;
+  }
+  .hero-ctas { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; }
+
+  /* ── Stats bar ── */
+  .stat-cell { background: transparent; }
+  @media (min-width: 768px) {
+    .stat-cell { border-bottom: none; }
+    .stat-cell:last-child { border-right: none; }
+  }
+
+  /* ── How-it-works section ── */
+  .how-section { padding: 5rem 1.5rem; }
+  .how-header { text-align: center; margin-bottom: 3.5rem; }
+  .how-header h2 { margin-top: .75rem; }
+
+  .pipeline-steps-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    max-width: 900px; margin: 0 auto;
+  }
+  @media (min-width: 640px) {
+    .pipeline-steps-grid { grid-template-columns: repeat(3, 1fr); gap: 2rem; }
+  }
+
+  .how-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 1.5rem;
+    position: relative;
+  }
+  .how-card-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 500;
+    color: var(--ia-teal); margin-bottom: 1rem;
+  }
+  .how-card h3 { margin-bottom: .5rem; font-size: 1rem; }
+  .how-card p { font-size: 13px; color: var(--muted); line-height: 1.65; }
+  .how-card-icon {
+    width: 36px; height: 36px;
+    background: var(--ia-teal-soft); border-radius: var(--r-md);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 1rem;
+  }
+  .how-card-icon svg { width: 18px; height: 18px; stroke: var(--ia-teal); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  .how-cta { text-align: center; margin-top: 3rem; }
+
+  /* ── About teaser ── */
+  .teaser-section {
+    padding: 0 1.5rem 5rem;
+  }
+  .teaser-card {
+    max-width: 800px; margin: 0 auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-xl); padding: 2.5rem;
+    text-align: center;
+  }
+  .teaser-card h2 { margin-bottom: .75rem; }
+  .teaser-card p { font-size: 15px; color: var(--muted); line-height: 1.75; text-wrap: pretty; margin-bottom: 1.5rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Hero ── -->
+<section class="hero" aria-labelledby="hero-heading">
+  <div class="hero-backdrop" aria-hidden="true">
+    <div class="glow-orb glow-teal"></div>
+    <div class="glow-orb glow-blue"></div>
+    <svg class="dot-grid" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <pattern id="dots" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
+          <circle cx="1" cy="1" r="1" fill="currentColor"/>
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#dots)"/>
+    </svg>
+  </div>
+
+  <div class="hero-content">
+    <div class="pill-badge">
+      <span class="pill-dot" aria-hidden="true"></span>
+      <span class="label-eyebrow">Búsqueda semántica · UPM</span>
+    </div>
+
+    <h1 id="hero-heading">Encuentra a tu director de TFG, TFM o&nbsp;Tesis</h1>
+    <p class="hero-sub">
+      Describe tu idea de investigación y conectamos con los investigadores de la UPM
+      cuyas líneas de trabajo están más alineadas con la tuya.
+    </p>
+
+    <div class="hero-ctas">
+      <a href="{{ url_for('main.match') }}" class="btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        Buscar director / tutor
+      </a>
+      <a href="{{ url_for('main.about') }}" class="btn-outline">Saber más</a>
+    </div>
+  </div>
+</section>
+
+<!-- ── Stats bar ── -->
+<div class="stats-bar" aria-label="Estadísticas del sistema">
+  <div class="stats-grid">
+    <div class="stat-cell">
+      <div class="stat-num">~600</div>
+      <div class="stat-label label-muted">PDIs indexados</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-num">6</div>
+      <div class="stat-label label-muted">Fases del pipeline</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-num">3</div>
+      <div class="stat-label label-muted">Modos de búsqueda</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-num" style="font-size:1rem; letter-spacing:-.01em">ES · EN · …</div>
+      <div class="stat-label label-muted">Multilingüe</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Cómo funciona ── -->
+<section class="how-section" aria-labelledby="how-heading">
+  <div class="how-header">
+    <div class="label-eyebrow">Proceso</div>
+    <h2 id="how-heading">Cómo funciona</h2>
+  </div>
+
+  <div class="pipeline-steps-grid">
+
+    <div class="how-card">
+      <div class="how-card-num">01</div>
+      <div class="how-card-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+      </div>
+      <h3>Describe tu idea</h3>
+      <p>Escribe libremente el problema que quieres resolver, la metodología que te interesa o el área de investigación. En castellano, inglés o ambos.</p>
+    </div>
+
+    <div class="how-card">
+      <div class="how-card-num">02</div>
+      <div class="how-card-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      </div>
+      <h3>La IA analiza y enriquece</h3>
+      <p>El sistema extrae palabras clave técnicas, enriquece la consulta con contexto adicional y construye una representación vectorial de tu idea.</p>
+    </div>
+
+    <div class="how-card">
+      <div class="how-card-num">03</div>
+      <div class="how-card-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <h3>Recibe recomendaciones</h3>
+      <p>Obtienes una lista de investigadores ordenados por relevancia, con sus temas de investigación y una puntuación de afinidad respecto a tu propuesta.</p>
+    </div>
+
+  </div>
+
+  <div class="how-cta">
+    <a href="{{ url_for('main.match') }}" class="btn-primary">
+      Probar el buscador
+    </a>
+  </div>
+</section>
+
+<!-- ── About teaser ── -->
+<section class="teaser-section">
+  <div class="teaser-card">
+    <h2>Un proyecto de innovación educativa</h2>
+    <p>
+      UPM Match es parte del Proyecto de Innovación Educativa IE26.6102 de la UPM, coordinado por el grupo de investigación
+      de <abbr title="Escuela Técnica Superior de Ingeniería de Sistemas Informáticos">ETSISI</abbr>.
+      Integra técnicas avanzadas de recuperación de información (BM42, búsqueda híbrida, fusión RRF)
+      sobre los perfiles públicos del Portal Científico de la UPM.
+    </p>
+    <a href="{{ url_for('main.about') }}" class="btn-outline">Conocer el proyecto ↗</a>
+  </div>
+</section>
+
+{% endblock %}

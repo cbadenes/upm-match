@@ -274,6 +274,65 @@ class QdrantBackend:
             for p in results.points
         ]
 
+    def search_hybrid(
+        self,
+        collection: str,
+        dense_vector: list[float],
+        dense_using: str,
+        sparse_field: str,
+        sparse_indices: list[int],
+        sparse_values: list[float],
+        limit: int = 10,
+    ) -> list[SearchResult]:
+        """Fuse a dense query and a sparse query over the same collection with native RRF.
+
+        Both legs run as Qdrant prefetches and are merged with Reciprocal Rank
+        Fusion, so the semantic signal (dense summary vector) and the lexical
+        signal (sparse expertise-domain vector) contribute jointly to the ranking.
+        If the sparse query is empty (no usable keywords) the search degrades
+        gracefully to a pure dense query.
+
+        :param collection: Name of the collection to search.
+        :param dense_vector: Pre-computed dense query vector.
+        :param dense_using: Named dense vector field to query.
+        :param sparse_field: Named sparse vector field to query.
+        :param sparse_indices: Sparse vector indices for the keyword leg.
+        :param sparse_values: Sparse vector values for the keyword leg.
+        :param limit: Maximum number of fused results to return.
+        :return: List of SearchResult objects sorted by fused relevance score.
+        """
+        prefetch = [
+            models.Prefetch(
+                query=dense_vector,
+                using=dense_using,
+                limit=limit * 2,
+            )
+        ]
+        if sparse_indices:
+            prefetch.append(
+                models.Prefetch(
+                    query=models.SparseVector(
+                        indices=sparse_indices, values=sparse_values
+                    ),
+                    using=sparse_field,
+                    limit=limit * 2,
+                )
+            )
+        else:
+            logger.debug("Hybrid search: empty sparse leg, falling back to dense only")
+
+        results = self._client.query_points(
+            collection_name=collection,
+            prefetch=prefetch,
+            query=models.FusionQuery(fusion=models.Fusion.RRF),
+            limit=limit,
+            with_payload=True,
+        )
+        return [
+            SearchResult(id=p.id, score=p.score, payload=p.payload or {})
+            for p in results.points
+        ]
+
     def delete_collection(self, collection: str) -> bool:
         try:
             self._client.delete_collection(collection)
