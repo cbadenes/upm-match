@@ -23,11 +23,13 @@ _HOST = os.environ.get("QDRANT_HOST", "localhost")
 _PORT = int(os.environ.get("QDRANT_PORT", "6333"))
 _API_KEY = _require_env("QDRANT_API_KEY")
 
-# Sparse (BM42) embedding model. Configurable via env; public so indexing
-# scripts can record which model produced the sparse vectors.
+# Sparse (BM42) embedding model.
 SPARSE_MODEL_NAME = os.environ.get(
     "SPARSE_EMBED_MODEL", "Qdrant/bm42-all-minilm-l6-v2-attentions"
 )
+# BM42 is a tiny model (~30 MB) so CPU inference is fast enough and keeps the GPU free for Ollama.
+# Change to None to let ONNX Runtime pick the device.
+_FASTEMBED_PROVIDERS = ["CPUExecutionProvider"]
 
 
 class QdrantBackend:
@@ -50,7 +52,9 @@ class QdrantBackend:
     def _model(self) -> SparseTextEmbedding:
         if self._embedder is None:
             logger.debug("Loading BM42 sparse embedding model (first use)...")
-            self._embedder = SparseTextEmbedding(SPARSE_MODEL_NAME)
+            self._embedder = SparseTextEmbedding(
+                SPARSE_MODEL_NAME, providers=_FASTEMBED_PROVIDERS
+            )
             logger.debug("BM42 model ready")
         return self._embedder
 
