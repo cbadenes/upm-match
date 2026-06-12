@@ -1674,6 +1674,9 @@ if __name__ == "__main__":
             raw_dir=Path("data/raw"),
         )
 
+        if args.storage == "memgraph" and arango_db is not None:
+            _build_derived_relationships(arango_db)
+
     except KeyboardInterrupt:
         logger.warning("Pipeline interrupted by user (Ctrl+C)")
     except Exception as exc:
