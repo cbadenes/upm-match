@@ -1565,6 +1565,41 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def _build_derived_relationships(db: GraphDataBase) -> None:
+    """Materialise derived graph relationships after all PDI data has been loaded.
+
+    Runs only when the storage backend is Memgraph. Safe to re-run: MERGE is
+    idempotent so existing edges are updated in place rather than duplicated.
+    """
+    logger.info("Building derived graph relationships...")
+
+    coauthored_query = """
+    MATCH (a:Pdi)-[:Authorship]->(p:Publication)<-[:Authorship]-(b:Pdi)
+    WHERE a.id < b.id
+    WITH a, b,
+         count(p)    AS num,
+         min(p.year) AS first_year,
+         max(p.year) AS last_year
+    MERGE (a)-[r:Coauthored]-(b)
+    SET r.num = num, r.first_year = first_year, r.last_year = last_year
+    """
+    db.query(coauthored_query)
+    logger.info("Coauthored relationships built")
+
+    # department_query = """
+    # MATCH (a:Pdi)-[:Works]->(pos:Position)<-[:Works]-(b:Pdi)
+    # WHERE a.id < b.id
+    # WITH a, b,
+    #      count(DISTINCT pos)          AS num,
+    #      collect(DISTINCT pos.name)   AS depts,
+    #      collect(DISTINCT pos.entity) AS entity_types
+    # MERGE (a)-[r:SharesDept]-(b)
+    # SET r.num = num, r.depts = depts, r.entity_types = entity_types
+    # """
+    # db.query(department_query)
+    # logger.info("Department relationships built")
+
+
 def final_summary(args, results: list[dict], researchers: list[tuple]):
     """Print final summary and statistics regardless of how the program exits.
 
