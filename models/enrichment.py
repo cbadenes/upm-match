@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -69,5 +69,7 @@ class ResearcherEnrichmentDocument(BaseModel):
     subjects: list[ResearcherSubject] = Field(default_factory=list)
     last_year_projects: list[ResearcherLastYearProject] = Field(default_factory=list)
     generated_at: datetime
+    # Populated by 06_create_summaries: rolling biography snapshot per year.
+    history: dict[str, Any] = Field(default_factory=dict)
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
