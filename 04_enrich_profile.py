@@ -35,10 +35,10 @@ MULTISPACE_RE = re.compile(r"\s+")
 # Only researchers linked (via :Works) to one of these Position nodes are persisted to MinIO.
 # The rest are still loaded in Memgraph but excluded from the curated bucket.
 TARGET_POSITION_IDS = {
-    "loc_16086",  # ETSIT
-    "loc_16097",  # ETSII
-    "loc_16331",  # ETSISI
-    "loc_16380",  # ETSIST
+    "loc_16086",  # ETSIT - Escuela Técnica Superior de Ingenieros de Telecomunicación
+    "loc_16097",  # ETSII - Escuela Técnica Superior de Ingenieros Informáticos
+    "loc_16331",  # ETSISI - Escuela Técnica Superior de Ingeniería de Sistemas Informáticos
+    "loc_16380",  # ETSIST - Escuela Técnica Superior de Ingeniería y Sistemas de Telecomunicación
     # -------- #
     "loc_16408",  # ETSISI - Departamento de Sistemas Informáticos
     "loc_16409",  # ETSIST - Departamento de Ingeniería Telemática y Electrónica
