@@ -1295,9 +1295,7 @@ def save_to_graph_db(
         works_dicts = [edge.model_dump() for edge in works_edges]
         subjects_dicts = [subj.model_dump() for subj in subjects]
         teaching_dicts = [edge.model_dump() for edge in teaching_edges]
-        last_year_projects_dicts = [
-            LastYearProject.model_dump() for LastYearProject in last_year_projects
-        ]
+        last_year_projects_dicts = [lyp.model_dump() for lyp in last_year_projects]
         tutoring_edge_dicts = [edge.model_dump() for edge in tutoring_edges]
 
         # Apply backend-specific adaptations if backend supports adapt_document
