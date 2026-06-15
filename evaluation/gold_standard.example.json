@@ -1,18 +1,24 @@
 [
   {
-    "id": "gold_001",
-    "description": "Desarrollo de un sistema de recomendación basado en grafos de conocimiento para emparejar estudiantes con directores de TFM, usando embeddings y búsqueda semántica sobre publicaciones científicas.",
-    "year": 2023,
-    "director": "pdi_308607",
-    "study_type": "TFM",
-    "knowledge_area": "Ciencias de la Computación e Inteligencia Artificial"
+    "id": 1,
+    "description": "Sistema multiagente basado en RAG para asistencia en el manejo de la diabetes\n\nEste Trabajo de Fin de Grado se centra en el diseño, implementación y evaluación de un sistema multiagente basado en la arquitectura RAG con el objetivo de ofrecer asistencia en el manejo de la diabetes...\n\nKeywords: informatica",
+    "year": 2025,
+    "director": "pdi_306373",
+    "study_type": "TFG",
+    "knowledge_area": "ETSII",
+    "_project_id": "tft_10381286",
+    "_title": "Sistema multiagente basado en RAG para asistencia en el manejo de la diabetes",
+    "_keywords": ["informatica"]
   },
   {
-    "id": "gold_002",
-    "description": "Análisis de la calidad del aire en entornos urbanos mediante redes de sensores IoT de bajo coste y modelos de aprendizaje automático para la predicción de contaminantes.",
-    "year": 2022,
-    "director": "pdi_000000",
-    "study_type": "TFG",
-    "knowledge_area": "Ingeniería Ambiental"
+    "id": 2,
+    "description": "Análisis de parámetros acústicos para validación de modelos psicoacústicos\n\n...\n\nKeywords: ingenieria de sonido e imagen",
+    "year": 2023,
+    "director": "pdi_307268",
+    "study_type": "TFM",
+    "knowledge_area": "ETSIST",
+    "_project_id": "tft_10350028",
+    "_title": "Análisis de parámetros acústicos para validación de modelos psicoacústicos",
+    "_keywords": ["ingenieria de sonido e imagen"]
   }
 ]
