@@ -1,9 +1,8 @@
 """
 Phase 6 — per-year research summaries for UPM Match.
 
-For each researcher, groups publications by year and generates a STANDALONE
-summary + expertise domains for each year using an LLM (Agno + Ollama). The
-result is stored as `history` in the researcher's enrichment document in MinIO.
+For each researcher, groups publications by year and generates a STANDALONE summary + expertise domains for each year using an LLM (Agno + Ollama).
+The result is stored as `history` in the researcher's enrichment document in MinIO.
 Indexing into Qdrant and the weighted "current" summary are done in phase 7.
 
 Usage:
@@ -23,6 +22,7 @@ import re
 import sys
 import time
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from agno.agent import Agent
@@ -35,8 +35,7 @@ from dbs import minio
 from models import ResearcherEnrichmentDocument
 from utils.logging import setup_logging
 from utils.researchers import ENRICHMENT_KEY_TEMPLATE as _ENRICHMENT_KEY_TEMPLATE
-from utils.researchers import load_enrichment as _load_enrichment
-from utils.researchers import load_researcher_ids as _load_researcher_ids
+from utils.researchers import load_enrichment, load_researcher_ids
 
 load_dotenv()
 
@@ -47,6 +46,10 @@ _SUMMARY_MODEL = os.environ.get("OLLAMA_SUMMARY_MODEL", "qwen2.5:7b-instruct")
 # A single year with many publications can overflow the model context window and make Ollama drop the connection (losing the whole year).
 # When a year exceeds this many publications we feed them to the agent in successive batches so nothing is lost.
 PUBS_PER_BATCH = int(os.environ.get("SUMMARY_PUBS_PER_BATCH", "10"))
+# Parallel workers for the run loop. Ollama runs single-threaded on the shared GPU,
+# so a low value (2-3) overlaps MinIO downloads/uploads with inference without
+# flooding the model queue. Override with SUMMARY_MAX_WORKERS.
+SUMMARY_MAX_WORKERS = int(os.environ.get("SUMMARY_MAX_WORKERS", "2"))
 
 _AGENT_DESCRIPTION = (
     "You are an academic research profiler building a cumulative picture of a researcher's expertise."
@@ -363,6 +366,46 @@ def _persist_history(researcher_id: int, history: dict[str, dict]) -> None:
         )
 
 
+def _process_single_researcher(
+    researcher_id: int,
+    debug_output: Path | bool | None,
+    skip_existing: bool,
+) -> str:
+    """Process one researcher end to end and return a status string:
+    'processed' | 'skipped' | 'no_enrichment' | 'no_publications' | 'failed'.
+
+    Runs inside a worker thread, so EVERY exception (including Ollama API
+    timeouts/connection errors) is caught here: one failed researcher never
+    aborts the pool — the rest keep going.
+    """
+    try:
+        enrichment = load_enrichment(researcher_id)
+        if enrichment is None:
+            logger.warning(
+                "No enrichment JSON in bucket for {} — skipping", researcher_id
+            )
+            return "no_enrichment"
+
+        if skip_existing and not debug_output and enrichment.history:
+            logger.debug("Skipping {} (history already present)", researcher_id)
+            return "skipped"
+
+        history = _build_yearly_summaries(enrichment, debug_output)
+        if history is None:
+            logger.debug("No usable publications for {}", researcher_id)
+            return "no_publications"
+
+        if debug_output:
+            # Debug mode: don't write to MinIO
+            return "processed"
+
+        _persist_history(researcher_id, history)
+        return "processed"
+    except Exception as exc:  # noqa: BLE001 — robustez por investigador (incl. timeouts de Ollama)
+        logger.error("Failed to process {}: {}", researcher_id, exc)
+        return "failed"
+
+
 # Main processing loop
 def run(
     researcher_ids: list[int],
@@ -378,40 +421,26 @@ def run(
     }
 
     total = len(researcher_ids)
-    for i, researcher_id in enumerate(researcher_ids, 1):
-        if i % 50 == 0:
-            logger.info("Progress: {}/{}", i, total)
+    # Debug mode writes to a single markdown file, so keep it single-threaded.
+    workers = 1 if debug_output else SUMMARY_MAX_WORKERS
+    logger.info("Processing {} researchers with {} worker(s)", total, workers)
 
-        enrichment = _load_enrichment(researcher_id)
-        if enrichment is None:
-            logger.warning(
-                "No enrichment JSON in bucket for {} — skipping", researcher_id
-            )
-            stats["no_enrichment"] += 1
-            continue
-
-        if skip_existing and not debug_output and enrichment.history:
-            logger.debug("Skipping {} (history already present)", researcher_id)
-            stats["skipped"] += 1
-            continue
-
-        history = _build_yearly_summaries(enrichment, debug_output)
-        if history is None:
-            logger.debug("No usable publications for {}", researcher_id)
-            stats["no_publications"] += 1
-            continue
-
-        if debug_output:
-            # Debug mode: don't write to MinIO
-            stats["processed"] += 1
-            continue
-
-        try:
-            _persist_history(researcher_id, history)
-            stats["processed"] += 1
-        except Exception as exc:
-            logger.error("Failed to persist history for {}: {}", researcher_id, exc)
-            stats["failed"] += 1
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = {
+            executor.submit(
+                _process_single_researcher, researcher_id, debug_output, skip_existing
+            ): researcher_id
+            for researcher_id in researcher_ids
+        }
+        for i, future in enumerate(as_completed(futures), 1):
+            try:
+                status = future.result()
+            except Exception as exc:  # noqa: BLE001 — defensa extra por si el worker peta
+                logger.error("Worker crashed for {}: {}", futures[future], exc)
+                status = "failed"
+            stats[status] = stats.get(status, 0) + 1
+            if i % 50 == 0:
+                logger.info("Progress: {}/{}", i, total)
 
     return stats
 
@@ -470,7 +499,7 @@ def main() -> int:
         logger.info("Processing single researcher: {}", args.id)
     else:
         try:
-            researcher_ids = _load_researcher_ids()
+            researcher_ids = load_researcher_ids()
         except Exception as exc:
             logger.exception("Failed to load researcher IDs: {}", exc)
             return 1
