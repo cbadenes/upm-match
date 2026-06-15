@@ -1,9 +1,9 @@
 """UPM Match — main pipeline DAG.
 
 Task dependency graph:
-  01_find_ids -> 02_get_pdis_data -> 03_create_pdis -> 04_enrich_profile -> [05_create_keywords, 06_create_summaries]
+  01_find_ids -> 02_get_pdis_data -> 03_create_pdis -> 04_enrich_profile -> [05_create_keywords, 06_create_summaries -> 07_index_summaries]
 
-Phases 05 and 06 are independent and run in parallel.
+Phase 05 (keywords) runs in parallel with the 06 -> 07 chain (per-year summaries -> weighted indexing).
 Estimated full pipeline duration: 3-6 hours.
 
 To run only part of the pipeline, select tasks from the UI using
@@ -76,8 +76,15 @@ with DAG(
 
     fase6 = BashOperator(
         task_id="06_create_summaries",
-        bash_command=f"cd {_PROJECT} && {_UV} 06_create_summaries.py --recreate",
-        doc_md="Generates rolling biographies with Ollama and indexes them in Qdrant (dense collection `researcher_summaries`). --recreate rebuilds the collection so the named vector, payload indexes and metadata refresh on every scheduled run.",
+        bash_command=f"cd {_PROJECT} && {_UV} 06_create_summaries.py",
+        doc_md="Generates standalone per-year research summaries + domains with Ollama and stores them as `history` in each enrichment.json in MinIO. No Qdrant.",
+    )
+
+    fase7 = BashOperator(
+        task_id="07_index_summaries",
+        bash_command=f"cd {_PROJECT} && {_UV} 07_index_summaries.py --recreate",
+        doc_md="Fuses the per-year summaries into a weighted current summary (recent-weighted, Zheng et al.) and indexes one point per PDI in Qdrant (`researcher_summaries`). --recreate rebuilds the collection on every scheduled run.",
     )
 
     fase1 >> fase2 >> fase3 >> fase4 >> [fase5, fase6]
+    fase6 >> fase7
