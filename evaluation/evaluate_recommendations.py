@@ -85,7 +85,9 @@ REPORTS_DIR = Path("evaluation/reports")
 # Override with EVAL_LLMS="modelA,modelB,modelC". All must be pulled in Ollama.
 _DEFAULT_MODELS = ["qwen2.5:7b-instruct", "llama3.1:latest", "qwen3:4b"]
 GENERATOR_MODELS: list[str] = [
-    m.strip() for m in os.environ.get("EVAL_LLMS", ",".join(_DEFAULT_MODELS)).split(",") if m.strip()
+    m.strip()
+    for m in os.environ.get("EVAL_LLMS", ",".join(_DEFAULT_MODELS)).split(",")
+    if m.strip()
 ]
 
 # Search modes exposed by the web app (see app/routes.py).
@@ -141,7 +143,9 @@ class SilverRecord(BaseModel):
     proposal: str
     source_model: str
     judge_score: float
-    candidates: list[ProposalCandidate] = Field(default_factory=list)  # kept for error analysis
+    candidates: list[ProposalCandidate] = Field(
+        default_factory=list
+    )  # kept for error analysis
 
 
 class RecommendationResult(BaseModel):
@@ -276,7 +280,10 @@ def warn_unresolved_directors(gold: list[GoldRecord], db) -> None:
             missing,
         )
     else:
-        logger.info("All {} distinct gold directors are indexed in Qdrant.", len({g.director for g in gold}))
+        logger.info(
+            "All {} distinct gold directors are indexed in Qdrant.",
+            len({g.director for g in gold}),
+        )
 
 
 # --- 2. Silver standard ------------------------------------------------------
@@ -325,9 +332,15 @@ def generate_proposal_candidates(
             data = _chat_json(model, _PROPOSAL_SYSTEM, user, schema, temperature=0.7)
             proposal = _ProposalSchema.model_validate(data).proposal.strip()
             if proposal:
-                candidates.append(ProposalCandidate(gold_id=gold.gold_id, model=model, proposal=proposal))
+                candidates.append(
+                    ProposalCandidate(
+                        gold_id=gold.gold_id, model=model, proposal=proposal
+                    )
+                )
         except Exception as exc:  # noqa: BLE001 — robustness across heterogeneous models
-            logger.warning("Proposal generation failed ({} / {}): {}", model, gold.gold_id, exc)
+            logger.warning(
+                "Proposal generation failed ({} / {}): {}", model, gold.gold_id, exc
+            )
     return candidates
 
 
@@ -398,7 +411,11 @@ def build_silver_standard(
     Resumable: records already present in `output_path` are skipped. The file is
     rewritten atomically after every new record so progress is never lost.
     """
-    existing = {s.gold_id: s for s in load_silver_standard(output_path)} if output_path.exists() else {}
+    existing = (
+        {s.gold_id: s for s in load_silver_standard(output_path)}
+        if output_path.exists()
+        else {}
+    )
     pending = [g for g in gold_records if g.gold_id not in existing]
     if limit is not None:
         pending = pending[:limit]
@@ -478,7 +495,9 @@ def run_recommendations(
                 dense_text = enrich_query(proposal)
             except Exception:  # noqa: BLE001 — fall back to raw idea, as the app does
                 dense_text = proposal
-            results = search_pdis_hybrid(db, kw.general, kw.specific, dense_text, limit=limit)
+            results = search_pdis_hybrid(
+                db, kw.general, kw.specific, dense_text, limit=limit
+            )
         else:
             raise ValueError(f"Unknown mode: {mode!r}")
     except Exception as exc:  # noqa: BLE001
@@ -544,7 +563,9 @@ def ndcg_at_k(ranked: list[str], relevant: str, k: int) -> float:
 
 
 def _f1(precision: float, recall: float) -> float:
-    return 2 * precision * recall / (precision + recall) if (precision + recall) else 0.0
+    return (
+        2 * precision * recall / (precision + recall) if (precision + recall) else 0.0
+    )
 
 
 def compute_metrics(
@@ -558,14 +579,40 @@ def compute_metrics(
     if n == 0:
         return MetricReport(mode=mode, segment=segment, n=0, metrics=metrics)
 
-    metrics["mrr"] = sum(reciprocal_rank(r.ranked_researcher_ids, r.true_director) for r in results) / n
-    metrics["map"] = sum(average_precision(r.ranked_researcher_ids, r.true_director) for r in results) / n
+    metrics["mrr"] = (
+        sum(reciprocal_rank(r.ranked_researcher_ids, r.true_director) for r in results)
+        / n
+    )
+    metrics["map"] = (
+        sum(
+            average_precision(r.ranked_researcher_ids, r.true_director) for r in results
+        )
+        / n
+    )
 
     for k in K_VALUES:
-        hit = sum(hit_at_k(r.ranked_researcher_ids, r.true_director, k) for r in results) / n
-        prec = sum(precision_at_k(r.ranked_researcher_ids, r.true_director, k) for r in results) / n
-        rec = sum(recall_at_k(r.ranked_researcher_ids, r.true_director, k) for r in results) / n
-        ndcg = sum(ndcg_at_k(r.ranked_researcher_ids, r.true_director, k) for r in results) / n
+        hit = (
+            sum(hit_at_k(r.ranked_researcher_ids, r.true_director, k) for r in results)
+            / n
+        )
+        prec = (
+            sum(
+                precision_at_k(r.ranked_researcher_ids, r.true_director, k)
+                for r in results
+            )
+            / n
+        )
+        rec = (
+            sum(
+                recall_at_k(r.ranked_researcher_ids, r.true_director, k)
+                for r in results
+            )
+            / n
+        )
+        ndcg = (
+            sum(ndcg_at_k(r.ranked_researcher_ids, r.true_director, k) for r in results)
+            / n
+        )
         metrics[f"hit@{k}"] = hit
         metrics[f"precision@{k}"] = prec
         metrics[f"recall@{k}"] = rec
@@ -604,7 +651,9 @@ def analyze_by_segment(
 _HEADLINE = ["mrr", "map", "hit@1", "hit@3", "hit@5", "hit@10", "ndcg@5", "ndcg@10"]
 
 
-def _markdown_table(reports: list[MetricReport], row_label: str, keys: list[str]) -> str:
+def _markdown_table(
+    reports: list[MetricReport], row_label: str, keys: list[str]
+) -> str:
     header = f"| {row_label} | n | " + " | ".join(keys) + " |"
     sep = "|" + "---|" * (len(keys) + 2)
     lines = [header, sep]
@@ -623,13 +672,25 @@ def report(
     """Render the comparison tables (per mode + per segment) and optionally save them."""
     blocks: list[str] = []
     blocks.append("## Comparativa por modo de búsqueda\n")
-    blocks.append(_markdown_table(sorted(per_mode, key=lambda r: -r.metrics.get("mrr", 0.0)), "mode", _HEADLINE))
+    blocks.append(
+        _markdown_table(
+            sorted(per_mode, key=lambda r: -r.metrics.get("mrr", 0.0)),
+            "mode",
+            _HEADLINE,
+        )
+    )
 
     if per_segment:
         for mode, seg_map in per_segment.items():
             for seg_key, reports in seg_map.items():
                 blocks.append(f"\n## {mode} — desglose por {seg_key}\n")
-                blocks.append(_markdown_table(reports, "segment", ["mrr", "hit@1", "hit@5", "hit@10", "ndcg@10"]))
+                blocks.append(
+                    _markdown_table(
+                        reports,
+                        "segment",
+                        ["mrr", "hit@1", "hit@5", "hit@10", "ndcg@10"],
+                    )
+                )
 
     text = "\n".join(blocks)
     print("\n" + text + "\n")
@@ -642,7 +703,10 @@ def report(
             {
                 "per_mode": [r.model_dump() for r in per_mode],
                 "per_segment": {
-                    mode: {seg: [r.model_dump() for r in reps] for seg, reps in seg_map.items()}
+                    mode: {
+                        seg: [r.model_dump() for r in reps]
+                        for seg, reps in seg_map.items()
+                    }
                     for mode, seg_map in (per_segment or {}).items()
                 },
             },
@@ -693,7 +757,9 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
     gold_by_id = {g.gold_id: g for g in gold}
     silver = load_silver_standard()
     if not silver:
-        logger.error("No silver standard found at {}. Run 'build-silver' first.", SILVER_PATH)
+        logger.error(
+            "No silver standard found at {}. Run 'build-silver' first.", SILVER_PATH
+        )
         return 1
 
     if args.limit is not None:
@@ -753,9 +819,24 @@ def cmd_selftest(_args: argparse.Namespace) -> int:
     assert ndcg_at_k(ranked, "pdi_3", 2) == 0.0
 
     rec = [
-        RecommendationResult(gold_id="a", mode="keywords", ranked_researcher_ids=ranked, true_director="pdi_1"),
-        RecommendationResult(gold_id="b", mode="keywords", ranked_researcher_ids=ranked, true_director="pdi_5"),
-        RecommendationResult(gold_id="c", mode="keywords", ranked_researcher_ids=ranked, true_director="pdi_9"),
+        RecommendationResult(
+            gold_id="a",
+            mode="keywords",
+            ranked_researcher_ids=ranked,
+            true_director="pdi_1",
+        ),
+        RecommendationResult(
+            gold_id="b",
+            mode="keywords",
+            ranked_researcher_ids=ranked,
+            true_director="pdi_5",
+        ),
+        RecommendationResult(
+            gold_id="c",
+            mode="keywords",
+            ranked_researcher_ids=ranked,
+            true_director="pdi_9",
+        ),
     ]
     m = compute_metrics(rec).metrics
     assert abs(m["hit@5"] - 2 / 3) < 1e-9, m["hit@5"]
@@ -778,17 +859,41 @@ def main() -> int:
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
-    p_silver = sub.add_parser("build-silver", help="Generate the silver standard from the gold standard (3 LLMs).")
-    p_silver.add_argument("--limit", type=int, default=None, help="Only generate this many new records.")
+    p_silver = sub.add_parser(
+        "build-silver",
+        help="Generate the silver standard from the gold standard (3 LLMs).",
+    )
+    p_silver.add_argument(
+        "--limit", type=int, default=None, help="Only generate this many new records."
+    )
     p_silver.set_defaults(func=cmd_build_silver)
 
-    p_eval = sub.add_parser("evaluate", help="Run recommendations for every mode and compute metrics.")
-    p_eval.add_argument("--modes", nargs="+", default=SEARCH_MODES, choices=SEARCH_MODES, help="Search modes to evaluate.")
-    p_eval.add_argument("--limit", type=int, default=None, help="Only evaluate this many silver records.")
-    p_eval.add_argument("--no-cache", action="store_true", help="Ignore cached recommendation runs and recompute.")
+    p_eval = sub.add_parser(
+        "evaluate", help="Run recommendations for every mode and compute metrics."
+    )
+    p_eval.add_argument(
+        "--modes",
+        nargs="+",
+        default=SEARCH_MODES,
+        choices=SEARCH_MODES,
+        help="Search modes to evaluate.",
+    )
+    p_eval.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Only evaluate this many silver records.",
+    )
+    p_eval.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Ignore cached recommendation runs and recompute.",
+    )
     p_eval.set_defaults(func=cmd_evaluate)
 
-    p_self = sub.add_parser("selftest", help="Validate the metric math offline (no services needed).")
+    p_self = sub.add_parser(
+        "selftest", help="Validate the metric math offline (no services needed)."
+    )
     p_self.set_defaults(func=cmd_selftest)
 
     args = parser.parse_args()

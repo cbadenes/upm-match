@@ -10,8 +10,8 @@ from dbs.vector import get_vector_db
 from .agent import enrich_query, extract_keywords
 from .search import (
     COLLECTION_NAME,
-    PDIResult,
     SUMMARY_COLLECTION,
+    PDIResult,
     search_pdis,
     search_pdis_by_summary,
     search_pdis_hybrid,
@@ -44,7 +44,9 @@ def landing():
         indexed_pdis = _db.count_points(SUMMARY_COLLECTION)
     except Exception:  # noqa: BLE001 — el landing no debe romperse si Qdrant no responde
         indexed_pdis = None
-    return render_template("landing.html", active_page="landing", indexed_pdis=indexed_pdis)
+    return render_template(
+        "landing.html", active_page="landing", indexed_pdis=indexed_pdis
+    )
 
 
 @bp.get("/match")

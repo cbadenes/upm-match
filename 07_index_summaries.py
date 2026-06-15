@@ -1,12 +1,9 @@
 """
 Phase 7 — build the weighted "current" summary and index it in Qdrant.
 
-Reads the per-year standalone summaries that phase 6 stored in MinIO
-(`history` in each researcher's enrichment document) and, for each researcher,
-builds a single "current" summary by **recurrent fusion** over the last
-``WINDOW_YEARS`` years (relative to the researcher's most recent active year),
-giving more weight to recent work — following the recurrent-summarisation idea
-of *Harnessing LLMs for Text-Rich Sequential Recommendation* (Zheng et al., 2024).
+Reads the per-year standalone summaries that phase 6 stored in MinIO (`history` in each researcher's enrichment document) and, for each researcher,
+builds a single "current" summary by **recurrent fusion** over the last ``WINDOW_YEARS`` years (relative to the researcher's most recent active year),
+giving more weight to recent work — following the recurrent-summarisation idea of *Harnessing LLMs for Text-Rich Sequential Recommendation* (Zheng et al., 2024).
 
 For each researcher it then:
   - persists the fused `summary` and `domains` back into the enrichment JSON in
@@ -46,17 +43,16 @@ from dbs import minio
 from dbs.vector import QdrantBackend
 from utils.logging import setup_logging
 from utils.researchers import ENRICHMENT_KEY_TEMPLATE as _ENRICHMENT_KEY_TEMPLATE
-from utils.researchers import load_researcher_ids as _load_researcher_ids
 
 load_dotenv()
 
-# --- Configuration -----------------------------------------------------------
+# Configuration
 
 COLLECTION_NAME = "researcher_summaries"
 DENSE_VECTOR_NAME = "dense"
 DOMAINS_SPARSE_NAME = "domains_bm42"
 
-WINDOW_YEARS = 10  # años hacia atrás desde el último año activo del PDI
+WINDOW_YEARS = 10  # backwards from the most recent year in the researcher's history to consider for recurrent fusion.
 
 _SUMMARY_MODEL = os.environ.get("OLLAMA_SUMMARY_MODEL", "qwen2.5:7b-instruct")
 _EMBED_MODEL = os.environ.get("OLLAMA_EMBED_MODEL", "nomic-embed-text-v2-moe")
@@ -78,12 +74,14 @@ def _sparse() -> QdrantBackend:
     return _sparse_backend
 
 
-# --- Recurrent fusion (LLM) --------------------------------------------------
-
-
+# Recurrent fusion (LLM)
 class ExpertiseUpdate(BaseModel):
-    domains: list[str] = Field(description="4–12 expertise areas, each 2–6 words, lowercase.")
-    profile: str = Field(description="3–5 sentences, present tense, no tool/paper names, no time markers.")
+    domains: list[str] = Field(
+        description="4–12 expertise areas, each 2–6 words, lowercase."
+    )
+    profile: str = Field(
+        description="3–5 sentences, present tense, no tool/paper names, no time markers."
+    )
 
 
 _FUSION_DESCRIPTION = (
@@ -146,7 +144,8 @@ def _window_years(history: dict) -> list[int]:
 def _build_current(history: dict) -> tuple[str, list[str], int] | None:
     """Recurrently fuse the windowed per-year summaries into the current summary.
 
-    Returns (summary, domains, last_year) or None if there is nothing usable.
+    :param history: the `history` dict from a researcher's enrichment document.
+    :return summary, domains, last_year: the fused summary, domains, and the most recent year used; or None if no valid years.
     """
     years = _window_years(history)
     if not years:
@@ -182,13 +181,13 @@ def _build_current(history: dict) -> tuple[str, list[str], int] | None:
     return cur_profile, cur_domains, years[-1]
 
 
-# --- MinIO -------------------------------------------------------------------
-
-
+# MinIO
 def _iter_enrichment_keys(only_id: int | None) -> list[str]:
     if only_id is not None:
         return [_ENRICHMENT_KEY_TEMPLATE.format(researcher_id=only_id)]
-    keys = minio.list_objects(minio.CURATED_BUCKET, prefix="researchers/", recursive=True)
+    keys = minio.list_objects(
+        minio.CURATED_BUCKET, prefix="researchers/", recursive=True
+    )
     return [k for k in keys if k.endswith("/enrichment.json")]
 
 
@@ -197,24 +196,30 @@ def _persist_current(researcher_id: str, summary: str, domains: list[str]) -> No
     key = _ENRICHMENT_KEY_TEMPLATE.format(researcher_id=_num(researcher_id))
     data = minio.read_json(minio.CURATED_BUCKET, key)
     if data is None:
-        logger.warning("Enrichment JSON not found for {} — cannot persist summary", researcher_id)
+        logger.warning(
+            "Enrichment JSON not found for {} — cannot persist summary", researcher_id
+        )
         return
     data["summary"] = summary
     data["domains"] = domains
     minio.upload_json(minio.CURATED_BUCKET, data, key)
 
 
-# --- Qdrant ------------------------------------------------------------------
-
-
+# Qdrant
 def _qdrant() -> QdrantClient:
-    return QdrantClient(url=f"http://{_QDRANT_HOST}:{_QDRANT_PORT}", api_key=_QDRANT_API_KEY)
+    return QdrantClient(
+        url=f"http://{_QDRANT_HOST}:{_QDRANT_PORT}", api_key=_QDRANT_API_KEY
+    )
 
 
 def _create_collection(client: QdrantClient, dim: int) -> None:
     client.create_collection(
         collection_name=COLLECTION_NAME,
-        vectors_config={DENSE_VECTOR_NAME: qdrant_models.VectorParams(size=dim, distance=qdrant_models.Distance.COSINE)},
+        vectors_config={
+            DENSE_VECTOR_NAME: qdrant_models.VectorParams(
+                size=dim, distance=qdrant_models.Distance.COSINE
+            )
+        },
         sparse_vectors_config={
             DOMAINS_SPARSE_NAME: qdrant_models.SparseVectorParams(
                 index=qdrant_models.SparseIndexParams(on_disk=False),
@@ -228,12 +233,24 @@ def _create_collection(client: QdrantClient, dim: int) -> None:
         ("domains", qdrant_models.PayloadSchemaType.KEYWORD),
         ("position_names", qdrant_models.PayloadSchemaType.KEYWORD),
     ):
-        client.create_payload_index(collection_name=COLLECTION_NAME, field_name=field, field_schema=schema)
-    logger.info("Created collection '{}' (dense '{}' {}-dim + sparse '{}' BM42/IDF)", COLLECTION_NAME, DENSE_VECTOR_NAME, dim, DOMAINS_SPARSE_NAME)
+        client.create_payload_index(
+            collection_name=COLLECTION_NAME, field_name=field, field_schema=schema
+        )
+    logger.info(
+        "Created collection '{}' (dense '{}' {}-dim + sparse '{}' BM42/IDF)",
+        COLLECTION_NAME,
+        DENSE_VECTOR_NAME,
+        dim,
+        DOMAINS_SPARSE_NAME,
+    )
 
 
 def _embed_dense(text: str) -> list[float]:
-    return _ollama.Client(host=_OLLAMA_HOST).embed(model=_EMBED_MODEL, input=text).embeddings[0]
+    return (
+        _ollama.Client(host=_OLLAMA_HOST)
+        .embed(model=_EMBED_MODEL, input=text)
+        .embeddings[0]
+    )
 
 
 def _num(researcher_id: str) -> int:
@@ -241,13 +258,26 @@ def _num(researcher_id: str) -> int:
     return int(str(researcher_id).split("_")[-1])
 
 
-def _upsert(client: QdrantClient, doc: dict, summary: str, domains: list[str], last_year: int, embedding: list[float]) -> None:
+def _upsert(
+    client: QdrantClient,
+    doc: dict,
+    summary: str,
+    domains: list[str],
+    last_year: int,
+    embedding: list[float],
+) -> None:
     indices, values = _sparse().embed(domains)
     vector: dict[str, object] = {DENSE_VECTOR_NAME: embedding}
     if indices:
-        vector[DOMAINS_SPARSE_NAME] = qdrant_models.SparseVector(indices=indices, values=values)
+        vector[DOMAINS_SPARSE_NAME] = qdrant_models.SparseVector(
+            indices=indices, values=values
+        )
     full_name = f"{doc.get('first_name') or ''} {doc.get('last_name') or ''}".strip()
-    positions = [p.get("name") or p.get("entity") for p in (doc.get("positions") or []) if (p.get("name") or p.get("entity"))]
+    positions = [
+        p.get("name") or p.get("entity")
+        for p in (doc.get("positions") or [])
+        if (p.get("name") or p.get("entity"))
+    ]
     payload = {
         "researcher_id": doc["id"],
         "name": full_name,
@@ -266,13 +296,15 @@ def _upsert(client: QdrantClient, doc: dict, summary: str, domains: list[str], l
     }
     client.upsert(
         collection_name=COLLECTION_NAME,
-        points=[qdrant_models.PointStruct(id=_num(doc["id"]), vector=vector, payload=payload)],
+        points=[
+            qdrant_models.PointStruct(
+                id=_num(doc["id"]), vector=vector, payload=payload
+            )
+        ],
     )
 
 
-# --- Orchestration -----------------------------------------------------------
-
-
+# Orchestration
 def run(only_id: int | None, recreate: bool, limit: int | None) -> int:
     keys = _iter_enrichment_keys(only_id)
     if limit is not None:
@@ -314,7 +346,12 @@ def run(only_id: int | None, recreate: bool, limit: int | None) -> int:
             logger.error("Failed to index {}: {}", doc.get("id"), exc)
             stats["failed"] += 1
 
-    logger.info("Done — indexed: {}, no history: {}, failed: {}", stats["indexed"], stats["no_history"], stats["failed"])
+    logger.info(
+        "Done — indexed: {}, no history: {}, failed: {}",
+        stats["indexed"],
+        stats["no_history"],
+        stats["failed"],
+    )
     return 0 if stats["failed"] == 0 else 1
 
 
@@ -323,10 +360,27 @@ def main() -> int:
         description="Phase 7: build the weighted current summary and index it in Qdrant.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("--id", dest="only_id", type=int, default=None, help="Index only this researcher (e.g. 260726).")
-    parser.add_argument("--recreate", action="store_true", help="Drop and recreate the Qdrant collection before indexing.")
-    parser.add_argument("--limit", type=int, default=None, help="Process at most N documents (for testing).")
-    parser.add_argument("--verbose", "-v", action="store_true", help="Enable debug logging.")
+    parser.add_argument(
+        "--id",
+        dest="only_id",
+        type=int,
+        default=None,
+        help="Index only this researcher (e.g. 260726).",
+    )
+    parser.add_argument(
+        "--recreate",
+        action="store_true",
+        help="Drop and recreate the Qdrant collection before indexing.",
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Process at most N documents (for testing).",
+    )
+    parser.add_argument(
+        "--verbose", "-v", action="store_true", help="Enable debug logging."
+    )
     args = parser.parse_args()
 
     setup_logging(args.verbose)

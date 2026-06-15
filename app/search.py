@@ -172,8 +172,7 @@ def search_pdis_by_summary(
 ) -> list[PDIResult]:
     """Find the most relevant PDIs by dense cosine similarity against researcher summaries.
 
-    Embeds query_text with the same model used during indexing (OLLAMA_EMBED_MODEL)
-    and queries the researcher_summaries Qdrant collection.
+    Embeds query_text with the same model used during indexing (OLLAMA_EMBED_MODEL) and queries the researcher_summaries Qdrant collection.
 
     :param db: Initialised QdrantBackend instance.
     :param query_text: Text to embed — either the raw student idea or an LLM-enriched version.
@@ -197,8 +196,7 @@ def _to_pdi_results_hybrid(
 ) -> list[PDIResult]:
     """Convert hybrid search results to PDIResult objects.
 
-    Uses the phase-06 expertise `domains` (when present) for the matched-topics
-    interpretability, falling back to the phase-05 `topics`.
+    Uses the phase-06 expertise `domains` (when present) for the matched-topics interpretability, falling back to the phase-05 `topics`.
 
     :param raw: SearchResult objects from the hybrid query.
     :param all_keywords: Combined keyword list used for the sparse leg, for interpretability.
