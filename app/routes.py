@@ -9,7 +9,9 @@ from dbs.vector import get_vector_db
 
 from .agent import enrich_query, extract_keywords
 from .search import (
+    COLLECTION_NAME,
     PDIResult,
+    SUMMARY_COLLECTION,
     search_pdis,
     search_pdis_by_summary,
     search_pdis_hybrid,
@@ -38,7 +40,11 @@ def _serialise_result(r: PDIResult) -> dict:
 
 @bp.get("/")
 def landing():
-    return render_template("landing.html", active_page="landing")
+    try:
+        indexed_pdis = _db.count_points(SUMMARY_COLLECTION)
+    except Exception:  # noqa: BLE001 — el landing no debe romperse si Qdrant no responde
+        indexed_pdis = None
+    return render_template("landing.html", active_page="landing", indexed_pdis=indexed_pdis)
 
 
 @bp.get("/match")
@@ -49,6 +55,17 @@ def match():
 @bp.get("/about")
 def about():
     return render_template("about.html", active_page="about")
+
+
+@bp.get("/api/stats")
+def stats():
+    """Return indexed PDI counts from both Qdrant collections."""
+    return jsonify(
+        {
+            "indexed_keywords": _db.count_points(COLLECTION_NAME),
+            "indexed_summaries": _db.count_points(SUMMARY_COLLECTION),
+        }
+    )
 
 
 @bp.post("/api/search")
