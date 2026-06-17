@@ -184,7 +184,7 @@ services:
   # Local LLM (self-hosted, GPU). Models are pulled on the server, e.g.:
   #   docker exec -it upm_match_ollama ollama pull <model>
   ollama:
-    image: ollama/ollama:0.30.8
+    image: ollama/ollama:0.23.3
     container_name: upm_match_ollama
     restart: unless-stopped
     runtime: nvidia
