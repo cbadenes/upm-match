@@ -17,6 +17,8 @@ from pydantic import BaseModel, Field
 _OLLAMA_PORT = os.environ.get("OLLAMA_PORT", "11434")
 _OLLAMA_HOST = os.environ.get("OLLAMA_HOST", f"http://localhost:{_OLLAMA_PORT}")
 _OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.1")
+_OLLAMA_TEMPERATURE = float(os.environ.get("OLLAMA_TEMPERATURE", "0.1"))
+_OLLAMA_OPTIONS = {"temperature": _OLLAMA_TEMPERATURE}
 
 # Crafted to steer models away from verbose keyword phrases, which is the most common failure mode when models are asked to generate keyword lists.
 _DESCRIPTION = (
@@ -60,7 +62,7 @@ def extract_keywords(idea: str) -> KeywordSet:
     :raises RuntimeError: If the agent fails to produce a valid structured response.
     """
     agent = Agent(
-        model=Ollama(id=_OLLAMA_MODEL, host=_OLLAMA_HOST),
+        model=Ollama(id=_OLLAMA_MODEL, host=_OLLAMA_HOST, options=_OLLAMA_OPTIONS),
         description=_DESCRIPTION,
         instructions=_INSTRUCTIONS,
         output_schema=KeywordSet,
@@ -120,7 +122,7 @@ def enrich_query(idea: str) -> str:
     :raises RuntimeError: If the agent fails to produce a valid structured response.
     """
     agent = Agent(
-        model=Ollama(id=_OLLAMA_MODEL, host=_OLLAMA_HOST),
+        model=Ollama(id=_OLLAMA_MODEL, host=_OLLAMA_HOST, options=_OLLAMA_OPTIONS),
         description=_ENRICH_DESCRIPTION,
         instructions=_ENRICH_INSTRUCTIONS,
         output_schema=EnrichedQuery,
