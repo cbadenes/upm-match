@@ -36,6 +36,7 @@ with DAG(
     # For weekly automatic runs (Sundays at 3am): schedule="0 3 * * 0"
     schedule=None,
     catchup=False,
+    max_active_runs=1,
     default_args=_default_args,
     tags=["upm", "pipeline"],
     doc_md=__doc__,
@@ -83,7 +84,8 @@ with DAG(
     fase7 = BashOperator(
         task_id="07_index_summaries",
         bash_command=f"cd {_PROJECT} && {_UV} 07_index_summaries.py --recreate",
-        doc_md="Fuses the per-year summaries into a weighted current summary (recent-weighted, Zheng et al.) and indexes one point per PDI in Qdrant (`researcher_summaries`). --recreate rebuilds the collection on every scheduled run.",
+        retries=0,
+        doc_md="Fuses the per-year summaries into a weighted current summary (recent-weighted, Zheng et al.) and indexes one point per PDI in Qdrant (`researcher_summaries`). --recreate builds into a fresh versioned collection and atomically swaps the `researcher_summaries` alias only on a fully successful run, so a failed/restarted run never destroys the live data.",
     )
 
     fase1 >> fase2 >> fase3 >> fase4 >> [fase5, fase6]

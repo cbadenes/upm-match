@@ -212,9 +212,9 @@ def _qdrant() -> QdrantClient:
     )
 
 
-def _create_collection(client: QdrantClient, dim: int) -> None:
+def _create_collection(client: QdrantClient, collection: str, dim: int) -> None:
     client.create_collection(
-        collection_name=COLLECTION_NAME,
+        collection_name=collection,
         vectors_config={
             DENSE_VECTOR_NAME: qdrant_models.VectorParams(
                 size=dim, distance=qdrant_models.Distance.COSINE
@@ -222,7 +222,7 @@ def _create_collection(client: QdrantClient, dim: int) -> None:
         },
         sparse_vectors_config={
             DOMAINS_SPARSE_NAME: qdrant_models.SparseVectorParams(
-                index=qdrant_models.SparseIndexParams(on_disk=False),
+                index=qdrant_models.SparseIndexParams(on_disk=True),
                 modifier=qdrant_models.Modifier.IDF,
             )
         },
@@ -234,15 +234,62 @@ def _create_collection(client: QdrantClient, dim: int) -> None:
         ("position_names", qdrant_models.PayloadSchemaType.KEYWORD),
     ):
         client.create_payload_index(
-            collection_name=COLLECTION_NAME, field_name=field, field_schema=schema
+            collection_name=collection, field_name=field, field_schema=schema
         )
     logger.info(
         "Created collection '{}' (dense '{}' {}-dim + sparse '{}' BM42/IDF)",
-        COLLECTION_NAME,
+        collection,
         DENSE_VECTOR_NAME,
         dim,
         DOMAINS_SPARSE_NAME,
     )
+
+
+def _versioned_name() -> str:
+    """A unique physical collection name for a fresh build."""
+    return f"{COLLECTION_NAME}_{datetime.now(timezone.utc):%Y%m%d%H%M%S}"
+
+
+def _alias_target(client: QdrantClient) -> str | None:
+    """Physical collection the `researcher_summaries` alias points to, or None."""
+    try:
+        for a in client.get_aliases().aliases:
+            if a.alias_name == COLLECTION_NAME:
+                return a.collection_name
+    except Exception:  # noqa: BLE001
+        pass
+    return None
+
+
+def _set_alias(client: QdrantClient, target: str) -> None:
+    """Point the `researcher_summaries` alias at `target` atomically.
+
+    If a *real* collection (legacy, pre-alias layout) occupies the alias name,
+    drop it first so the alias can take over the name.
+    """
+    if target == COLLECTION_NAME:
+        return  # legacy in-place collection; nothing to alias
+    if client.collection_exists(COLLECTION_NAME) and _alias_target(client) is None:
+        client.delete_collection(COLLECTION_NAME)
+    client.update_collection_aliases(
+        change_aliases_operations=[
+            qdrant_models.CreateAliasOperation(
+                create_alias=qdrant_models.CreateAlias(
+                    collection_name=target, alias_name=COLLECTION_NAME
+                )
+            )
+        ]
+    )
+    logger.info("Alias '{}' now points to '{}'", COLLECTION_NAME, target)
+
+
+def _cleanup_old_collections(client: QdrantClient, keep: str) -> None:
+    """Delete stale versioned build collections, keeping only `keep`."""
+    prefix = f"{COLLECTION_NAME}_"
+    for c in client.get_collections().collections:
+        if c.name != keep and c.name.startswith(prefix):
+            client.delete_collection(c.name)
+            logger.info("Deleted stale collection '{}'", c.name)
 
 
 def _embed_dense(text: str) -> list[float]:
@@ -260,6 +307,7 @@ def _num(researcher_id: str) -> int:
 
 def _upsert(
     client: QdrantClient,
+    collection: str,
     doc: dict,
     summary: str,
     domains: list[str],
@@ -295,7 +343,7 @@ def _upsert(
         "indexed_at": datetime.now(timezone.utc).isoformat(),
     }
     client.upsert(
-        collection_name=COLLECTION_NAME,
+        collection_name=collection,
         points=[
             qdrant_models.PointStruct(
                 id=_num(doc["id"]), vector=vector, payload=payload
@@ -312,10 +360,26 @@ def run(only_id: int | None, recreate: bool, limit: int | None) -> int:
     logger.info("{} enrichment documents to index", len(keys))
 
     client = _qdrant()
-    if recreate and client.collection_exists(COLLECTION_NAME):
-        logger.warning("Recreating collection '{}' from scratch", COLLECTION_NAME)
-        client.delete_collection(COLLECTION_NAME)
-    collection_ready = client.collection_exists(COLLECTION_NAME)
+
+    # Resolve the physical collection to write into.
+    # We NEVER write into the live collection the app serves:
+    # a full rebuild (--recreate) goes into a fresh versioned collection and only swaps the `researcher_summaries` alias once the build completes with zero failures.
+    # So a crash mid-run can never destroy the data already being served, the previous collection stays untouched.
+    current = _alias_target(client)
+    if current is None and client.collection_exists(COLLECTION_NAME):
+        current = COLLECTION_NAME  # legacy in-place collection (pre-alias)
+
+    build_fresh = recreate or current is None
+    if build_fresh:
+        target = _versioned_name()
+        collection_ready = False
+        logger.info(
+            "Indexing into fresh collection '{}' (alias swap on success)", target
+        )
+    else:
+        target = current
+        collection_ready = True
+        logger.info("Upserting in place into '{}'", target)
 
     stats = {"indexed": 0, "no_history": 0, "failed": 0}
     for i, key in enumerate(keys, 1):
@@ -338,9 +402,9 @@ def run(only_id: int | None, recreate: bool, limit: int | None) -> int:
             _persist_current(doc["id"], summary, domains)
             embedding = _embed_dense(summary)
             if not collection_ready:
-                _create_collection(client, len(embedding))
+                _create_collection(client, target, len(embedding))
                 collection_ready = True
-            _upsert(client, doc, summary, domains, last_year, embedding)
+            _upsert(client, target, doc, summary, domains, last_year, embedding)
             stats["indexed"] += 1
         except Exception as exc:  # noqa: BLE001 — robustez por investigador
             logger.error("Failed to index {}: {}", doc.get("id"), exc)
@@ -352,6 +416,25 @@ def run(only_id: int | None, recreate: bool, limit: int | None) -> int:
         stats["no_history"],
         stats["failed"],
     )
+
+    # Publish a freshly built collection only if it is complete.
+    # On any failure we keep the previous live collection and discard the partial build, so the app never points at an incomplete or empty collection.
+    if build_fresh and collection_ready:
+        if stats["failed"] == 0 and stats["indexed"] > 0:
+            _set_alias(client, target)
+            _cleanup_old_collections(client, keep=target)
+        else:
+            logger.warning(
+                "Build incomplete (failed={}); keeping previous collection and "
+                "discarding partial build '{}'",
+                stats["failed"],
+                target,
+            )
+            try:
+                client.delete_collection(target)
+            except Exception:  # noqa: BLE001
+                pass
+
     return 0 if stats["failed"] == 0 else 1
 
 
