@@ -89,5 +89,20 @@ with DAG(
         for i, m in enumerate(MODELS, 1)
     ]
 
-    # All sequential: generate (per model) then grade (per judge), in fixed order.
-    chain(*gen_tasks, *grade_tasks)
+    # 5. Finalize: pick the best-graded proposal per work (random tie-break) and write
+    #    the final silver standard in the gold schema, ready for `evaluate --source silver`.
+    finalize = BashOperator(
+        task_id="finalize",
+        env=_env,
+        append_env=True,
+        bash_command=f"cd {_PROJECT} && {_UV} --module {_MODULE} silver-finalize",
+        doc_md=(
+            "Select the best-graded proposal per work (ties broken at random, "
+            "reproducibly) and write evaluation/silver/silver_standard_{tfg,tfm}.json "
+            "in the SAME schema as the gold standard (description = chosen proposal). "
+            "The rich candidates + grades stay in silver_candidates_{tfg,tfm}.json."
+        ),
+    )
+
+    # All sequential: generate (per model) -> grade (per judge) -> finalize.
+    chain(*gen_tasks, *grade_tasks, finalize)

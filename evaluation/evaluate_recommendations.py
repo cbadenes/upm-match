@@ -66,6 +66,7 @@ import argparse
 import json
 import math
 import os
+import random
 import re
 import statistics
 import sys
@@ -88,9 +89,24 @@ GOLD_TFM_PATH = Path("evaluation/gold_standard_tfm.json")
 SILVER_PATH = Path("evaluation/silver_standard.json")
 
 SILVER_DIR = Path(os.environ.get("SILVER_DIR", "evaluation/silver"))
+# *candidates* files: gold records + a `silver` field with every model's proposal and
+# its cross-model grades (rich, kept for provenance/analysis).
+SILVER_CAND_TFG_PATH = SILVER_DIR / "silver_candidates_tfg.json"
+SILVER_CAND_TFM_PATH = SILVER_DIR / "silver_candidates_tfm.json"
+# final silver files: SAME schema as the gold standard, with `description` replaced by
+# the best-graded proposal, so silver evaluates through the exact gold code path.
 SILVER_TFG_PATH = SILVER_DIR / "silver_standard_tfg.json"
 SILVER_TFM_PATH = SILVER_DIR / "silver_standard_tfm.json"
-_SILVER_PAIRS = ((GOLD_TFG_PATH, SILVER_TFG_PATH), (GOLD_TFM_PATH, SILVER_TFM_PATH))
+# Generation/grading read gold and write the candidates file; finalize reads the
+# candidates file and writes the final gold-schema silver file.
+_SILVER_GEN_PAIRS = (
+    (GOLD_TFG_PATH, SILVER_CAND_TFG_PATH),
+    (GOLD_TFM_PATH, SILVER_CAND_TFM_PATH),
+)
+_SILVER_FINAL_PAIRS = (
+    (SILVER_CAND_TFG_PATH, SILVER_TFG_PATH),
+    (SILVER_CAND_TFM_PATH, SILVER_TFM_PATH),
+)
 CACHE_DIR = Path(os.environ.get("EVAL_CACHE_DIR", "evaluation/cache"))
 REPORTS_DIR = Path(os.environ.get("EVAL_REPORTS_DIR", "evaluation/reports"))
 
@@ -649,6 +665,67 @@ def silver_grade_for_judge(
     logger.info("[grade {}] finished {} ({} graded)", judge, silver_path.name, done)
 
 
+def _mean_grade(candidate: dict) -> float:
+    """Mean panel score of a candidate (0.0 if it has no grades yet)."""
+    grades = list((candidate.get("grades") or {}).values())
+    return sum(grades) / len(grades) if grades else 0.0
+
+
+def select_best_candidate(work: dict) -> dict | None:
+    """Pick the highest mean-graded proposal for a work; break ties at random.
+
+    The tie-break is a per-work seeded random choice (over the tied candidates sorted
+    by model name), so the selection is reproducible across runs. Returns None if the
+    work has no candidates.
+    """
+    candidates = work.get("silver") or []
+    if not candidates:
+        return None
+    best = max(_mean_grade(c) for c in candidates)
+    tied = sorted(
+        (c for c in candidates if _mean_grade(c) == best),
+        key=lambda c: c.get("model", ""),
+    )
+    if len(tied) == 1:
+        return tied[0]
+    rng = random.Random(f"{SEED}:{work.get('_project_id') or work.get('id')}")
+    return rng.choice(tied)
+
+
+def silver_finalize(cand_path: Path, final_path: Path) -> None:
+    """Write the final silver standard in the SAME schema as the gold standard.
+
+    For each work, picks the best-graded proposal (random tie-break) and emits a
+    record identical to the gold one but with `description` set to that proposal and
+    the working `silver` field dropped, so the file feeds the gold evaluation path
+    unchanged. Works without any graded candidate are skipped.
+    """
+    if not cand_path.exists():
+        logger.error(
+            "Candidates file {} not found — run generation + grading first.", cand_path
+        )
+        return
+    works = json.loads(cand_path.read_text(encoding="utf-8"))
+    final: list[dict] = []
+    skipped = 0
+    for work in works:
+        best = select_best_candidate(work)
+        if best is None or not (best.get("proposal") or "").strip():
+            skipped += 1
+            continue
+        record = {k: v for k, v in work.items() if k != "silver"}
+        record["description"] = best["proposal"]
+        final.append(record)
+    _atomic_write_json(final_path, final)
+    logger.info(
+        "[finalize] {} -> {} ({} records, {} skipped without graded candidates)",
+        cand_path.name,
+        final_path.name,
+        len(final),
+        skipped,
+    )
+
+
 # 3. Recommendation run
 def run_recommendations(
     silver: SilverRecord,
@@ -1178,14 +1255,20 @@ def cmd_fetch_minio(args: argparse.Namespace) -> int:
 
 
 def cmd_silver_generate(args: argparse.Namespace) -> int:
-    for gold_path, silver_path in _SILVER_PAIRS:
-        silver_generate_for_model(args.model, gold_path, silver_path)
+    for gold_path, cand_path in _SILVER_GEN_PAIRS:
+        silver_generate_for_model(args.model, gold_path, cand_path)
     return 0
 
 
 def cmd_silver_grade(args: argparse.Namespace) -> int:
-    for _gold_path, silver_path in _SILVER_PAIRS:
-        silver_grade_for_judge(args.judge, silver_path)
+    for _gold_path, cand_path in _SILVER_GEN_PAIRS:
+        silver_grade_for_judge(args.judge, cand_path)
+    return 0
+
+
+def cmd_silver_finalize(args: argparse.Namespace) -> int:
+    for cand_path, final_path in _SILVER_FINAL_PAIRS:
+        silver_finalize(cand_path, final_path)
     return 0
 
 
@@ -1196,27 +1279,37 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
     gold_by_id = {g.gold_id: g for g in gold}
 
     if args.source == "gold":
-        # Evaluate directly over the real thesis descriptions as the query, with no
-        # silver standard. Lets the benchmark run before the silver set exists; every
-        # mode uses gold.description as its input text (already what the
-        # lexical_direct control uses), so the pipeline is otherwise identical.
-        silver = [
-            SilverRecord(
-                gold_id=g.gold_id,
-                proposal=g.description,
-                source_model="gold",
-                judge_score=0.0,
-            )
-            for g in gold
-        ]
-        logger.info("Source=gold: querying with {} thesis descriptions.", len(silver))
+        # Evaluate directly over the real thesis descriptions as the query. Every mode
+        # uses gold.description as its input text (already what the lexical_direct
+        # control uses), so the pipeline is otherwise identical.
+        query_records = gold
+        logger.info("Source=gold: querying with {} thesis descriptions.", len(gold))
     else:
-        silver = load_silver_standard()
-        if not silver:
+        # The final silver files share the gold schema, with `description` already set
+        # to the chosen student proposal, so they feed the exact same path as gold.
+        silver_paths = tuple(p for p in (SILVER_TFG_PATH, SILVER_TFM_PATH) if p.exists())
+        if not silver_paths:
             logger.error(
-                "No silver standard found at {}. Run 'build-silver' first.", SILVER_PATH
+                "No final silver standard in {}. Run the silver DAG (incl. the "
+                "'finalize' step) first.",
+                SILVER_DIR,
             )
             return 1
+        query_records = load_gold_standard(paths=silver_paths)
+        logger.info("Source=silver: querying with {} proposals.", len(query_records))
+
+    # Build the per-query work list. The query text is the record's `description`
+    # (the thesis text for gold, the chosen proposal for silver); the ground truth
+    # (director, year, area, type) comes from `gold_by_id`, keyed by gold_id.
+    silver = [
+        SilverRecord(
+            gold_id=r.gold_id,
+            proposal=r.description,
+            source_model=args.source,
+            judge_score=0.0,
+        )
+        for r in query_records
+    ]
 
     db = get_vector_db()
     keywords_ids, summaries_ids, common = common_indexed_universe(db)
@@ -1477,6 +1570,13 @@ def main() -> int:
         "--judge", required=True, help="Judge model (Ollama tag, e.g. mistral:7b)."
     )
     p_sgrade.set_defaults(func=cmd_silver_grade)
+
+    p_sfin = sub.add_parser(
+        "silver-finalize",
+        help="Pick the best-graded proposal per work (random tie-break) and write the "
+        "final silver standard in the gold schema (description = chosen proposal).",
+    )
+    p_sfin.set_defaults(func=cmd_silver_finalize)
 
     args = parser.parse_args()
     return args.func(args)
