@@ -63,6 +63,11 @@ with DAG(
 
     evaluate = BashOperator(
         task_id="evaluate",
+        env={
+            "EVAL_CACHE_DIR": "/home/airflow/upm_eval/cache",
+            "EVAL_REPORTS_DIR": "/home/airflow/upm_eval/reports",
+        },
+        append_env=True,
         bash_command=(
             f"cd {_PROJECT} && {_UV} --module {_MODULE} "
             "evaluate --source {{ params.source }} --publish-minio"

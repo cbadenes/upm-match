@@ -86,8 +86,8 @@ load_dotenv()
 GOLD_TFG_PATH = Path("evaluation/gold_standard_tfg.json")
 GOLD_TFM_PATH = Path("evaluation/gold_standard_tfm.json")
 SILVER_PATH = Path("evaluation/silver_standard.json")
-CACHE_DIR = Path("evaluation/cache")
-REPORTS_DIR = Path("evaluation/reports")
+CACHE_DIR = Path(os.environ.get("EVAL_CACHE_DIR", "evaluation/cache"))
+REPORTS_DIR = Path(os.environ.get("EVAL_REPORTS_DIR", "evaluation/reports"))
 
 # The three local LLMs used both as proposal generators and as judges.
 # Override with EVAL_LLMS="modelA,modelB,modelC". All must be pulled in Ollama.
