@@ -48,6 +48,21 @@ class VectorDataBase(Protocol):
         """
         ...
 
+    def list_collections(self) -> list[str]:
+        """Return the names of all physical collections in the backend.
+
+        :return: List of collection names (aliases excluded).
+        """
+        ...
+
+    def latest_collection(self, prefix: str) -> str | None:
+        """Return the newest physical collection whose name matches a family prefix.
+
+        :param prefix: Collection family prefix, e.g. "researcher_summaries".
+        :return: Newest matching collection name, or None if none exist.
+        """
+        ...
+
     def count_points(self, collection: str) -> int:
         """Return the number of points in a collection.
 
