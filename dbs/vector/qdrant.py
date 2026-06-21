@@ -99,10 +99,35 @@ class QdrantBackend:
     def collection_exists(self, collection: str) -> bool:
         return self._client.collection_exists(collection)
 
+    def list_collections(self) -> list[str]:
+        """Return the names of all physical collections (aliases excluded)."""
+        return [c.name for c in self._client.get_collections().collections]
+
+    def latest_collection(self, prefix: str) -> str | None:
+        """Return the newest physical collection for a family.
+
+        Phase 7 builds into timestamp-suffixed collections (`<prefix>_<ts>`) and flips an alias once the build succeeds.
+        Resolving the lexicographically largest matching name gives the most recent build directly, without depending on the alias being set.
+        Falls back to a flat `<prefix>` collection (legacy, pre-alias layout) when no versioned one exists.
+
+        :param prefix: Collection family prefix, e.g. "researcher_summaries".
+        :return: Newest matching collection name, or None if none exist.
+        """
+        matches = [
+            name
+            for name in self.list_collections()
+            if name == prefix or name.startswith(f"{prefix}_")
+        ]
+        return max(matches) if matches else None
+
     def count_points(self, collection: str) -> int:
+        # `count(exact=True)` reflects every stored point. We avoid
+        # `get_collection().points_count`, which counts only *indexed* points and
+        # is None until the optimizer runs — reporting 0 for freshly built
+        # collections that actually hold data.
         if not self.collection_exists(collection):
             return 0
-        return self._client.get_collection(collection).points_count or 0
+        return self._client.count(collection_name=collection, exact=True).count
 
     def point_exists(self, collection: str, point_id: int) -> bool:
         results = self._client.retrieve(

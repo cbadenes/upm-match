@@ -5,7 +5,7 @@ from __future__ import annotations
 from flask import Blueprint, jsonify, render_template, request
 from loguru import logger
 
-from dbs.vector import get_vector_db
+from dbs.vector import QdrantBackend, get_vector_db
 
 from .agent import enrich_query, extract_keywords
 from .search import (
@@ -21,7 +21,7 @@ bp = Blueprint("main", __name__)
 
 # Shared Qdrant client - created once and reused across requests.
 # BM42 model is loaded lazily on first search call.
-_db = get_vector_db()
+_db: QdrantBackend = get_vector_db()
 
 
 def _serialise_result(r: PDIResult) -> dict:
@@ -61,11 +61,17 @@ def about():
 
 @bp.get("/api/stats")
 def stats():
-    """Return indexed PDI counts from both Qdrant collections."""
+    """Return indexed PDI counts from the latest Qdrant collections."""
+    keywords_collection = _db.latest_collection(COLLECTION_NAME) or COLLECTION_NAME
+    summaries_collection = (
+        _db.latest_collection(SUMMARY_COLLECTION) or SUMMARY_COLLECTION
+    )
     return jsonify(
         {
-            "indexed_keywords": _db.count_points(COLLECTION_NAME),
-            "indexed_summaries": _db.count_points(SUMMARY_COLLECTION),
+            "keywords_collection": keywords_collection,
+            "indexed_keywords": _db.count_points(keywords_collection),
+            "summaries_collection": summaries_collection,
+            "indexed_summaries": _db.count_points(summaries_collection),
         }
     )
 

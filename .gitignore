@@ -212,3 +212,5 @@ data/*
 # Scripts auxiliares de evaluación: se mantienen solo en local, no se versionan
 evaluation/build_gold_standard.py
 evaluation/explore_minio.py
+evaluation/export_projects_csv.py
+evaluation/*.csv
