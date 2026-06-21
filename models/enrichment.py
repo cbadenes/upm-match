@@ -71,5 +71,9 @@ class ResearcherEnrichmentDocument(BaseModel):
     generated_at: datetime
     # Populated by 06_create_summaries: rolling biography snapshot per year.
     history: dict[str, Any] = Field(default_factory=dict)
+    # Populated by 07_index_summaries: the recent-weighted fused "current" profile
+    # and its expertise domains, written back to the top level of the document.
+    summary: Optional[str] = None
+    domains: list[str] = Field(default_factory=list)
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
