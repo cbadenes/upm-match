@@ -81,4 +81,24 @@ with DAG(
         ),
     )
 
-    selftest >> evaluate
+    fetch_results = BashOperator(
+        task_id="fetch_results",
+        # Mirror the whole eval bucket into the mounted project, so the results land in
+        # the repo checkout on the host and can be pulled/copied from there. The target
+        # dir must be writable by the container task user; make it so once on the host:
+        #   mkdir -p evaluation/reports && chmod -R a+rwx evaluation/reports
+        env={"EVAL_DOWNLOAD_DIR": f"{_PROJECT}/evaluation/reports"},
+        append_env=True,
+        # Run regardless of the evaluate outcome, to pull whatever is already in MinIO.
+        trigger_rule="all_done",
+        bash_command=f"cd {_PROJECT} && {_UV} --module {_MODULE} fetch-minio",
+        doc_md=(
+            "Downloads ALL evaluation artefacts stored in MinIO into "
+            "evaluation/reports/ of the mounted project (the host repo checkout), "
+            "mirroring the bucket layout (<source>/<ts>/... and <source>/latest/...). "
+            "Runs even if 'evaluate' failed/retried, so it always pulls whatever "
+            "results exist. The target dir must be writable by the container user."
+        ),
+    )
+
+    selftest >> evaluate >> fetch_results
