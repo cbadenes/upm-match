@@ -8,7 +8,7 @@ METODOLOGY
      - evaluation/gold_standard_tfg.json  (250 records)
      - evaluation/gold_standard_tfm.json  (250 records)
    Each record holds:
-     - id: per-file integer index (the stable key is `_project_id`)
+     - id: per-file string index, e.g. "gold_tfg_0001" (the stable key is `_project_id`)
      - description: title + abstract + keywords of the thesis work
      - year: academic year of the work
      - director: the actual supervisor, as a researcher_id (`pdi_<n>`)
@@ -136,7 +136,7 @@ OLLAMA_HOST = os.environ.get("OLLAMA_HOST", f"http://localhost:{OLLAMA_PORT}")
 class GoldRecord(BaseModel):
     """One hand-curated TFG/TFM ground-truth record."""
 
-    id: int
+    id: str
     description: str
     year: int
     director: str  # researcher_id known to the system, e.g. "pdi_308607"
