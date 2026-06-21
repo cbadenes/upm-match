@@ -7,7 +7,7 @@ so the results can be pulled from anywhere with MinIO credentials (bucket MINIO_
 
 Reference set (DAG param `source`):
   - "gold" (default): query = the real thesis descriptions. Needs no silver standard, so the benchmark can run before the silver set exists.
-  - "silver": query = the generated student-style proposals. Build the silver standard first (locally with `build-silver`, or as a separate run) and place evaluation/silver_standard.json in the repo before triggering with source=silver.
+  - "silver": query = the generated student-style proposals. Build the silver standard first with the `upm_match_silver` DAG, which writes evaluation/silver/silver_standard_{tfg,tfm}.json (gold schema), before triggering with source=silver.
 
 Resumability: the harness caches every (mode, project) result to disk under evaluation/cache/<source>/ and skips the ones already done, so a crashed or retried task resumes from the last completed project rather than starting over.
 """
@@ -48,7 +48,7 @@ with DAG(
             "gold",
             enum=["gold", "silver"],
             description="Query source: 'gold' = thesis descriptions (no silver needed); "
-            "'silver' = generated student proposals (requires silver_standard.json).",
+            "'silver' = generated student proposals (run the upm_match_silver DAG first).",
         ),
     },
     tags=["upm", "evaluation"],

@@ -17,10 +17,15 @@ METODOLOGY
      - _project_id: globally-unique thesis id (`tft_<n>`) — used as gold_id
      - _title/_keywords: debug fields
 
-2. SILVER STANDARD  (synthetic, evaluation/silver_standard.json)
-   For each gold record, 3 local LLMs each rewrite the thesis `description` into a *student-style proposal* (the free text a student would type into UPM Match when looking for a supervisor).
-   The 3 candidates are then scored by the same 3 LLMs (LLM-as-judge); the highest-rated proposal becomes the silver record.
-   Generation is reproducible (fixed seed) and resumable (cached to disk).
+2. SILVER STANDARD  (synthetic, evaluation/silver/)
+   Built by the Airflow silver DAG (silver-generate / silver-grade / silver-finalize),
+   not by this CLI's evaluate path. For each gold record, 3 local LLMs each rewrite the
+   thesis `description` into a *student-style proposal*, and the same 3 LLMs grade every
+   proposal (LLM-as-judge). The per-model proposals + grades are stored in
+   silver_candidates_{tfg,tfm}.json; the best-graded proposal per work (ties broken at
+   random) is written to silver_standard_{tfg,tfm}.json in the SAME schema as the gold
+   standard (description = chosen proposal), so silver evaluates through the gold path.
+   Generation/grading are reproducible (fixed seed) and resumable (flushed to disk).
 
 3. RECOMMENDATION RUN
    Every reference record is evaluated in five modes:
@@ -37,25 +42,27 @@ METODOLOGY
    Per-query timings are aggregated alongside (mean / median / p90 total, plus the LLM and retrieval split), so the report carries everything the thesis needs.
 
 RESUMABILITY
-   Both stages are resumable and need not run in one go. 'build-silver' skips records already generated; 'evaluate' caches every mode's runs to disk (one file per mode) and skips queries already completed, retrying only the ones that errored.
+   'evaluate' caches every mode's runs to disk (one file per mode) and skips queries already completed, retrying only the ones that errored.
    Re-run the same command to continue where it left off, so the full benchmark can be completed across several sessions; the report is rebuilt from cache each time.
+   The silver-generate / silver-grade / silver-finalize steps are likewise resumable.
 
 USAGE
 
-    # 1. Generate the silver standard from the gold standard (3 LLMs)
-    uv run --module evaluation.evaluate_recommendations build-silver
-    uv run --module evaluation.evaluate_recommendations build-silver --limit 10
-
-    # 2. Evaluate every mode, compute metrics + timings + segment breakdowns, report.
-    #    --source gold evaluates directly over the thesis descriptions (no silver
-    #    needed, so it can run first); --source silver uses the generated proposals.
-    #    --publish-minio uploads the report to MinIO for off-server retrieval.
+    # Evaluate every mode, compute metrics + timings + segment breakdowns, report.
+    #   --source gold evaluates directly over the thesis descriptions (no silver
+    #   needed, so it can run first); --source silver uses the finalized silver files
+    #   built by the silver DAG. --publish-minio uploads the report to MinIO.
     uv run --module evaluation.evaluate_recommendations evaluate --source gold
     uv run --module evaluation.evaluate_recommendations evaluate --source silver
     uv run --module evaluation.evaluate_recommendations evaluate --modes keywords hybrid
 
-    # 3. Validate the metric math offline (no Qdrant / Ollama needed)
+    # Validate the metric math offline (no Qdrant / Ollama needed)
     uv run --module evaluation.evaluate_recommendations selftest
+
+    # Silver standard (normally run via the Airflow DAG, one model per step)
+    uv run --module evaluation.evaluate_recommendations silver-generate --model mistral:7b
+    uv run --module evaluation.evaluate_recommendations silver-grade --judge mistral:7b
+    uv run --module evaluation.evaluate_recommendations silver-finalize
 
 Requires Qdrant + Ollama reachable (same env vars as the app: QDRANT_*, OLLAMA_*).
 """
@@ -86,7 +93,6 @@ load_dotenv()
 
 GOLD_TFG_PATH = Path("evaluation/gold_standard_tfg.json")
 GOLD_TFM_PATH = Path("evaluation/gold_standard_tfm.json")
-SILVER_PATH = Path("evaluation/silver_standard.json")
 
 SILVER_DIR = Path(os.environ.get("SILVER_DIR", "evaluation/silver"))
 # *candidates* files: gold records + a `silver` field with every model's proposal and
@@ -109,15 +115,6 @@ _SILVER_FINAL_PAIRS = (
 )
 CACHE_DIR = Path(os.environ.get("EVAL_CACHE_DIR", "evaluation/cache"))
 REPORTS_DIR = Path(os.environ.get("EVAL_REPORTS_DIR", "evaluation/reports"))
-
-# The three local LLMs used both as proposal generators and as judges.
-# Override with EVAL_LLMS="modelA,modelB,modelC". All must be pulled in Ollama.
-_DEFAULT_MODELS = ["qwen2.5:7b-instruct", "llama3.1:latest", "qwen3:4b"]
-GENERATOR_MODELS: list[str] = [
-    m.strip()
-    for m in os.environ.get("EVAL_LLMS", ",".join(_DEFAULT_MODELS)).split(",")
-    if m.strip()
-]
 
 # Search modes compared by the harness. The first is a control (a pure lexical baseline with no LLM, used as an ablation).
 # The other four are the strategies exposed by the web app (see app/routes.py).
@@ -190,25 +187,15 @@ class GoldRecord(BaseModel):
         return self.project_id
 
 
-class ProposalCandidate(BaseModel):
-    """A student-style proposal generated from a gold description by one LLM."""
-
-    gold_id: str
-    model: str
-    proposal: str
-    judge_score: float | None = None  # mean panel score, filled in during judging
-
-
 class SilverRecord(BaseModel):
-    """The best-rated synthetic proposal for a gold record."""
+    """One query fed to an evaluation run: a gold_id and its query text.
+
+    The text is the thesis description (source=gold) or the chosen student proposal
+    (source=silver); both are read from a record's `description` field.
+    """
 
     gold_id: str
     proposal: str
-    source_model: str
-    judge_score: float
-    candidates: list[ProposalCandidate] = Field(
-        default_factory=list
-    )  # kept for error analysis
 
 
 class RecommendationResult(BaseModel):
@@ -405,36 +392,6 @@ class _JudgeSchema(BaseModel):
     reason: str = ""
 
 
-def generate_proposal_candidates(
-    gold: GoldRecord,
-    models: list[str] = GENERATOR_MODELS,
-) -> list[ProposalCandidate]:
-    """Rewrite a thesis description into student-style proposals (one per LLM).
-
-    Models that fail (connection / parse error) are skipped with a warning so a
-    single bad model does not abort the whole record.
-    """
-    schema = _ProposalSchema.model_json_schema()
-    user = f"{_PROPOSAL_INSTRUCTIONS}\n\n--- Descripción del trabajo ---\n{gold.description}"
-
-    candidates: list[ProposalCandidate] = []
-    for model in models:
-        try:
-            data = _chat_json(model, _PROPOSAL_SYSTEM, user, schema, temperature=0.7)
-            proposal = _ProposalSchema.model_validate(data).proposal.strip()
-            if proposal:
-                candidates.append(
-                    ProposalCandidate(
-                        gold_id=gold.gold_id, model=model, proposal=proposal
-                    )
-                )
-        except Exception as exc:  # noqa: BLE001 — robustness across heterogeneous models
-            logger.warning(
-                "Proposal generation failed ({} / {}): {}", model, gold.gold_id, exc
-            )
-    return candidates
-
-
 _JUDGE_SYSTEM = "Eres un evaluador imparcial de propuestas de estudiantes para un sistema de recomendación de directores de TFG/TFM."
 _JUDGE_INSTRUCTIONS = (
     "Puntúa de 1 a 5 la propuesta del estudiante según estos criterios combinados:\n"
@@ -443,105 +400,6 @@ _JUDGE_INSTRUCTIONS = (
     "  - Limpieza: NO copia el título literal ni filtra el nombre del director.\n"
     "Devuelve un JSON con 'score' (entero 1-5) y 'reason' (breve)."
 )
-
-
-def judge_and_select(
-    candidates: list[ProposalCandidate],
-    gold: GoldRecord,
-    judges: list[str] = GENERATOR_MODELS,
-) -> SilverRecord | None:
-    """Score candidate proposals with the LLM panel and keep the best.
-
-    Each judge rates each candidate 1-5; scores are averaged.
-    The top candidate wins, ties broken deterministically by generator order then model name.
-    """
-    if not candidates:
-        return None
-
-    schema = _JudgeSchema.model_json_schema()
-    for cand in candidates:
-        scores: list[int] = []
-        user = (
-            f"{_JUDGE_INSTRUCTIONS}\n\n"
-            f"--- Trabajo original ---\n{gold.description}\n\n"
-            f"--- Propuesta del estudiante ---\n{cand.proposal}"
-        )
-        for judge in judges:
-            try:
-                data = _chat_json(judge, _JUDGE_SYSTEM, user, schema, temperature=0.0)
-                scores.append(int(_JudgeSchema.model_validate(data).score))
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("Judging failed ({} / {}): {}", judge, gold.gold_id, exc)
-        cand.judge_score = sum(scores) / len(scores) if scores else 0.0
-
-    # Deterministic selection: highest mean score, then generator order, then name.
-    order = {m: i for i, m in enumerate(GENERATOR_MODELS)}
-    best = max(
-        candidates,
-        key=lambda c: (c.judge_score or 0.0, -order.get(c.model, 99), c.model),
-    )
-    return SilverRecord(
-        gold_id=gold.gold_id,
-        proposal=best.proposal,
-        source_model=best.model,
-        judge_score=best.judge_score or 0.0,
-        candidates=candidates,
-    )
-
-
-def build_silver_standard(
-    gold_records: list[GoldRecord],
-    output_path: Path = SILVER_PATH,
-    limit: int | None = None,
-) -> list[SilverRecord]:
-    """Generate the silver standard from the gold standard and persist it.
-
-    Resumable: records already present in `output_path` are skipped.
-    The file is rewritten atomically after every new record so progress is never lost.
-    """
-    existing = (
-        {s.gold_id: s for s in load_silver_standard(output_path)}
-        if output_path.exists()
-        else {}
-    )
-    pending = [g for g in gold_records if g.gold_id not in existing]
-    if limit is not None:
-        pending = pending[:limit]
-
-    logger.info(
-        "Silver build: {} existing, {} to generate (models={})",
-        len(existing),
-        len(pending),
-        GENERATOR_MODELS,
-    )
-
-    silver = list(existing.values())
-    for i, gold in enumerate(pending, 1):
-        candidates = generate_proposal_candidates(gold)
-        record = judge_and_select(candidates, gold)
-        if record is None:
-            logger.error("No candidates for {} — skipping", gold.gold_id)
-            continue
-        silver.append(record)
-        existing[gold.gold_id] = record
-        _atomic_write_json(output_path, [s.model_dump() for s in silver])
-        logger.info(
-            "[{}/{}] {} -> {} (score={:.2f})",
-            i,
-            len(pending),
-            gold.gold_id,
-            record.source_model,
-            record.judge_score,
-        )
-    return silver
-
-
-def load_silver_standard(path: Path = SILVER_PATH) -> list[SilverRecord]:
-    """Load a previously generated silver standard."""
-    if not path.exists():
-        return []
-    raw = json.loads(path.read_text(encoding="utf-8"))
-    return [SilverRecord.model_validate(s) for s in raw]
 
 
 # 2b. Silver standard — per-work format (Airflow DAG)
@@ -1240,12 +1098,6 @@ def fetch_from_minio(dest_dir: Path, source: str | None = None) -> int:
 
 
 # Command implementations
-def cmd_build_silver(args: argparse.Namespace) -> int:
-    gold = load_gold_standard()
-    build_silver_standard(gold, limit=args.limit)
-    return 0
-
-
 def cmd_fetch_minio(args: argparse.Namespace) -> int:
     dest = Path(
         args.dest or os.environ.get("EVAL_DOWNLOAD_DIR") or "evaluation/reports"
@@ -1302,12 +1154,7 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
     # (the thesis text for gold, the chosen proposal for silver); the ground truth
     # (director, year, area, type) comes from `gold_by_id`, keyed by gold_id.
     silver = [
-        SilverRecord(
-            gold_id=r.gold_id,
-            proposal=r.description,
-            source_model=args.source,
-            judge_score=0.0,
-        )
+        SilverRecord(gold_id=r.gold_id, proposal=r.description)
         for r in query_records
     ]
 
@@ -1474,15 +1321,6 @@ def main() -> int:
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
-    p_silver = sub.add_parser(
-        "build-silver",
-        help="Generate the silver standard from the gold standard (3 LLMs).",
-    )
-    p_silver.add_argument(
-        "--limit", type=int, default=None, help="Only generate this many new records."
-    )
-    p_silver.set_defaults(func=cmd_build_silver)
-
     p_eval = sub.add_parser(
         "evaluate", help="Run recommendations for every mode and compute metrics."
     )
@@ -1492,8 +1330,8 @@ def main() -> int:
         default="silver",
         help="Query-text source: 'gold' uses the real thesis descriptions directly "
         "(no silver standard needed); 'silver' uses the generated student-style "
-        "proposals (run 'build-silver' first). Cache + report are namespaced by "
-        "source so the two never collide.",
+        "proposals (run the silver DAG: silver-generate/grade/finalize first). Cache + "
+        "report are namespaced by source so the two never collide.",
     )
     p_eval.add_argument(
         "--modes",
