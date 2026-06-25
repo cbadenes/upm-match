@@ -1,16 +1,13 @@
 """UPM Match — Silver Standard generation DAG.
 
-Builds the silver standard from the gold standard, writing the result INTO each work as a `silver` field: a list of candidates, one per generator model, each with ``{model, proposal, grades:{judge: score}}``.
-Output is a copy of the gold records plus that field, per study type:
-    evaluation/silver/silver_standard_tfg.json
-    evaluation/silver/silver_standard_tfm.json
-on the mounted project (the host repo checkout), so the gold files stay untouched.
+Builds the silver standard from the gold standard in two artefacts per study type, written to the mounted project (the host repo checkout) so the gold files stay untouched:
+  - silver_candidates_{tfg,tfm}.json: a copy of the gold records plus a `silver` field (one candidate per generator model, each ``{model, proposal, grades:{judge: score}}``), written by the generate/grade steps.
+  - silver_standard_{tfg,tfm}.json: the finalized set in the gold schema (description = best-graded proposal), written by the finalize step.
 
 Runs inside the Airflow container (uv + project mounted + Ollama on the network).
 Ollama loads a single model at a time, so generation and grading run one model per task, sequentially:
 
-    generate(model1) -> generate(model2) -> generate(model3)
-      -> score(judge1) -> score(judge2) -> score(judge3)
+    generate(model1) -> generate(model2) -> generate(model3) -> score(judge1) -> score(judge2) -> score(judge3)
 
 Generation must finish before scoring (each judge grades all three texts).
 Each task is resumable: it skips works/candidates already done and flushes to disk often, so a crash/retry resumes from the last completed item.

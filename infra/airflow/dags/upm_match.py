@@ -30,7 +30,7 @@ _default_args = {
 
 with DAG(
     dag_id="upm_match_pipeline",
-    description="Full pipeline: scraping -> Memgraph graph -> LLM enrichment -> Qdrant indexing",
+    description="Full pipeline: scraping -> Memgraph graph -> profile consolidation -> LLM summaries -> Qdrant indexing",
     start_date=datetime(2026, 1, 30),
     # schedule=None  -> manual trigger only
     # For weekly automatic runs (Sundays at 3am): schedule="0 3 * * 0"
@@ -66,7 +66,7 @@ with DAG(
         bash_command=f"cd {_PROJECT} && {_UV} 04_enrich_profile.py",
         retries=2,
         retry_delay=timedelta(minutes=15),
-        doc_md="Enriches each researcher with Claude (keywords, summaries, UNESCO categories). Output: enrichment.json in MinIO.",
+        doc_md="Builds the structured, Pydantic-validated enrichment document for each PDI from the graph (positions, normalised topics, cleaned publications, supervised works), keeping only researchers in the four target schools, and persists enrichment.json to MinIO. No LLM.",
     )
 
     fase5 = BashOperator(
