@@ -24,6 +24,16 @@ _PROJECT = "/opt/airflow/project"
 _MODULE = "evaluation.evaluate_recommendations"
 _UV = "uv run"
 
+# Search modes the harness can evaluate (mirrors SEARCH_MODES in the eval script).
+# Kept here so the DAG stays self-contained; the script validates the choice too.
+_SEARCH_MODES = [
+    "lexical_direct",
+    "keywords",
+    "summary_direct",
+    "summary_enriched",
+    "hybrid",
+]
+
 _default_args = {
     "owner": "upm-match",
     # The evaluation is resumable from the on-disk cache, so a retry picks up where
@@ -50,6 +60,30 @@ with DAG(
             description="Query source: 'gold' = thesis descriptions (no silver needed); "
             "'silver' = generated student proposals (run the upm_match_silver DAG first).",
         ),
+        "modes": Param(
+            _SEARCH_MODES,
+            type="array",
+            items={"type": "string", "enum": _SEARCH_MODES},
+            description="Search modes to evaluate (default = all five). Narrow it to "
+            "re-run a subset, e.g. only the LLM modes (keywords, summary_enriched, "
+            "hybrid) for the run-to-run variance repetitions.",
+        ),
+        "no_cache": Param(
+            False,
+            type="boolean",
+            description="Recompute every (mode, query) from scratch, ignoring the "
+            "on-disk cache. Needed to get fresh LLM rankings on each run (e.g. "
+            "repeating the LLM modes to measure variance); otherwise cached results "
+            "are reused and the run reproduces the previous one.",
+        ),
+        "no_universe_filter": Param(
+            False,
+            type="boolean",
+            description="Do NOT restrict queries to supervisors present in BOTH "
+            "indices (the common-universe protocol). Off (default) keeps the fair "
+            "comparison; turn on only for an ablation of how the filter affects the "
+            "metrics.",
+        ),
     },
     tags=["upm", "evaluation"],
     doc_md=__doc__,
@@ -70,7 +104,11 @@ with DAG(
         append_env=True,
         bash_command=(
             f"cd {_PROJECT} && {_UV} --module {_MODULE} "
-            "evaluate --source {{ params.source }} --publish-minio"
+            "evaluate --source {{ params.source }} "
+            "--modes {{ params.modes | join(' ') }} "
+            "--publish-minio"
+            "{{ ' --no-cache' if params.no_cache else '' }}"
+            "{{ ' --no-universe-filter' if params.no_universe_filter else '' }}"
         ),
         doc_md=(
             "Runs every search mode over the chosen reference set, computes metrics + "
