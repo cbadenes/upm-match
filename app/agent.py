@@ -144,13 +144,11 @@ def enrich_query(idea: str) -> str:
 
 # Student-case generation agent (used by the PDI questionnaire, section 5)
 _CASE_DESCRIPTION = (
-    "You write realistic student research queries to evaluate an academic supervisor "
-    "recommender. You are given several researcher profiles that are ALL suitable "
-    "supervisors for the same hypothetical thesis project."
+    "You write realistic student research queries to evaluate an academic supervisor recommender."
+    "You are given several researcher profiles that are ALL suitable supervisors for the same hypothetical thesis project."
 )
 _CASE_INSTRUCTIONS = [
-    "Write ONE plausible research idea that a university student (TFG/TFM) might submit "
-    "when looking for a thesis supervisor, such that the given researchers would all be good matches.",
+    "Write ONE plausible research idea that a university student (TFG/TFM) might submit when looking for a thesis supervisor, such that the given researchers would all be good matches.",
     "RULES:",
     "  1. Write the `query` in SPANISH, 2 to 4 sentences, in natural language as a student would phrase it.",
     "  2. Make it realistic and concrete, but broad enough to fit the shared expertise of the group.",

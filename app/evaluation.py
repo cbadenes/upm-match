@@ -205,10 +205,21 @@ QUESTIONS = {
 # these Likert items (optional; the PDI may add as many cases as they want).
 SECTION5_LIKERT = [
     ("tutor_adecuado", "Yo sería un tutor adecuado para esta consulta.", "positive"),
-    ("primeros", "Debería aparecer entre los primeros resultados para esta consulta.", "positive"),
-    ("justificacion", "La recomendación de estos perfiles está justificada para esta consulta.", "positive"),
+    (
+        "primeros",
+        "Debería aparecer entre los primeros resultados para esta consulta.",
+        "positive",
+    ),
+    (
+        "justificacion",
+        "La recomendación de estos perfiles está justificada para esta consulta.",
+        "positive",
+    ),
 ]
-SECTION5_OPINION = ("opinion", "¿Algún comentario sobre esta consulta o sus recomendaciones?")
+SECTION5_OPINION = (
+    "opinion",
+    "¿Algún comentario sobre esta consulta o sus recomendaciones?",
+)
 
 
 # --- Student questionnaire schema (see docs/cuestionario_alumnos.md) ---------
@@ -428,7 +439,9 @@ def _publications_for_year(publications: list | None, year: int) -> list[dict]:
             "title": title or "(sin título)",
             "abstract": abstract or None,
             "item_id": item_id,
-            "url": PORTAL_ITEM_URL_TEMPLATE.format(id=item_id) if item_id else None,
+            "url": PORTAL_ITEM_URL_TEMPLATE.format(id=item_id.removeprefix("pub_"))
+            if item_id
+            else None,
         }
     return list(seen.values())
 
@@ -466,6 +479,7 @@ def load_yearly(researcher_id: int) -> list[dict]:
 
 
 # --- Section 5: recommendation-case generation -----------------------------
+
 
 def _dense(raw_vector) -> list[float] | None:
     """Extract the dense vector from Qdrant's (possibly named) vector container."""
@@ -778,7 +792,9 @@ def _collect_section5(form) -> list[dict]:
                 "keywords": stored.get("keywords") or [],
                 "recommendations": stored.get("recommendations") or [],
                 "likert": likert,
-                "opinion": (form.get(f"s5_{case_id}_{SECTION5_OPINION[0]}") or "").strip(),
+                "opinion": (
+                    form.get(f"s5_{case_id}_{SECTION5_OPINION[0]}") or ""
+                ).strip(),
             }
         )
     return cases
