@@ -1,0 +1,224 @@
+{% extends "evaluacion/base_eval.html" %}
+
+{% block title %}Cuestionario · Evaluación PDI · UPM Match{% endblock %}
+
+{% macro likert(qid, text) %}
+  <div class="likert-row" role="radiogroup" aria-labelledby="{{ qid }}_lbl">
+    <div class="likert-stmt" id="{{ qid }}_lbl">{{ text }}</div>
+    <div class="likert-options">
+      {% for v in range(1, 6) %}
+      <label class="likert-opt">
+        <input type="radio" name="{{ qid }}" value="{{ v }}" required/>
+        <span>{{ v }}</span>
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+{% endmacro %}
+
+{% macro openq(qid, text, rows=3, required=False) %}
+  <div class="field">
+    <label class="field-q" for="{{ qid }}">
+      {{ text }}
+      {% if required %}<span class="req" title="Respuesta obligatoria">*</span>{% else %}<span class="opt">(opcional)</span>{% endif %}
+    </label>
+    <textarea id="{{ qid }}" name="{{ qid }}" rows="{{ rows }}" class="field-ta"{% if required %} required{% endif %}></textarea>
+  </div>
+{% endmacro %}
+
+{% block extra_css %}
+  .intro-block { padding: .25rem 0 0; }
+  .intro-block .eyebrow { display: block; margin-bottom: .6rem; }
+  .intro-block h1 { margin-bottom: .6rem; }
+
+  /* Profile stimulus */
+  .profile-name { font-size: 1.05rem; font-weight: 600; }
+  .profile-meta { font-size: 12.5px; color: var(--muted); margin-top: .2rem; }
+  .profile-summary { font-size: 14.5px; line-height: 1.7; color: var(--text); margin-top: .9rem; }
+  .kw-wrap { margin-top: 1rem; }
+  .kw-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: .5rem; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { background: var(--surface-2); color: var(--muted); font-size: 12px; border-radius: var(--r-full); padding: 4px 11px; }
+  .chip.kw { background: rgba(0,169,224,0.14); color: #7fd8ef; }
+  .portal-btn { margin-top: 1rem; }
+
+  /* Likert */
+  .likert-scale-legend { font-size: 12px; color: var(--muted); margin: .25rem 0 1.1rem; display: flex; justify-content: space-between; gap: 1rem; }
+  .likert-scale-legend span { display: inline-flex; align-items: center; gap: .35rem; }
+  .likert-row { border: none; padding: .9rem 0; border-top: 1px solid var(--border); display: grid; grid-template-columns: 1fr; gap: .7rem; }
+  .likert-row:first-of-type { border-top: none; }
+  .likert-stmt { font-size: 14.5px; color: var(--text); line-height: 1.5; padding: 0; }
+  .likert-options { display: flex; gap: 6px; }
+  .likert-opt { flex: 1; position: relative; }
+  .likert-opt input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+  .likert-opt span {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 44px; border: 1px solid var(--border-md); border-radius: var(--r-md);
+    font-size: 15px; font-weight: 600; color: var(--muted);
+    background: var(--bg); transition: border-color .12s, background .12s, color .12s;
+  }
+  .likert-opt input:hover + span { border-color: rgba(0,169,224,0.5); color: var(--text); }
+  .likert-opt input:checked + span { background: var(--ia-teal); border-color: var(--ia-teal); color: #04121a; }
+  .likert-opt input:focus-visible + span { outline: 2px solid var(--ia-teal); outline-offset: 2px; }
+  @media (min-width: 680px) {
+    .likert-row { grid-template-columns: 1fr 300px; align-items: center; gap: 1.25rem; }
+    .likert-stmt { padding-right: .5rem; }
+  }
+
+  /* Open questions */
+  .field { margin-top: 1.1rem; }
+  .field:first-of-type { margin-top: .5rem; }
+  .field-q { display: block; font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: .5rem; line-height: 1.5; }
+  .field-q .req { color: var(--ia-teal); font-weight: 700; }
+  .field-q .opt { color: var(--muted-2); font-weight: 400; font-size: 12px; }
+  .field-ta {
+    width: 100%; background: var(--bg); color: var(--text);
+    border: 1px solid var(--border-md); border-radius: var(--r-md);
+    padding: .75rem .9rem; font-size: 14.5px; line-height: 1.6; resize: vertical; outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .field-ta:focus { border-color: var(--ia-teal); box-shadow: 0 0 0 3px rgba(0,169,224,0.12); }
+
+  .subhead { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: 1.5rem 0 .5rem; }
+
+  /* Yearly */
+  .year-item { border: 1px solid var(--border); border-radius: var(--r-lg); padding: 1.1rem 1.2rem; margin-top: 1rem; background: rgba(24,32,48,0.3); }
+  .year-head { display: flex; align-items: baseline; gap: .6rem; margin-bottom: .6rem; }
+  .year-num { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--ia-teal); font-size: 1.1rem; }
+  .year-summary { font-size: 14px; line-height: 1.65; color: var(--muted); background: var(--surface); border-left: 2px solid var(--ia-teal); border-radius: 0 var(--r-sm) var(--r-sm) 0; padding: .7rem .85rem; margin-bottom: .9rem; }
+
+  /* Placeholder (section 5) */
+  .placeholder-card { border-style: dashed; border-color: var(--border-md); background: rgba(15,21,32,0.35); }
+  .placeholder-badge { display: inline-block; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .12em; color: var(--muted-2); border: 1px solid var(--border); border-radius: var(--r-full); padding: 3px 9px; margin-bottom: .6rem; }
+
+  /* Submit */
+  .submit-card { text-align: center; }
+  .submit-hint { font-size: 12.5px; color: var(--muted); margin-top: .8rem; }
+{% endblock %}
+
+{% block content %}
+
+<section class="intro-block">
+  <span class="eyebrow">Cuestionario · Personal Docente e Investigador</span>
+  <h1>Evaluación de su perfil y de las recomendaciones</h1>
+  <p class="lead">Revise el perfil generado a partir de su actividad pública y valore en qué medida lo representa. Sus respuestas se guardan de forma agregada, sin datos personales.</p>
+</section>
+
+<form method="post" action="{{ url_for('eval.eval_pdi_submit') }}" id="eval-form">
+
+  {% if save_error %}
+  <div class="alert" style="margin-top:1.25rem">No se pudieron guardar sus respuestas. Vuelva a intentarlo; si persiste, avise a los responsables del proyecto.</div>
+  {% endif %}
+
+  <!-- Profile stimulus -->
+  <div class="card">
+    <div class="profile-name">{{ profile.name }}</div>
+    <div class="profile-meta">Perfil generado · Portal Científico #{{ profile.researcher_id }}</div>
+    {% if profile.summary %}
+    <p class="profile-summary">{{ profile.summary }}</p>
+    {% else %}
+    <p class="profile-summary" style="color:var(--muted)">No hay un resumen consolidado disponible para este perfil.</p>
+    {% endif %}
+    {% if profile.keywords %}
+    <div class="kw-wrap">
+      <div class="kw-label">Palabras clave (dominios de expertise)</div>
+      <div class="chips">
+        {% for k in profile.keywords %}<span class="chip kw">{{ k }}</span>{% endfor %}
+      </div>
+    </div>
+    {% endif %}
+    <a class="btn btn-ghost portal-btn" href="{{ profile.portal_url }}" target="_blank" rel="noopener">
+      Ver mi perfil público en el Portal Científico &nearr;
+    </a>
+  </div>
+
+  <!-- Section 2: current summary validation -->
+  <div class="card">
+    <div class="card-head"><span class="card-num">1</span><h2>Validación del resumen actual</h2></div>
+    <p class="card-sub">Valore las siguientes afirmaciones sobre el resumen mostrado arriba.</p>
+    <div class="likert-scale-legend">
+      <span>1 · Totalmente en desacuerdo</span><span>5 · Totalmente de acuerdo</span>
+    </div>
+    {% for qid, text, pol in q.section2_likert %}{{ likert(qid, text) }}{% endfor %}
+
+    <div class="subhead">Comentarios</div>
+    {% for qid, text in q.section2_open %}{{ openq(qid, text) }}{% endfor %}
+  </div>
+
+  <!-- Section 3: temporal evolution -->
+  <div class="card">
+    <div class="card-head"><span class="card-num">2</span><h2>Evolución temporal</h2></div>
+    {% if yearly %}
+    <p class="card-sub">Para cada año se muestra el resumen generado a partir de las publicaciones de ese periodo.</p>
+    <div class="likert-scale-legend">
+      <span>1 · Totalmente en desacuerdo</span><span>5 · Totalmente de acuerdo</span>
+    </div>
+    {% for y in yearly %}
+    <div class="year-item">
+      <div class="year-head"><span class="year-num">{{ y.year }}</span></div>
+      <p class="year-summary">{{ y.profile }}</p>
+      {% for key, text, pol in q.section3_likert %}{{ likert("s3_%s_%s"|format(y.year, key), text) }}{% endfor %}
+      {{ openq("s3_%s_%s"|format(y.year, q.section3_open[0]), q.section3_open[1], 2) }}
+    </div>
+    {% endfor %}
+    {% else %}
+    <p class="card-sub">No hay resúmenes anuales disponibles para el periodo {{ 2023 }}–{{ 2026 }} en este perfil, por lo que esta sección se omite.</p>
+    {% endif %}
+  </div>
+
+  <!-- Section 4: ideal description -->
+  <div class="card">
+    <div class="card-head"><span class="card-num">3</span><h2>Descripción ideal para ser recomendado</h2></div>
+    <p class="card-sub">Imagine que un estudiante busca tutor para un TFG o TFM. ¿Qué debería plantear para que usted fuera una recomendación adecuada?</p>
+    {{ openq(q.section4_open[0][0], q.section4_open[0][1], 4, required=True) }}
+    {{ openq(q.section4_open[1][0], q.section4_open[1][1], 2) }}
+    {{ openq(q.section4_open[2][0], q.section4_open[2][1], 2) }}
+  </div>
+
+  <!-- Section 5: recommendation evaluation (placeholder) -->
+  <div class="card placeholder-card">
+    <span class="placeholder-badge">En preparación</span>
+    <div class="card-head"><span class="card-num">4</span><h2>Evaluación directa de recomendaciones</h2></div>
+    <p class="card-sub">
+      En una próxima fase se le mostrarán varias consultas de estudiante y los rankings donde aparece su perfil,
+      para que valore si la recomendación es adecuada. Esta sección se activará más adelante y no requiere
+      ninguna acción por ahora.
+    </p>
+  </div>
+
+  <!-- Section 6: system utility -->
+  <div class="card">
+    <div class="card-head"><span class="card-num">5</span><h2>Utilidad del sistema</h2></div>
+    <p class="card-sub">Valore el sistema en términos generales.</p>
+    <div class="likert-scale-legend">
+      <span>1 · Totalmente en desacuerdo</span><span>5 · Totalmente de acuerdo</span>
+    </div>
+    {% for qid, text, pol in q.section6_likert %}{{ likert(qid, text) }}{% endfor %}
+
+    <div class="subhead">Comentarios</div>
+    {% for qid, text in q.section6_open %}{{ openq(qid, text) }}{% endfor %}
+  </div>
+
+  <!-- Submit -->
+  <div class="card submit-card">
+    <button type="submit" class="btn btn-primary btn-lg btn-block" id="submit-btn">Enviar respuestas</button>
+    <p class="submit-hint">Al enviar, sus valoraciones se guardan de forma anónima y agregada.</p>
+  </div>
+
+</form>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Warn before leaving with unsaved answers; disable the guard on real submit.
+  let submitted = false;
+  const form = document.getElementById("eval-form");
+  form.addEventListener("submit", () => { submitted = true; });
+  window.addEventListener("beforeunload", (e) => {
+    if (submitted) return;
+    e.preventDefault();
+    e.returnValue = "";
+  });
+</script>
+{% endblock %}

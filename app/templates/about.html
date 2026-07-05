@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
-{% block title %}Sobre el proyecto — UPM Match{% endblock %}
+{% block title %}Sobre el proyecto · UPM Match{% endblock %}
+{% block title_key %}about.title{% endblock %}
 {% block description %}Qué es UPM Match, cómo funciona su pipeline de IA y el Proyecto de Innovación Educativa IE26.6102 que lo impulsa.{% endblock %}
 {% block og_title %}Sobre UPM Match{% endblock %}
 {% block og_description %}Arquitectura, tecnología y contexto del sistema de recomendación de tutores de la UPM.{% endblock %}
@@ -51,10 +52,10 @@
   <div class="about-hero-content">
     <div class="pill-badge" style="margin-bottom:1rem">
       <span class="pill-dot" aria-hidden="true"></span>
-      <span class="label-eyebrow">Sobre el proyecto</span>
+      <span class="label-eyebrow" data-i18n="about.hero_eyebrow">Sobre el proyecto</span>
     </div>
     <h1 id="about-heading">UPM Match</h1>
-    <p class="about-hero-sub">Sistema de recomendación de tutores y colaboraciones para estudiantes de la Universidad Politécnica de Madrid.</p>
+    <p class="about-hero-sub" data-i18n="about.hero_sub">Sistema de recomendación de tutores y colaboraciones para estudiantes de la Universidad Politécnica de Madrid.</p>
   </div>
 </section>
 
@@ -63,8 +64,8 @@
 
   <!-- Qué es -->
   <section aria-labelledby="que-es">
-    <div class="label-eyebrow" id="que-es">Qué es</div>
-    <p class="about-intro">
+    <div class="label-eyebrow" id="que-es" data-i18n="about.what_label">Qué es</div>
+    <p class="about-intro" data-i18n="about.what_text">
       UPM Match conecta a estudiantes que buscan director de TFG, TFM o Tesis con los investigadores de la UPM
       cuyas líneas de trabajo están más alineadas con sus intereses. Basta describir la idea libremente,
       en castellano, inglés o una mezcla de ambos: el sistema se encarga de extraer los conceptos relevantes,
@@ -74,13 +75,13 @@
 
   <!-- Pipeline -->
   <div class="about-divider" aria-hidden="true">
-    <div class="label-muted">Arquitectura</div>
+    <div class="label-muted" data-i18n="about.arch_label">Arquitectura</div>
     <div style="flex:1; height:1px; background:var(--border)"></div>
   </div>
 
   <section aria-labelledby="pipeline-heading">
-    <h2 id="pipeline-heading">Pipeline de procesamiento</h2>
-    <p style="font-size:14px; color:var(--muted); margin-top:.5rem; line-height:1.65">
+    <h2 id="pipeline-heading" data-i18n="about.pipeline_heading">Pipeline de procesamiento</h2>
+    <p style="font-size:14px; color:var(--muted); margin-top:.5rem; line-height:1.65" data-i18n="about.pipeline_intro">
       El sistema sigue un pipeline de seis fases que va desde la extracción de datos del Portal Científico
       hasta la presentación de recomendaciones ordenadas por relevancia.
     </p>
@@ -89,7 +90,7 @@
 
       <div class="pipeline-item">
         <span class="pipeline-item-num">01</span>
-        <div class="pipeline-item-text">
+        <div class="pipeline-item-text" data-i18n-html="about.p1">
           <strong style="color:var(--text)">Extracción de datos.</strong>
           Scraping del Portal Científico de la UPM: publicaciones, proyectos, líneas de investigación y
           metadatos de cada PDI. Los datos se normalizan y almacenan en MinIO y Memgraph.
@@ -98,7 +99,7 @@
 
       <div class="pipeline-item">
         <span class="pipeline-item-num">02</span>
-        <div class="pipeline-item-text">
+        <div class="pipeline-item-text" data-i18n-html="about.p2">
           <strong style="color:var(--text)">Enriquecimiento del perfil.</strong>
           Un agente LLM (Claude / Ollama) sintetiza las publicaciones de cada investigador en una
           biografía investigadora estructurada en inglés, optimizada para búsqueda semántica.
@@ -107,7 +108,7 @@
 
       <div class="pipeline-item">
         <span class="pipeline-item-num">03</span>
-        <div class="pipeline-item-text">
+        <div class="pipeline-item-text" data-i18n-html="about.p3">
           <strong style="color:var(--text)">Indexación vectorial.</strong>
           Los perfiles se indexan en Qdrant con dos representaciones complementarias:
           vectores densos (embeddings semánticos) y vectores sparse BM42 (término-frecuencia neural),
@@ -117,7 +118,7 @@
 
       <div class="pipeline-item">
         <span class="pipeline-item-num">04</span>
-        <div class="pipeline-item-text">
+        <div class="pipeline-item-text" data-i18n-html="about.p4">
           <strong style="color:var(--text)">Análisis de la consulta.</strong>
           La idea del estudiante se procesa con un agente de extracción de keywords (términos generales
           y específicos del dominio) y, opcionalmente, con un agente de enriquecimiento que expande la
@@ -127,7 +128,7 @@
 
       <div class="pipeline-item">
         <span class="pipeline-item-num">05</span>
-        <div class="pipeline-item-text">
+        <div class="pipeline-item-text" data-i18n-html="about.p5">
           <strong style="color:var(--text)">Búsqueda híbrida.</strong>
           La rama sparse contrasta las keywords con los temas de investigación declarados. La rama densa
           calcula similitud coseno entre el embedding de la consulta y los embeddings de las biografías.
@@ -137,7 +138,7 @@
 
       <div class="pipeline-item">
         <span class="pipeline-item-num">06</span>
-        <div class="pipeline-item-text">
+        <div class="pipeline-item-text" data-i18n-html="about.p6">
           <strong style="color:var(--text)">Presentación de resultados.</strong>
           Los PDIs se ordenan por puntuación de relevancia. Para cada uno se muestran los temas de
           investigación que coinciden con la consulta, la puntuación numérica y, en los modos de resumen,
@@ -150,47 +151,47 @@
 
   <!-- Stack tecnológico -->
   <div class="about-divider" aria-hidden="true">
-    <div class="label-muted">Tecnología</div>
+    <div class="label-muted" data-i18n="about.tech_label">Tecnología</div>
     <div style="flex:1; height:1px; background:var(--border)"></div>
   </div>
 
   <section aria-labelledby="stack-heading">
-    <h2 id="stack-heading">Stack tecnológico</h2>
+    <h2 id="stack-heading" data-i18n="about.stack_heading">Stack tecnológico</h2>
     <div class="tech-grid">
       <div class="tech-chip">
-        <div class="tech-chip-label">Base de datos vectorial</div>
+        <div class="tech-chip-label" data-i18n="about.tech_vectordb">Base de datos vectorial</div>
         <div class="tech-chip-value">Qdrant</div>
       </div>
       <div class="tech-chip">
-        <div class="tech-chip-label">Grafo de conocimiento</div>
+        <div class="tech-chip-label" data-i18n="about.tech_graph">Grafo de conocimiento</div>
         <div class="tech-chip-value">Memgraph</div>
       </div>
       <div class="tech-chip">
-        <div class="tech-chip-label">Almacenamiento</div>
+        <div class="tech-chip-label" data-i18n="about.tech_storage">Almacenamiento</div>
         <div class="tech-chip-value">MinIO</div>
       </div>
       <div class="tech-chip">
-        <div class="tech-chip-label">Embeddings / sparse</div>
+        <div class="tech-chip-label" data-i18n="about.tech_embed">Embeddings / sparse</div>
         <div class="tech-chip-value">BM42 · FastEmbed</div>
       </div>
       <div class="tech-chip">
-        <div class="tech-chip-label">Agente LLM</div>
+        <div class="tech-chip-label" data-i18n="about.tech_llm">Agente LLM</div>
         <div class="tech-chip-value">Ollama + Agno</div>
       </div>
       <div class="tech-chip">
-        <div class="tech-chip-label">Web app</div>
+        <div class="tech-chip-label" data-i18n="about.tech_web">Web app</div>
         <div class="tech-chip-value">Flask · Python</div>
       </div>
       <div class="tech-chip">
-        <div class="tech-chip-label">Fusión de rankers</div>
+        <div class="tech-chip-label" data-i18n="about.tech_fusion">Fusión de rankers</div>
         <div class="tech-chip-value">RRF</div>
       </div>
       <div class="tech-chip">
-        <div class="tech-chip-label">Orquestación</div>
+        <div class="tech-chip-label" data-i18n="about.tech_orch">Orquestación</div>
         <div class="tech-chip-value">Apache Airflow</div>
       </div>
       <div class="tech-chip">
-        <div class="tech-chip-label">Infraestructura</div>
+        <div class="tech-chip-label" data-i18n="about.tech_infra">Infraestructura</div>
         <div class="tech-chip-value">Docker · uv</div>
       </div>
     </div>
@@ -198,29 +199,29 @@
 
   <!-- PIE section -->
   <div class="about-section" aria-labelledby="pie-heading">
-    <h2 id="pie-heading">Proyecto de Innovación Educativa</h2>
-    <p>
+    <h2 id="pie-heading" data-i18n="about.pie_heading">Proyecto de Innovación Educativa</h2>
+    <p data-i18n-html="about.pie_p1">
       UPM Match se desarrolla en el marco del Proyecto de Innovación Educativa
       <strong>IE26.6102</strong> de la Universidad Politécnica de Madrid,
-      financiado en la convocatoria 2025–2026 dentro de la Línea E1
+      financiado en la convocatoria 2025-2026 dentro de la Línea E1
       «Integración de la IA en la actividad docente».
     </p>
-    <p>
-      El proyecto también sirve como trabajo de fin de máster en el
-      Máster Oficial en Aprendizaje Automático y Datos Masivos de la ETSISI, integrando en un sistema real
+    <p data-i18n-html="about.pie_p2">
+      El prototipo ha sido desarrollado por <strong style="color:var(--text)">Yago Boleas Francisco</strong>
+      y <strong style="color:var(--text)">Carlos Badenes-Olmedo</strong>, e integra en un sistema real
       técnicas de recuperación de información densa y sparse, procesamiento
       de lenguaje natural con LLMs y diseño de pipelines de datos.
     </p>
 
     <div class="pie-card">
-      <span class="pie-badge">IE26.6102 · 2025–2026</span>
+      <span class="pie-badge" data-i18n="about.pie_badge">IE26.6102 · 2025-2026</span>
       <p class="pie-title">
         <a href="https://innovacioneducativa.upm.es/proyectos-ie/informacion?anyo=2025-2026&id=2018"
-           target="_blank" rel="noopener">
+           target="_blank" rel="noopener" data-i18n="about.pie_title">
           UPM Match: Sistema de Recomendación de Tutores y Colaboraciones ↗
         </a>
       </p>
-      <p class="pie-meta">
+      <p class="pie-meta" data-i18n-html="about.pie_meta">
         Línea E1 · Integración de la IA en la actividad docente<br>
         Coordinado por <strong style="color:var(--text)">Carlos Badenes Olmedo</strong>
         y <strong style="color:var(--text)">Andrea Jesús Cimmino Arriaga</strong>

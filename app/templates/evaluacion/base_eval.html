@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="robots" content="noindex, nofollow"/>
+
+  <title>{% block title %}Evaluación · UPM Match{% endblock %}</title>
+  <meta name="description" content="Evaluación cualitativa del sistema de recomendación de tutores UPM Match."/>
+
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}"/>
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon-32.png') }}"/>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+
+  <style>
+    /* ── Reset & tokens (shared design system) ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { color-scheme: dark; scroll-behavior: smooth; }
+    :root {
+      --upm-blue: #0072CE; --ia-teal: #00A9E0;
+      --ia-teal-soft: rgba(0,169,224,0.15);
+      --bg: #0a0d12; --surface: #0f1520; --surface-2: #182030;
+      --border: rgba(255,255,255,0.08); --border-md: rgba(255,255,255,0.14);
+      --text: #e2e8f0; --muted: #94a3b8; --muted-2: #64748b;
+      --danger: #fca5a5; --danger-bg: rgba(127,29,29,0.28); --danger-bd: rgba(185,28,28,0.45);
+      --ok: #34d399;
+      --r-sm: 6px; --r-md: 10px; --r-lg: 14px; --r-xl: 20px; --r-full: 9999px;
+      --shadow-card: 0 18px 40px -14px rgba(0,0,0,0.6);
+    }
+    body {
+      font-family: 'Sora', system-ui, sans-serif;
+      background:
+        radial-gradient(900px 500px at 20% -10%, rgba(0,169,224,0.06), transparent 60%),
+        radial-gradient(900px 500px at 100% 0%, rgba(0,114,206,0.05), transparent 55%),
+        var(--bg);
+      color: var(--text); min-height: 100vh; line-height: 1.6;
+      display: flex; flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; }
+    button, input, textarea, select { font-family: inherit; }
+    ::selection { background: rgba(0,169,224,0.28); }
+
+    /* ── Header ── */
+    .eval-header {
+      position: sticky; top: 0; z-index: 30;
+      border-bottom: 1px solid var(--border);
+      background: rgba(10,13,18,0.85);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    }
+    .eval-header-inner {
+      max-width: 880px; margin: 0 auto; padding: 0 1.25rem;
+      height: 54px; display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    }
+    .eval-brand { display: flex; align-items: center; gap: 9px; }
+    .eval-brand svg { width: 26px; height: 26px; flex-shrink: 0; }
+    .eval-brand-text { font-size: 15px; font-weight: 600; letter-spacing: -0.02em; }
+    .eval-brand-text .m { color: var(--ia-teal); }
+    .eval-tag {
+      font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.16em;
+      color: var(--muted); border: 1px solid var(--border); border-radius: var(--r-full);
+      padding: 4px 10px;
+    }
+
+    /* ── Shell ── */
+    .eval-shell { flex: 1; width: 100%; max-width: 880px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+    @media (max-width: 560px) { .eval-shell { padding: 1.25rem 1rem 3rem; } }
+
+    /* ── Typography ── */
+    h1 { font-size: clamp(1.5rem, 4.5vw, 2.1rem); font-weight: 600; line-height: 1.15; letter-spacing: -0.02em; text-wrap: balance; }
+    h2 { font-size: 1.15rem; font-weight: 600; letter-spacing: -0.01em; }
+    .eyebrow { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.16em; color: var(--ia-teal); }
+    .lead { color: var(--muted); font-size: 15px; line-height: 1.7; text-wrap: pretty; }
+    p + p { margin-top: .7rem; }
+
+    /* ── Section cards ── */
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-xl); padding: 1.6rem; margin-top: 1.25rem;
+      box-shadow: var(--shadow-card);
+    }
+    @media (max-width: 560px) { .card { padding: 1.15rem; border-radius: var(--r-lg); } }
+    .card-head { display: flex; align-items: baseline; gap: .6rem; margin-bottom: .35rem; }
+    .card-num {
+      font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ia-teal);
+      border: 1px solid var(--border); border-radius: var(--r-sm); padding: 2px 7px; flex-shrink: 0;
+    }
+    .card-sub { color: var(--muted); font-size: 13.5px; line-height: 1.6; margin-top: .35rem; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      font-size: 14px; font-weight: 600; border-radius: var(--r-md);
+      padding: .8rem 1.35rem; border: 1px solid transparent; cursor: pointer;
+      transition: transform .12s, background .15s, border-color .15s, opacity .15s;
+      text-decoration: none;
+    }
+    .btn-primary { background: var(--ia-teal); color: #04121a; }
+    .btn-primary:hover { transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+    .btn-ghost { background: rgba(15,21,32,0.6); color: var(--text); border-color: var(--border-md); }
+    .btn-ghost:hover { border-color: rgba(0,169,224,0.4); }
+    .btn-lg { padding: .95rem 1.6rem; font-size: 15px; }
+    .btn-block { width: 100%; }
+
+    /* ── Notes / alerts ── */
+    .note {
+      border-left: 2px solid var(--ia-teal); background: rgba(0,169,224,0.06);
+      border-radius: 0 var(--r-sm) var(--r-sm) 0; padding: .8rem 1rem;
+      font-size: 13.5px; color: var(--muted); line-height: 1.6;
+    }
+    .alert {
+      background: var(--danger-bg); border: 1px solid var(--danger-bd);
+      color: var(--danger); border-radius: var(--r-md); padding: .8rem 1rem; font-size: 14px;
+    }
+    a.inline-link { color: var(--ia-teal); text-decoration: none; border-bottom: 1px solid rgba(0,169,224,0.35); }
+    a.inline-link:hover { border-bottom-color: var(--ia-teal); }
+
+    /* ── Footer ── */
+    .eval-footer {
+      border-top: 1px solid var(--border); background: rgba(10,13,18,0.6);
+      padding: 1.5rem 1.25rem; text-align: center;
+    }
+    .eval-footer p { max-width: 620px; margin: 0 auto; font-size: 11.5px; color: var(--muted-2); line-height: 1.6; }
+
+    {% block extra_css %}{% endblock %}
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <header class="eval-header">
+    <div class="eval-header-inner">
+      <span class="eval-brand">
+        <svg viewBox="0 0 32 32" aria-hidden="true" fill="none">
+          <path d="M6 24 L11 8 L16 18 L21 8 L26 24" stroke="var(--ia-teal)" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+          <circle cx="6" cy="24" r="2.5" fill="var(--upm-blue)"/>
+          <circle cx="26" cy="24" r="2.5" fill="var(--upm-blue)"/>
+          <circle cx="16" cy="18" r="2.2" fill="var(--ia-teal)"/>
+        </svg>
+        <span class="eval-brand-text">UPM <span class="m">Match</span></span>
+      </span>
+      <span class="eval-tag">Evaluación</span>
+    </div>
+  </header>
+
+  <main class="eval-shell">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="eval-footer">
+    <p>Proyecto de Innovación Educativa IE26.6102 · Universidad Politécnica de Madrid. Desarrollado por Yago Boleas Francisco y Carlos Badenes-Olmedo.</p>
+  </footer>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

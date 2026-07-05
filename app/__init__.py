@@ -23,7 +23,29 @@ def create_app() -> Flask:
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
     app.config["APPLICATION_ROOT"] = base_path or "/"
 
+    # Secret used to sign the session cookie that carries the evaluation flow (consent + selected PDI).
+    # Must be STABLE and SHARED across gunicorn workers, otherwise a cookie signed by one worker is rejected by another.
+    # Prefer a dedicated APP_SECRET_KEY; fall back to the already-present AIRFLOW_SECRET_KEY so it works today without new env, and to a dev key as a last resort.
+    secret = os.environ.get("APP_SECRET_KEY") or os.environ.get("AIRFLOW_SECRET_KEY")
+    if not secret:
+        secret = "dev-insecure-change-me"
+        import warnings  # noqa: PLC0415
+
+        warnings.warn(
+            "No APP_SECRET_KEY/AIRFLOW_SECRET_KEY set; using an insecure dev key "
+            "for session signing. Set APP_SECRET_KEY in production.",
+            stacklevel=2,
+        )
+    app.secret_key = secret
+    # Session cookie hardening (survey has no cross-site needs).
+    app.config.update(
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE="Lax",
+    )
+
+    from .evaluation import eval_bp  # noqa: PLC0415
     from .routes import bp  # noqa: PLC0415
 
     app.register_blueprint(bp, url_prefix=base_path or None)
+    app.register_blueprint(eval_bp, url_prefix=base_path or None)
     return app

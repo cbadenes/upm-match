@@ -1,0 +1,59 @@
+{% extends "evaluacion/base_eval.html" %}
+
+{% block title %}Evaluación · UPM Match{% endblock %}
+
+{% block extra_css %}
+  .role-hero { text-align: center; padding: 1.5rem 0 .5rem; }
+  .role-hero .eyebrow { display: block; margin-bottom: .75rem; }
+  .role-hero .lead { max-width: 52ch; margin: 1rem auto 0; }
+  .role-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; margin-top: 2rem; }
+  @media (min-width: 620px) { .role-grid { grid-template-columns: 1fr 1fr; } }
+  .role-card {
+    display: flex; flex-direction: column; gap: .5rem;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r-lg); padding: 1.5rem; text-decoration: none;
+    transition: border-color .15s, transform .12s;
+  }
+  .role-card:hover { border-color: rgba(0,169,224,0.4); transform: translateY(-2px); }
+  .role-card h2 { display: flex; align-items: center; gap: .6rem; }
+  .role-card p { color: var(--muted); font-size: 14px; line-height: 1.6; }
+  .role-icon {
+    width: 40px; height: 40px; border-radius: var(--r-md); flex-shrink: 0;
+    background: var(--ia-teal-soft); display: flex; align-items: center; justify-content: center;
+    margin-bottom: .4rem;
+  }
+  .role-icon svg { width: 20px; height: 20px; stroke: var(--ia-teal); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .role-go { margin-top: auto; padding-top: .6rem; font-size: 13px; font-weight: 600; color: var(--ia-teal); }
+  .role-soon { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .12em; color: var(--muted-2); }
+{% endblock %}
+
+{% block content %}
+<section class="role-hero">
+  <span class="eyebrow">Evaluación cualitativa</span>
+  <h1>Ayúdanos a evaluar UPM Match</h1>
+  <p class="lead">
+    Este espacio recoge la valoración de la herramienta de recomendación de tutores
+    de la Universidad Politécnica de Madrid. Indica tu perfil para comenzar.
+  </p>
+</section>
+
+<div class="role-grid">
+  <a class="role-card" href="{{ url_for('eval.eval_pdi_consent') }}">
+    <span class="role-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M12 14l9-5-9-5-9 5 9 5z"/><path d="M12 14v7"/><path d="M6 10.5V16c0 1 2.7 3 6 3s6-2 6-3v-5.5"/></svg>
+    </span>
+    <h2>Soy PDI</h2>
+    <p>Personal Docente e Investigador. Valora si el sistema representa correctamente tu perfil investigador y tus posibilidades de recomendación.</p>
+    <span class="role-go">Comenzar &rarr;</span>
+  </a>
+
+  <a class="role-card" href="{{ url_for('eval.eval_student') }}">
+    <span class="role-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 12 0v1"/><path d="M18 14l3 1.5-3 1.5"/></svg>
+    </span>
+    <h2>Soy estudiante</h2>
+    <p>Estudiante de la UPM en busca de tutor para tu TFG, TFM o Tesis. Valora la utilidad de las recomendaciones que recibes.</p>
+    <span class="role-soon">Próximamente</span>
+  </a>
+</div>
+{% endblock %}

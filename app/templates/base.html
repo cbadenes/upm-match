@@ -4,9 +4,9 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
 
-  <title>{% block title %}UPM Match{% endblock %}</title>
-  <meta name="description" content="{% block description %}Buscador semántico que conecta estudiantes de máster de la UPM con investigadores afines a sus intereses de TFM.{% endblock %}"/>
-  <meta name="author" content="TFM · Universidad Politécnica de Madrid"/>
+  <title data-i18n-title="{% block title_key %}{% endblock %}">{% block title %}UPM Match{% endblock %}</title>
+  <meta name="description" content="{% block description %}Buscador semántico que conecta estudiantes de la UPM con investigadores afines a sus intereses.{% endblock %}"/>
+  <meta name="author" content="Yago Boleas Francisco, Carlos Badenes-Olmedo · Universidad Politécnica de Madrid"/>
   <meta property="og:type" content="website"/>
   <meta property="og:title" content="{% block og_title %}UPM Match{% endblock %}"/>
   <meta property="og:description" content="{% block og_description %}Buscador semántico que conecta estudiantes y PDIs de la UPM.{% endblock %}"/>
@@ -558,7 +558,7 @@
 <header class="site-header">
   <div class="site-header-inner">
 
-    <a href="{{ url_for('main.landing') }}" class="site-logo" aria-label="UPM Match — inicio">
+    <a href="{{ url_for('main.landing') }}" class="site-logo" data-i18n-aria="nav.logo_aria" aria-label="UPM Match · inicio">
       <svg class="site-logo-icon" viewBox="0 0 32 32" aria-hidden="true" fill="none">
         <path d="M6 24 L11 8 L16 18 L21 8 L26 24"
               stroke="var(--ia-teal)" stroke-width="2"
@@ -578,18 +578,20 @@
 
     <nav class="site-nav" aria-label="Navegación principal">
       <a href="{{ url_for('main.match') }}"
-         class="nav-link {{ 'active' if active_page == 'match' else '' }}">Buscador</a>
+         class="nav-link {{ 'active' if active_page == 'match' else '' }}"
+         data-i18n="nav.search">Buscador</a>
       <a href="{{ url_for('main.about') }}"
-         class="nav-link {{ 'active' if active_page == 'about' else '' }}">Sobre el proyecto</a>
+         class="nav-link {{ 'active' if active_page == 'about' else '' }}"
+         data-i18n="nav.about">Sobre el proyecto</a>
     </nav>
 
     <div class="header-actions">
-      <div class="lang-toggle" aria-label="Selector de idioma">
-        <button class="lang-btn active" type="button" aria-pressed="true">ES</button>
-        <button class="lang-btn" type="button" aria-pressed="false">EN</button>
+      <div class="lang-toggle" role="group" aria-label="Selector de idioma">
+        <button class="lang-btn active" type="button" data-lang="es" aria-pressed="true">ES</button>
+        <button class="lang-btn" type="button" data-lang="en" aria-pressed="false">EN</button>
       </div>
       <a href="https://portalcientifico.upm.es" target="_blank" rel="noopener"
-         class="portal-link">Portal Científico UPM ↗</a>
+         class="portal-link" data-i18n="nav.portal">Portal Científico UPM ↗</a>
     </div>
 
   </div>
@@ -616,19 +618,19 @@
       </svg>
       <span class="footer-logo-text">UPM Match</span>
     </div>
-    <p class="footer-tagline">TFM - Yago Boleas · Máster Oficial en Aprendizaje Automático y Datos Masivos <br> ETSISI · Universidad Politécnica de Madrid</p>
+    <p class="footer-tagline" data-i18n="footer.authorship">Desarrollado por Yago Boleas Francisco y Carlos Badenes-Olmedo en el marco del Proyecto de Innovación Educativa IE26.6102 de la Universidad Politécnica de Madrid.</p>
   </div>
 
   <div class="footer-pie">
     <div class="footer-pie-info">
-      <span class="footer-pie-badge">Proyecto de Innovación Educativa · IE26.6102 · 2025–2026</span>
+      <span class="footer-pie-badge" data-i18n="footer.pie_badge">Proyecto de Innovación Educativa · IE26.6102 · 2025-2026</span>
       <p class="footer-pie-title">
         <a href="https://innovacioneducativa.upm.es/proyectos-ie/informacion?anyo=2025-2026&id=2018"
-           target="_blank" rel="noopener">
+           target="_blank" rel="noopener" data-i18n="footer.pie_title">
           UPM Match: Sistema de Recomendación de Tutores y Colaboraciones
         </a>
       </p>
-      <p class="footer-pie-meta">
+      <p class="footer-pie-meta" data-i18n-html="footer.pie_meta">
         Línea E1 · Integración de la IA en la actividad docente<br>
         Coordinado por Carlos Badenes Olmedo y Andrea Jesús Cimmino Arriaga · ETSISI, UPM
       </p>
@@ -647,8 +649,291 @@
     </div>
   </div>
 
-  <div class="footer-copyright">© 2026 · Universidad Politécnica de Madrid</div>
+  <div class="footer-copyright" data-i18n="footer.copyright">© 2026 · Universidad Politécnica de Madrid</div>
 </footer>
+
+<!-- ── i18n engine ── -->
+<script>
+  window.I18N = {
+    /* ── Common: header / footer ── */
+    "nav.logo_aria":   { es: "UPM Match · inicio", en: "UPM Match · home" },
+    "nav.search":      { es: "Buscador", en: "Search" },
+    "nav.about":       { es: "Sobre el proyecto", en: "About" },
+    "nav.portal":      { es: "Portal Científico UPM ↗", en: "UPM Research Portal ↗" },
+    "footer.authorship": {
+      es: "Desarrollado por Yago Boleas Francisco y Carlos Badenes-Olmedo en el marco del Proyecto de Innovación Educativa IE26.6102 de la Universidad Politécnica de Madrid.",
+      en: "Developed by Yago Boleas Francisco and Carlos Badenes-Olmedo as part of the Educational Innovation Project IE26.6102 at Universidad Politécnica de Madrid."
+    },
+    "footer.pie_badge": {
+      es: "Proyecto de Innovación Educativa · IE26.6102 · 2025-2026",
+      en: "Educational Innovation Project · IE26.6102 · 2025-2026"
+    },
+    "footer.pie_title": {
+      es: "UPM Match: Sistema de Recomendación de Tutores y Colaboraciones",
+      en: "UPM Match: Tutor and Collaboration Recommendation System"
+    },
+    "footer.pie_meta": {
+      es: "Línea E1 · Integración de la IA en la actividad docente<br>Coordinado por Carlos Badenes Olmedo y Andrea Jesús Cimmino Arriaga · ETSISI, UPM",
+      en: "Line E1 · Integration of AI into teaching<br>Coordinated by Carlos Badenes Olmedo and Andrea Jesús Cimmino Arriaga · ETSISI, UPM"
+    },
+    "footer.copyright": {
+      es: "© 2026 · Universidad Politécnica de Madrid",
+      en: "© 2026 · Universidad Politécnica de Madrid"
+    },
+
+    /* ── Landing ── */
+    "landing.title":       { es: "UPM Match · Encuentra tu director de TFG, TFM o Tesis", en: "UPM Match · Find your TFG, TFM or thesis supervisor" },
+    "landing.hero_eyebrow": { es: "Búsqueda semántica · UPM", en: "Semantic search · UPM" },
+    "landing.hero_title":  { es: "Encuentra a tu director de TFG, TFM o&nbsp;Tesis", en: "Find your supervisor for a TFG, TFM or&nbsp;thesis" },
+    "landing.hero_sub": {
+      es: "Describe tu idea de investigación y conectamos con los investigadores de la UPM cuyas líneas de trabajo están más alineadas con la tuya.",
+      en: "Describe your research idea and we connect you with the UPM researchers whose work is most aligned with yours."
+    },
+    "landing.cta_search":  { es: "Buscar director / tutor", en: "Find a supervisor" },
+    "landing.cta_more":    { es: "Saber más", en: "Learn more" },
+    "landing.stat_pdis":   { es: "PDIs indexados", en: "Indexed researchers" },
+    "landing.stat_phases": { es: "Fases del pipeline", en: "Pipeline phases" },
+    "landing.stat_modes":  { es: "Modos de búsqueda", en: "Search modes" },
+    "landing.stat_multi":  { es: "Multilingüe", en: "Multilingual" },
+    "landing.how_eyebrow": { es: "Proceso", en: "Process" },
+    "landing.how_title":   { es: "Cómo funciona", en: "How it works" },
+    "landing.how1_title":  { es: "Describe tu idea", en: "Describe your idea" },
+    "landing.how1_desc": {
+      es: "Escribe libremente el problema que quieres resolver, la metodología que te interesa o el área de investigación. En castellano, inglés o ambos.",
+      en: "Write freely about the problem you want to solve, the methodology you are interested in or the research area. In Spanish, English or both."
+    },
+    "landing.how2_title":  { es: "La IA analiza y enriquece", en: "AI analyses and enriches" },
+    "landing.how2_desc": {
+      es: "El sistema extrae palabras clave técnicas, enriquece la consulta con contexto adicional y construye una representación vectorial de tu idea.",
+      en: "The system extracts technical keywords, enriches the query with additional context and builds a vector representation of your idea."
+    },
+    "landing.how3_title":  { es: "Recibe recomendaciones", en: "Get recommendations" },
+    "landing.how3_desc": {
+      es: "Obtienes una lista de investigadores ordenados por relevancia, con sus temas de investigación y una puntuación de afinidad respecto a tu propuesta.",
+      en: "You get a list of researchers ranked by relevance, with their research topics and an affinity score for your proposal."
+    },
+    "landing.how_cta":     { es: "Probar el buscador", en: "Try the search" },
+    "landing.teaser_title": { es: "Un proyecto de innovación educativa", en: "An educational innovation project" },
+    "landing.teaser_text": {
+      es: "UPM Match es parte del Proyecto de Innovación Educativa IE26.6102 de la UPM, coordinado por el grupo de investigación de <abbr title=\"Escuela Técnica Superior de Ingeniería de Sistemas Informáticos\">ETSISI</abbr>. Integra técnicas avanzadas de recuperación de información (BM42, búsqueda híbrida, fusión RRF) sobre los perfiles públicos del Portal Científico de la UPM.",
+      en: "UPM Match is part of the UPM Educational Innovation Project IE26.6102, coordinated by the research group at <abbr title=\"Escuela Técnica Superior de Ingeniería de Sistemas Informáticos\">ETSISI</abbr>. It integrates advanced information retrieval techniques (BM42, hybrid search, RRF fusion) over the public profiles of the UPM Research Portal."
+    },
+    "landing.teaser_cta":  { es: "Conocer el proyecto ↗", en: "Discover the project ↗" },
+
+    /* ── Match ── */
+    "match.title":        { es: "Buscador · UPM Match", en: "Search · UPM Match" },
+    "match.hero_eyebrow": { es: "Búsqueda semántica", en: "Semantic search" },
+    "match.hero_title":   { es: "¿Qué quieres investigar?", en: "What do you want to research?" },
+    "match.hero_sub": {
+      es: "Describe tu idea y encontraremos los investigadores de la UPM más afines a ella.",
+      en: "Describe your idea and we will find the UPM researchers most aligned with it."
+    },
+    "match.mode_hybrid":   { es: "Híbrido", en: "Hybrid" },
+    "match.mode_keywords": { es: "Keywords", en: "Keywords" },
+    "match.mode_summary":  { es: "Resumen", en: "Summary" },
+    "match.hint_hybrid": {
+      es: "Combina keywords técnicas (BM42 + RRF) con similitud semántica sobre la biografía investigadora. Modo recomendado para la mayoría de casos.",
+      en: "Combines technical keywords (BM42 + RRF) with semantic similarity over the research biography. Recommended mode for most cases."
+    },
+    "match.hint_keywords": {
+      es: "Extrae términos técnicos de tu descripción y los contrasta con las líneas de investigación declaradas por cada PDI. Útil cuando conoces bien la terminología.",
+      en: "Extracts technical terms from your description and matches them against the research lines declared by each researcher. Useful when you know the terminology well."
+    },
+    "match.hint_summary": {
+      es: "Similitud semántica directa entre tu idea y la biografía investigadora de cada PDI. Útil para ideas expresadas en lenguaje natural.",
+      en: "Direct semantic similarity between your idea and each researcher's biography. Useful for ideas expressed in natural language."
+    },
+    "match.submode_label":   { es: "Variante de búsqueda por resumen", en: "Summary search variant" },
+    "match.submode_direct":  { es: "Búsqueda directa", en: "Direct search" },
+    "match.submode_enriched": { es: "Búsqueda enriquecida", en: "Enriched search" },
+    "match.submode_enriched_note": { es: "(LLM expande la consulta)", en: "(the LLM expands the query)" },
+    "match.placeholder": {
+      es: "Ej.: Me interesa desarrollar un sistema de detección temprana de dificultades de aprendizaje analizando registros de actividad en plataformas LMS como Moodle. Quiero aplicar modelos de clasificación supervisada combinados con técnicas de IA explicable (XAI) para que los resultados sean interpretables por el profesorado sin conocimientos técnicos avanzados.",
+      en: "E.g.: I want to develop a system for the early detection of learning difficulties by analysing activity logs from LMS platforms such as Moodle. I would like to apply supervised classification models combined with explainable AI (XAI) techniques so that the results are interpretable by teachers without advanced technical knowledge."
+    },
+    "match.chips_label":   { es: "Prueba:", en: "Try:" },
+    "match.chip1_label":   { es: "Modelos de lenguaje en historiales clínicos…", en: "Language models on clinical records…" },
+    "match.chip1_text": {
+      es: "Modelos de lenguaje aplicados a la extracción de información clínica en historiales médicos no estructurados, con técnicas de NLP en español.",
+      en: "Language models applied to clinical information extraction from unstructured medical records, using NLP techniques in Spanish."
+    },
+    "match.chip2_label":   { es: "Detección de fraude con ML federado…", en: "Fraud detection with federated ML…" },
+    "match.chip2_text": {
+      es: "Detección de fraude en transacciones financieras mediante aprendizaje automático federado, preservando la privacidad de los datos bancarios.",
+      en: "Fraud detection in financial transactions using federated machine learning, preserving the privacy of banking data."
+    },
+    "match.chip3_label":   { es: "Visión artificial en manufactura…", en: "Computer vision in manufacturing…" },
+    "match.chip3_text": {
+      es: "Visión artificial para inspección de calidad en líneas de fabricación industrial, usando redes convolucionales entrenadas con pocos ejemplos.",
+      en: "Computer vision for quality inspection on industrial manufacturing lines, using convolutional networks trained with few examples."
+    },
+    "match.btn_search":    { es: "Encontrar investigadores", en: "Find researchers" },
+    "match.hint_ctrlenter": {
+      es: "Ctrl+Enter para buscar · Los resultados se ordenan por relevancia semántica",
+      en: "Ctrl+Enter to search · Results are ranked by semantic relevance"
+    },
+    "match.kw_section":    { es: "Keywords generadas", en: "Generated keywords" },
+    "match.kw_general":    { es: "Generales", en: "General" },
+    "match.kw_specific":   { es: "Específicas", en: "Specific" },
+    "match.enriched_label": { es: "Consulta enriquecida", en: "Enriched query" },
+    "match.results_heading": { es: "Investigadores recomendados", en: "Recommended researchers" },
+    "match.empty_state": {
+      es: "Describe tu idea de investigación arriba y pulsa <strong>Encontrar investigadores</strong>",
+      en: "Describe your research idea above and press <strong>Find researchers</strong>"
+    },
+    /* Match · dynamic (JS) */
+    "match.result_one":    { es: "resultado", en: "result" },
+    "match.result_many":   { es: "resultados", en: "results" },
+    "match.active_since":  { es: "Activo desde", en: "Active since" },
+    "match.summary_label": { es: "Resumen investigador", en: "Research summary" },
+    "match.matched_label": { es: "Coincidencias directas", en: "Direct matches" },
+    "match.no_match":      { es: "Sin coincidencias directas · relevante por proximidad semántica", en: "No direct matches · relevant by semantic proximity" },
+    "match.topics_label":  { es: "Temas de investigación", en: "Research topics" },
+    "match.relevance":     { es: "relevancia", en: "relevance" },
+    "match.err_empty":     { es: "Por favor escribe una idea antes de buscar.", en: "Please write an idea before searching." },
+    "match.err_none":      { es: "No se encontraron resultados. Asegúrate de que los datos están indexados en Qdrant.", en: "No results found. Make sure the data is indexed in Qdrant." },
+    "match.err_network":   { es: "Error de red:", en: "Network error:" },
+    "match.err_generic":   { es: "Error", en: "Error" },
+
+    /* ── About ── */
+    "about.title":        { es: "Sobre el proyecto · UPM Match", en: "About the project · UPM Match" },
+    "about.hero_eyebrow": { es: "Sobre el proyecto", en: "About the project" },
+    "about.hero_sub": {
+      es: "Sistema de recomendación de tutores y colaboraciones para estudiantes de la Universidad Politécnica de Madrid.",
+      en: "Tutor and collaboration recommendation system for students at Universidad Politécnica de Madrid."
+    },
+    "about.what_label":   { es: "Qué es", en: "What it is" },
+    "about.what_text": {
+      es: "UPM Match conecta a estudiantes que buscan director de TFG, TFM o Tesis con los investigadores de la UPM cuyas líneas de trabajo están más alineadas con sus intereses. Basta describir la idea libremente, en castellano, inglés o una mezcla de ambos: el sistema se encarga de extraer los conceptos relevantes, enriquecer la consulta y buscar en la base de conocimiento de perfiles investigadores.",
+      en: "UPM Match connects students looking for a TFG, TFM or thesis supervisor with the UPM researchers whose work is most aligned with their interests. Simply describe your idea freely, in Spanish, English or a mix of both: the system extracts the relevant concepts, enriches the query and searches the knowledge base of researcher profiles."
+    },
+    "about.arch_label":   { es: "Arquitectura", en: "Architecture" },
+    "about.pipeline_heading": { es: "Pipeline de procesamiento", en: "Processing pipeline" },
+    "about.pipeline_intro": {
+      es: "El sistema sigue un pipeline de seis fases que va desde la extracción de datos del Portal Científico hasta la presentación de recomendaciones ordenadas por relevancia.",
+      en: "The system follows a six-phase pipeline that goes from extracting data from the Research Portal to presenting recommendations ranked by relevance."
+    },
+    "about.p1": {
+      es: "<strong style=\"color:var(--text)\">Extracción de datos.</strong> Scraping del Portal Científico de la UPM: publicaciones, proyectos, líneas de investigación y metadatos de cada PDI. Los datos se normalizan y almacenan en MinIO y Memgraph.",
+      en: "<strong style=\"color:var(--text)\">Data extraction.</strong> Scraping of the UPM Research Portal: publications, projects, research lines and metadata for each researcher. The data is normalised and stored in MinIO and Memgraph."
+    },
+    "about.p2": {
+      es: "<strong style=\"color:var(--text)\">Enriquecimiento del perfil.</strong> Un agente LLM (Claude / Ollama) sintetiza las publicaciones de cada investigador en una biografía investigadora estructurada en inglés, optimizada para búsqueda semántica.",
+      en: "<strong style=\"color:var(--text)\">Profile enrichment.</strong> An LLM agent (Claude / Ollama) synthesises each researcher's publications into a structured research biography in English, optimised for semantic search."
+    },
+    "about.p3": {
+      es: "<strong style=\"color:var(--text)\">Indexación vectorial.</strong> Los perfiles se indexan en Qdrant con dos representaciones complementarias: vectores densos (embeddings semánticos) y vectores sparse BM42 (término-frecuencia neural), que permiten búsqueda híbrida con fusión RRF.",
+      en: "<strong style=\"color:var(--text)\">Vector indexing.</strong> Profiles are indexed in Qdrant with two complementary representations: dense vectors (semantic embeddings) and BM42 sparse vectors (neural term frequency), enabling hybrid search with RRF fusion."
+    },
+    "about.p4": {
+      es: "<strong style=\"color:var(--text)\">Análisis de la consulta.</strong> La idea del estudiante se procesa con un agente de extracción de keywords (términos generales y específicos del dominio) y, opcionalmente, con un agente de enriquecimiento que expande la consulta a un párrafo técnico en inglés.",
+      en: "<strong style=\"color:var(--text)\">Query analysis.</strong> The student's idea is processed by a keyword extraction agent (general and domain-specific terms) and, optionally, by an enrichment agent that expands the query into a technical paragraph in English."
+    },
+    "about.p5": {
+      es: "<strong style=\"color:var(--text)\">Búsqueda híbrida.</strong> La rama sparse contrasta las keywords con los temas de investigación declarados. La rama densa calcula similitud coseno entre el embedding de la consulta y los embeddings de las biografías. Ambas ramas se fusionan con Reciprocal Rank Fusion (RRF).",
+      en: "<strong style=\"color:var(--text)\">Hybrid search.</strong> The sparse branch matches the keywords against the declared research topics. The dense branch computes cosine similarity between the query embedding and the biography embeddings. Both branches are combined with Reciprocal Rank Fusion (RRF)."
+    },
+    "about.p6": {
+      es: "<strong style=\"color:var(--text)\">Presentación de resultados.</strong> Los PDIs se ordenan por puntuación de relevancia. Para cada uno se muestran los temas de investigación que coinciden con la consulta, la puntuación numérica y, en los modos de resumen, la biografía investigadora generada.",
+      en: "<strong style=\"color:var(--text)\">Results presentation.</strong> Researchers are ranked by relevance score. For each one, the research topics matching the query, the numeric score and, in the summary modes, the generated research biography are shown."
+    },
+    "about.tech_label":   { es: "Tecnología", en: "Technology" },
+    "about.stack_heading": { es: "Stack tecnológico", en: "Technology stack" },
+    "about.tech_vectordb":  { es: "Base de datos vectorial", en: "Vector database" },
+    "about.tech_graph":     { es: "Grafo de conocimiento", en: "Knowledge graph" },
+    "about.tech_storage":   { es: "Almacenamiento", en: "Storage" },
+    "about.tech_embed":     { es: "Embeddings / sparse", en: "Embeddings / sparse" },
+    "about.tech_llm":       { es: "Agente LLM", en: "LLM agent" },
+    "about.tech_web":       { es: "Web app", en: "Web app" },
+    "about.tech_fusion":    { es: "Fusión de rankers", en: "Ranker fusion" },
+    "about.tech_orch":      { es: "Orquestación", en: "Orchestration" },
+    "about.tech_infra":     { es: "Infraestructura", en: "Infrastructure" },
+    "about.pie_heading":  { es: "Proyecto de Innovación Educativa", en: "Educational Innovation Project" },
+    "about.pie_p1": {
+      es: "UPM Match se desarrolla en el marco del Proyecto de Innovación Educativa <strong>IE26.6102</strong> de la Universidad Politécnica de Madrid, financiado en la convocatoria 2025-2026 dentro de la Línea E1 «Integración de la IA en la actividad docente».",
+      en: "UPM Match is developed within the Educational Innovation Project <strong>IE26.6102</strong> of Universidad Politécnica de Madrid, funded in the 2025-2026 call under Line E1 «Integration of AI into teaching»."
+    },
+    "about.pie_p2": {
+      es: "El prototipo ha sido desarrollado por <strong style=\"color:var(--text)\">Yago Boleas Francisco</strong> y <strong style=\"color:var(--text)\">Carlos Badenes-Olmedo</strong>, e integra en un sistema real técnicas de recuperación de información densa y sparse, procesamiento de lenguaje natural con LLMs y diseño de pipelines de datos.",
+      en: "The prototype has been developed by <strong style=\"color:var(--text)\">Yago Boleas Francisco</strong> and <strong style=\"color:var(--text)\">Carlos Badenes-Olmedo</strong>, and integrates into a real system dense and sparse information retrieval techniques, natural language processing with LLMs and data pipeline design."
+    },
+    "about.pie_badge":    { es: "IE26.6102 · 2025-2026", en: "IE26.6102 · 2025-2026" },
+    "about.pie_title": {
+      es: "UPM Match: Sistema de Recomendación de Tutores y Colaboraciones ↗",
+      en: "UPM Match: Tutor and Collaboration Recommendation System ↗"
+    },
+    "about.pie_meta": {
+      es: "Línea E1 · Integración de la IA en la actividad docente<br>Coordinado por <strong style=\"color:var(--text)\">Carlos Badenes Olmedo</strong> y <strong style=\"color:var(--text)\">Andrea Jesús Cimmino Arriaga</strong>",
+      en: "Line E1 · Integration of AI into teaching<br>Coordinated by <strong style=\"color:var(--text)\">Carlos Badenes Olmedo</strong> and <strong style=\"color:var(--text)\">Andrea Jesús Cimmino Arriaga</strong>"
+    }
+  };
+
+  (function () {
+    const SUPPORTED = ["es", "en"];
+    let lang = "es";
+    try {
+      const stored = localStorage.getItem("upm-match-lang");
+      if (SUPPORTED.includes(stored)) lang = stored;
+    } catch (e) { /* localStorage unavailable */ }
+
+    function t(key) {
+      const entry = window.I18N[key];
+      if (!entry) return null;
+      return entry[lang] != null ? entry[lang] : entry.es;
+    }
+    window.i18nT = t;
+    window.i18nLang = function () { return lang; };
+
+    function applyLang() {
+      document.documentElement.lang = lang;
+
+      document.querySelectorAll("[data-i18n]").forEach(function (el) {
+        const v = t(el.getAttribute("data-i18n"));
+        if (v != null) el.textContent = v;
+      });
+      document.querySelectorAll("[data-i18n-html]").forEach(function (el) {
+        const v = t(el.getAttribute("data-i18n-html"));
+        if (v != null) el.innerHTML = v;
+      });
+      document.querySelectorAll("[data-i18n-ph]").forEach(function (el) {
+        const v = t(el.getAttribute("data-i18n-ph"));
+        if (v != null) el.setAttribute("placeholder", v);
+      });
+      document.querySelectorAll("[data-i18n-aria]").forEach(function (el) {
+        const v = t(el.getAttribute("data-i18n-aria"));
+        if (v != null) el.setAttribute("aria-label", v);
+      });
+      // Per-page document title
+      const titleEl = document.querySelector("[data-i18n-title]");
+      if (titleEl) {
+        const v = t(titleEl.getAttribute("data-i18n-title"));
+        if (v != null) document.title = v;
+      }
+      // Toggle button states
+      document.querySelectorAll(".lang-btn[data-lang]").forEach(function (btn) {
+        const active = btn.getAttribute("data-lang") === lang;
+        btn.classList.toggle("active", active);
+        btn.setAttribute("aria-pressed", active ? "true" : "false");
+      });
+      // Let dynamic views (e.g. rendered results) react to a language change
+      document.dispatchEvent(new CustomEvent("langchange", { detail: { lang: lang } }));
+    }
+    window.i18nApply = applyLang;
+
+    function setLang(next) {
+      if (!SUPPORTED.includes(next) || next === lang) return;
+      lang = next;
+      try { localStorage.setItem("upm-match-lang", lang); } catch (e) { /* ignore */ }
+      applyLang();
+    }
+
+    document.querySelectorAll(".lang-btn[data-lang]").forEach(function (btn) {
+      btn.addEventListener("click", function () { setLang(btn.getAttribute("data-lang")); });
+    });
+
+    applyLang();
+  })();
+</script>
 
 {% block scripts %}{% endblock %}
 </body>

@@ -163,6 +163,58 @@ class QdrantBackend:
 
         return ids
 
+    def scroll_payloads(
+        self,
+        collection: str,
+        payload_fields: list[str] | None = None,
+        page_size: int = 1000,
+    ) -> list[dict]:
+        """Return every point's id and payload via a full paginated scan.
+
+        :param collection: Name of the collection to scan.
+        :param payload_fields: Optional whitelist of payload keys to fetch (smaller responses); None fetches the full payload.
+        :param page_size: Number of points per scroll page.
+        :return: List of {"id": <point id>, "payload": <dict>} for all points.
+        """
+        if not self.collection_exists(collection):
+            return []
+
+        out: list[dict] = []
+        offset = None
+        with_payload: object = payload_fields if payload_fields else True
+        while True:
+            records, next_offset = self._client.scroll(
+                collection_name=collection,
+                offset=offset,
+                limit=page_size,
+                with_payload=with_payload,
+                with_vectors=False,
+            )
+            out.extend({"id": r.id, "payload": r.payload or {}} for r in records)
+            if next_offset is None:
+                break
+            offset = next_offset
+        return out
+
+    def get_payload(self, collection: str, point_id: int) -> dict | None:
+        """Fetch a single point's payload by id, or None if it does not exist.
+
+        :param collection: Name of the collection.
+        :param point_id: Numeric point id.
+        :return: The point payload dict, or None when the point is absent.
+        """
+        if not self.collection_exists(collection):
+            return None
+        records = self._client.retrieve(
+            collection_name=collection,
+            ids=[point_id],
+            with_payload=True,
+            with_vectors=False,
+        )
+        if not records:
+            return None
+        return records[0].payload or {}
+
     def upsert_points(
         self,
         collection: str,

@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
-{% block title %}UPM Match — Encuentra tu director de TFG, TFM o Tesis{% endblock %}
+{% block title %}UPM Match · Encuentra tu director de TFG, TFM o Tesis{% endblock %}
+{% block title_key %}landing.title{% endblock %}
 {% block description %}Buscador semántico que conecta estudiantes de la UPM con investigadores afines a sus intereses.{% endblock %}
 {% block og_title %}UPM Match{% endblock %}
 {% block og_description %}Encuentra tu director de TFG, TFM o Tesis mediante búsqueda semántica sobre perfiles de investigadores de la UPM.{% endblock %}
@@ -110,11 +111,11 @@
   <div class="hero-content">
     <div class="pill-badge">
       <span class="pill-dot" aria-hidden="true"></span>
-      <span class="label-eyebrow">Búsqueda semántica · UPM</span>
+      <span class="label-eyebrow" data-i18n="landing.hero_eyebrow">Búsqueda semántica · UPM</span>
     </div>
 
-    <h1 id="hero-heading">Encuentra a tu director de TFG, TFM o&nbsp;Tesis</h1>
-    <p class="hero-sub">
+    <h1 id="hero-heading" data-i18n-html="landing.hero_title">Encuentra a tu director de TFG, TFM o&nbsp;Tesis</h1>
+    <p class="hero-sub" data-i18n="landing.hero_sub">
       Describe tu idea de investigación y conectamos con los investigadores de la UPM
       cuyas líneas de trabajo están más alineadas con la tuya.
     </p>
@@ -125,9 +126,9 @@
              stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
         </svg>
-        Buscar director / tutor
+        <span data-i18n="landing.cta_search">Buscar director / tutor</span>
       </a>
-      <a href="{{ url_for('main.about') }}" class="btn-outline">Saber más</a>
+      <a href="{{ url_for('main.about') }}" class="btn-outline" data-i18n="landing.cta_more">Saber más</a>
     </div>
   </div>
 </section>
@@ -137,19 +138,19 @@
   <div class="stats-grid">
     <div class="stat-cell">
       <div class="stat-num">{{ indexed_pdis if indexed_pdis is not none else "~700" }}</div>
-      <div class="stat-label label-muted">PDIs indexados</div>
+      <div class="stat-label label-muted" data-i18n="landing.stat_pdis">PDIs indexados</div>
     </div>
     <div class="stat-cell">
       <div class="stat-num">6</div>
-      <div class="stat-label label-muted">Fases del pipeline</div>
+      <div class="stat-label label-muted" data-i18n="landing.stat_phases">Fases del pipeline</div>
     </div>
     <div class="stat-cell">
       <div class="stat-num">3</div>
-      <div class="stat-label label-muted">Modos de búsqueda</div>
+      <div class="stat-label label-muted" data-i18n="landing.stat_modes">Modos de búsqueda</div>
     </div>
     <div class="stat-cell">
       <div class="stat-num" style="font-size:1rem; letter-spacing:-.01em">ES · EN · …</div>
-      <div class="stat-label label-muted">Multilingüe</div>
+      <div class="stat-label label-muted" data-i18n="landing.stat_multi">Multilingüe</div>
     </div>
   </div>
 </div>
@@ -157,8 +158,8 @@
 <!-- ── Cómo funciona ── -->
 <section class="how-section" aria-labelledby="how-heading">
   <div class="how-header">
-    <div class="label-eyebrow">Proceso</div>
-    <h2 id="how-heading">Cómo funciona</h2>
+    <div class="label-eyebrow" data-i18n="landing.how_eyebrow">Proceso</div>
+    <h2 id="how-heading" data-i18n="landing.how_title">Cómo funciona</h2>
   </div>
 
   <div class="pipeline-steps-grid">
@@ -168,8 +169,8 @@
       <div class="how-card-icon">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
       </div>
-      <h3>Describe tu idea</h3>
-      <p>Escribe libremente el problema que quieres resolver, la metodología que te interesa o el área de investigación. En castellano, inglés o ambos.</p>
+      <h3 data-i18n="landing.how1_title">Describe tu idea</h3>
+      <p data-i18n="landing.how1_desc">Escribe libremente el problema que quieres resolver, la metodología que te interesa o el área de investigación. En castellano, inglés o ambos.</p>
     </div>
 
     <div class="how-card">
@@ -177,8 +178,8 @@
       <div class="how-card-icon">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
       </div>
-      <h3>La IA analiza y enriquece</h3>
-      <p>El sistema extrae palabras clave técnicas, enriquece la consulta con contexto adicional y construye una representación vectorial de tu idea.</p>
+      <h3 data-i18n="landing.how2_title">La IA analiza y enriquece</h3>
+      <p data-i18n="landing.how2_desc">El sistema extrae palabras clave técnicas, enriquece la consulta con contexto adicional y construye una representación vectorial de tu idea.</p>
     </div>
 
     <div class="how-card">
@@ -186,14 +187,14 @@
       <div class="how-card-icon">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       </div>
-      <h3>Recibe recomendaciones</h3>
-      <p>Obtienes una lista de investigadores ordenados por relevancia, con sus temas de investigación y una puntuación de afinidad respecto a tu propuesta.</p>
+      <h3 data-i18n="landing.how3_title">Recibe recomendaciones</h3>
+      <p data-i18n="landing.how3_desc">Obtienes una lista de investigadores ordenados por relevancia, con sus temas de investigación y una puntuación de afinidad respecto a tu propuesta.</p>
     </div>
 
   </div>
 
   <div class="how-cta">
-    <a href="{{ url_for('main.match') }}" class="btn-primary">
+    <a href="{{ url_for('main.match') }}" class="btn-primary" data-i18n="landing.how_cta">
       Probar el buscador
     </a>
   </div>
@@ -202,14 +203,14 @@
 <!-- ── About teaser ── -->
 <section class="teaser-section">
   <div class="teaser-card">
-    <h2>Un proyecto de innovación educativa</h2>
-    <p>
+    <h2 data-i18n="landing.teaser_title">Un proyecto de innovación educativa</h2>
+    <p data-i18n-html="landing.teaser_text">
       UPM Match es parte del Proyecto de Innovación Educativa IE26.6102 de la UPM, coordinado por el grupo de investigación
       de <abbr title="Escuela Técnica Superior de Ingeniería de Sistemas Informáticos">ETSISI</abbr>.
       Integra técnicas avanzadas de recuperación de información (BM42, búsqueda híbrida, fusión RRF)
       sobre los perfiles públicos del Portal Científico de la UPM.
     </p>
-    <a href="{{ url_for('main.about') }}" class="btn-outline">Conocer el proyecto ↗</a>
+    <a href="{{ url_for('main.about') }}" class="btn-outline" data-i18n="landing.teaser_cta">Conocer el proyecto ↗</a>
   </div>
 </section>
 

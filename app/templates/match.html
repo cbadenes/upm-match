@@ -1,8 +1,9 @@
 {% extends "base.html" %}
 
-{% block title %}Buscador — UPM Match{% endblock %}
+{% block title %}Buscador · UPM Match{% endblock %}
+{% block title_key %}match.title{% endblock %}
 {% block description %}Describe tu idea de investigación y encuentra directores de TFG, TFM o Tesis en la UPM afines a tus intereses.{% endblock %}
-{% block og_title %}Buscador — UPM Match{% endblock %}
+{% block og_title %}Buscador · UPM Match{% endblock %}
 {% block og_description %}Búsqueda semántica híbrida sobre perfiles de investigadores de la UPM.{% endblock %}
 
 {% block head %}
@@ -72,10 +73,10 @@
   <div class="match-hero-content">
     <div class="pill-badge" style="margin-bottom:1rem">
       <span class="pill-dot" aria-hidden="true"></span>
-      <span class="label-eyebrow">Búsqueda semántica</span>
+      <span class="label-eyebrow" data-i18n="match.hero_eyebrow">Búsqueda semántica</span>
     </div>
-    <h1 id="match-heading">¿Qué quieres investigar?</h1>
-    <p class="match-hero-sub">Describe tu idea y encontraremos los investigadores de la UPM más afines a ella.</p>
+    <h1 id="match-heading" data-i18n="match.hero_title">¿Qué quieres investigar?</h1>
+    <p class="match-hero-sub" data-i18n="match.hero_sub">Describe tu idea y encontraremos los investigadores de la UPM más afines a ella.</p>
   </div>
 </section>
 
@@ -85,26 +86,26 @@
   <!-- Mode selector + hint -->
   <div class="search-controls">
     <div class="mode-selector" id="mode-selector" role="group" aria-label="Modo de búsqueda">
-      <button class="mode-btn active" data-mode="hybrid"   type="button">Híbrido</button>
-      <button class="mode-btn"        data-mode="keywords" type="button">Keywords</button>
-      <button class="mode-btn"        data-mode="summary"  type="button">Resumen</button>
+      <button class="mode-btn active" data-mode="hybrid"   type="button" data-i18n="match.mode_hybrid">Híbrido</button>
+      <button class="mode-btn"        data-mode="keywords" type="button" data-i18n="match.mode_keywords">Keywords</button>
+      <button class="mode-btn"        data-mode="summary"  type="button" data-i18n="match.mode_summary">Resumen</button>
     </div>
   </div>
-  <p class="mode-hint" id="mode-hint">
-    Combina keywords técnicas (BM42 + RRF) con similitud semántica. Modo recomendado.
+  <p class="mode-hint" id="mode-hint" data-i18n="match.hint_hybrid">
+    Combina keywords técnicas (BM42 + RRF) con similitud semántica sobre la biografía investigadora. Modo recomendado para la mayoría de casos.
   </p>
 
   <!-- Summary sub-mode -->
   <div class="sub-mode" id="sub-mode" style="margin-top:10px">
-    <div class="sub-mode-label">Variante de búsqueda por resumen</div>
+    <div class="sub-mode-label" data-i18n="match.submode_label">Variante de búsqueda por resumen</div>
     <div class="radio-group">
       <label>
         <input type="radio" name="sub-mode" value="summary_direct" checked/>
-        Búsqueda directa
+        <span data-i18n="match.submode_direct">Búsqueda directa</span>
       </label>
       <label>
         <input type="radio" name="sub-mode" value="summary_enriched"/>
-        Búsqueda enriquecida <span style="font-size:11px; color:var(--muted)">(LLM expande la consulta)</span>
+        <span data-i18n="match.submode_enriched">Búsqueda enriquecida</span> <span style="font-size:11px; color:var(--muted)" data-i18n="match.submode_enriched_note">(LLM expande la consulta)</span>
       </label>
     </div>
   </div>
@@ -115,6 +116,7 @@
       <textarea
         id="idea"
         class="search-textarea"
+        data-i18n-ph="match.placeholder"
         placeholder="Ej.: Me interesa desarrollar un sistema de detección temprana de dificultades de aprendizaje analizando registros de actividad en plataformas LMS como Moodle. Quiero aplicar modelos de clasificación supervisada combinados con técnicas de IA explicable (XAI) para que los resultados sean interpretables por el profesorado sin conocimientos técnicos avanzados."
         aria-label="Describe tu idea de investigación"
         autocomplete="off"
@@ -124,10 +126,10 @@
 
     <div class="search-card-footer card-bottom">
       <div class="example-chips">
-        <span class="chips-label">Prueba:</span>
-        <button class="chip-btn" type="button" data-text="Modelos de lenguaje aplicados a la extracción de información clínica en historiales médicos no estructurados, con técnicas de NLP en español.">Modelos de lenguaje en historiales clínicos…</button>
-        <button class="chip-btn" type="button" data-text="Detección de fraude en transacciones financieras mediante aprendizaje automático federado, preservando la privacidad de los datos bancarios.">Detección de fraude con ML federado…</button>
-        <button class="chip-btn" type="button" data-text="Visión artificial para inspección de calidad en líneas de fabricación industrial, usando redes convolucionales entrenadas con pocos ejemplos.">Visión artificial en manufactura…</button>
+        <span class="chips-label" data-i18n="match.chips_label">Prueba:</span>
+        <button class="chip-btn" type="button" data-i18n="match.chip1_label" data-textkey="match.chip1_text">Modelos de lenguaje en historiales clínicos…</button>
+        <button class="chip-btn" type="button" data-i18n="match.chip2_label" data-textkey="match.chip2_text">Detección de fraude con ML federado…</button>
+        <button class="chip-btn" type="button" data-i18n="match.chip3_label" data-textkey="match.chip3_text">Visión artificial en manufactura…</button>
       </div>
       <div class="search-submit-row">
         <div class="spinner" id="spinner" aria-hidden="true"></div>
@@ -136,13 +138,13 @@
                stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
           </svg>
-          Encontrar investigadores
+          <span data-i18n="match.btn_search">Encontrar investigadores</span>
         </button>
       </div>
     </div>
   </div>
 
-  <p style="font-size:11px; color:var(--muted); margin-top:8px; padding-left:2px">
+  <p style="font-size:11px; color:var(--muted); margin-top:8px; padding-left:2px" data-i18n="match.hint_ctrlenter">
     Ctrl+Enter para buscar · Los resultados se ordenan por relevancia semántica
   </p>
 
@@ -153,20 +155,20 @@
 
   <!-- Keywords section -->
   <div class="keywords-section" id="keywords-section">
-    <div class="section-label">Keywords generadas</div>
+    <div class="section-label" data-i18n="match.kw_section">Keywords generadas</div>
     <div class="keyword-row">
-      <span class="row-label">Generales</span>
+      <span class="row-label" data-i18n="match.kw_general">Generales</span>
       <div class="tags" id="tags-general"></div>
     </div>
     <div class="keyword-row">
-      <span class="row-label">Específicas</span>
+      <span class="row-label" data-i18n="match.kw_specific">Específicas</span>
       <div class="tags" id="tags-specific"></div>
     </div>
   </div>
 
   <!-- Enriched query section -->
   <div class="enriched-section" id="enriched-section">
-    <div class="section-label">Consulta enriquecida</div>
+    <div class="section-label" data-i18n="match.enriched_label">Consulta enriquecida</div>
     <p class="enriched-text" id="enriched-text"></p>
   </div>
 
@@ -175,7 +177,7 @@
     <div class="results-divider">
       <div class="results-divider-line"></div>
       <div class="results-header" style="margin:0">
-        <h2 style="font-size:14px; font-weight:600">Investigadores recomendados</h2>
+        <h2 style="font-size:14px; font-weight:600" data-i18n="match.results_heading">Investigadores recomendados</h2>
         <span class="results-count" id="results-count"></span>
       </div>
       <div class="results-divider-line"></div>
@@ -191,7 +193,7 @@
     <svg class="empty-icon" viewBox="0 0 24 24" aria-hidden="true">
       <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
     </svg>
-    Describe tu idea de investigación arriba y pulsa <strong>Encontrar investigadores</strong>
+    <span data-i18n-html="match.empty_state">Describe tu idea de investigación arriba y pulsa <strong>Encontrar investigadores</strong></span>
   </div>
 
 </div>
@@ -217,14 +219,18 @@
   const subModeWrap  = document.getElementById('sub-mode');
   const modeHintEl   = document.getElementById('mode-hint');
 
+  // ── i18n helper (engine lives in base.html) ─────────────────────────────────
+  const T = (key) => (window.i18nT ? window.i18nT(key) : '');
+
   // ── Mode state ──────────────────────────────────────────────────────────────
   let currentMode = 'hybrid';
 
-  const MODE_HINTS = {
-    hybrid:   'Combina keywords técnicas (BM42 + RRF) con similitud semántica sobre la biografía investigadora. Modo recomendado para la mayoría de casos.',
-    keywords: 'Extrae términos técnicos de tu descripción y los contrasta con las líneas de investigación declaradas por cada PDI. Útil cuando conoces bien la terminología.',
-    summary:  'Similitud semántica directa entre tu idea y la biografía investigadora de cada PDI. Útil para ideas expresadas en lenguaje natural.',
+  const MODE_HINT_KEYS = {
+    hybrid:   'match.hint_hybrid',
+    keywords: 'match.hint_keywords',
+    summary:  'match.hint_summary',
   };
+  const modeHint = (mode) => T(MODE_HINT_KEYS[mode] || 'match.hint_hybrid');
 
   document.querySelectorAll('.mode-btn').forEach(modeBtn => {
     modeBtn.addEventListener('click', () => {
@@ -232,7 +238,7 @@
       modeBtn.classList.add('active');
       currentMode = modeBtn.dataset.mode;
       subModeWrap.classList.toggle('visible', currentMode === 'summary');
-      modeHintEl.textContent = MODE_HINTS[currentMode] || '';
+      modeHintEl.textContent = modeHint(currentMode);
     });
   });
 
@@ -246,7 +252,7 @@
   // ── Example chips ────────────────────────────────────────────────────────────
   document.querySelectorAll('.chip-btn').forEach(chip => {
     chip.addEventListener('click', () => {
-      ideaEl.value = chip.dataset.text;
+      ideaEl.value = T(chip.dataset.textkey) || chip.dataset.textkey;
       ideaEl.focus();
       resizeIdea();
     });
@@ -321,14 +327,14 @@
     const card = document.createElement('div');
     card.className = 'result-card';
 
-    const sinceText = r.since ? `Activo desde ${r.since} · ` : '';
+    const sinceText = r.since ? `${T('match.active_since')} ${r.since} · ` : '';
 
     // Summary block (shown in summary and hybrid modes when available)
     let summaryHTML = '';
     if (mode !== 'keywords' && r.summary) {
       summaryHTML = `
         <div class="result-topics-wrap">
-          <div class="result-section-label">Resumen investigador</div>
+          <div class="result-section-label">${escHtml(T('match.summary_label'))}</div>
           <div class="result-summary">${escHtml(r.summary)}</div>
         </div>`;
     }
@@ -342,13 +348,13 @@
           .join('');
         matchedHTML = `
           <div class="result-topics-wrap">
-            <div class="result-section-label">Coincidencias directas</div>
+            <div class="result-section-label">${escHtml(T('match.matched_label'))}</div>
             <div class="tags">${tagEls}</div>
           </div>`;
       } else {
         matchedHTML = `
           <div class="result-topics-wrap">
-            <span class="no-match-text">Sin coincidencias directas — relevante por proximidad semántica</span>
+            <span class="no-match-text">${escHtml(T('match.no_match'))}</span>
           </div>`;
       }
     }
@@ -361,7 +367,7 @@
       const tagEls = rest.map(t => `<span class="tag tag-topic">${escHtml(t)}</span>`).join('');
       allTopicsHTML = `
         <div class="result-topics-wrap">
-          <div class="result-section-label">Temas de investigación</div>
+          <div class="result-section-label">${escHtml(T('match.topics_label'))}</div>
           <div class="tags">${tagEls}</div>
         </div>`;
     }
@@ -375,7 +381,7 @@
           <div class="score-track">
             <div class="score-fill" style="width:${r.score_pct}%"></div>
           </div>
-          <span class="score-pct">relevancia ${r.score_pct}%</span>
+          <span class="score-pct">${escHtml(T('match.relevance'))} ${r.score_pct}%</span>
         </div>
         ${summaryHTML}
         ${matchedHTML}
@@ -386,7 +392,10 @@
   }
 
   // ── Render results ───────────────────────────────────────────────────────────
+  let lastData = null;
+
   function renderResults(data) {
+    lastData = data;
     clearError();
     emptyState.style.display = 'none';
     const mode = data.mode || 'keywords';
@@ -408,21 +417,28 @@
 
     resultList.innerHTML = '';
     const items = data.results || [];
-    resultCount.textContent = `${items.length} resultado${items.length !== 1 ? 's' : ''}`;
+    const noun = items.length !== 1 ? T('match.result_many') : T('match.result_one');
+    resultCount.textContent = `${items.length} ${noun}`;
     items.forEach(r => resultList.appendChild(buildCard(r, mode)));
 
     if (items.length > 0) {
       resultsWrap.style.display = 'block';
     } else {
       resultsWrap.style.display = 'none';
-      showError('No se encontraron resultados. Asegúrate de que los datos están indexados en Qdrant.');
+      showError(T('match.err_none'));
     }
   }
+
+  // Re-render the current results and mode hint when the UI language changes.
+  document.addEventListener('langchange', () => {
+    modeHintEl.textContent = modeHint(currentMode);
+    if (lastData && resultsWrap.style.display !== 'none') renderResults(lastData);
+  });
 
   // ── Search ───────────────────────────────────────────────────────────────────
   async function doSearch() {
     const idea = ideaEl.value.trim();
-    if (!idea) { showError('Por favor escribe una idea antes de buscar.'); return; }
+    if (!idea) { showError(T('match.err_empty')); return; }
 
     clearError();
     setLoading(true);
@@ -438,10 +454,10 @@
         body:    JSON.stringify({ idea, mode: getSearchMode() }),
       });
       const data = await resp.json();
-      if (!resp.ok) { showError(data.error || `Error ${resp.status}`); return; }
+      if (!resp.ok) { showError(data.error || `${T('match.err_generic')} ${resp.status}`); return; }
       renderResults(data);
     } catch (err) {
-      showError(`Error de red: ${err.message}`);
+      showError(`${T('match.err_network')} ${err.message}`);
     } finally {
       setLoading(false);
     }

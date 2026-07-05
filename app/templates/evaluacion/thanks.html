@@ -1,0 +1,28 @@
+{% extends "evaluacion/base_eval.html" %}
+
+{% block title %}Gracias · Evaluación · UPM Match{% endblock %}
+
+{% block extra_css %}
+  .ty { text-align: center; padding: 3rem 0 1rem; }
+  .ty-icon {
+    width: 64px; height: 64px; margin: 0 auto 1.5rem; border-radius: 50%;
+    background: rgba(52,211,153,0.14); display: flex; align-items: center; justify-content: center;
+  }
+  .ty-icon svg { width: 32px; height: 32px; stroke: var(--ok); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .ty .lead { max-width: 44ch; margin: 1rem auto 2rem; }
+{% endblock %}
+
+{% block content %}
+<section class="ty">
+  <div class="ty-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+  </div>
+  <span class="eyebrow">Evaluación completada</span>
+  <h1>Gracias por su colaboración</h1>
+  <p class="lead">
+    Sus respuestas se han registrado correctamente de forma anónima. Su aportación ayuda a mejorar
+    la calidad de las recomendaciones de UPM Match.
+  </p>
+  <a class="btn btn-ghost" href="{{ url_for('main.landing') }}">Ir a UPM Match</a>
+</section>
+{% endblock %}

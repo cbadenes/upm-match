@@ -1,0 +1,277 @@
+{% extends "evaluacion/base_eval.html" %}
+
+{% block title %}Consentimiento y contexto · Evaluación PDI · UPM Match{% endblock %}
+
+{% block extra_css %}
+  .intro { padding: .5rem 0 .25rem; }
+  .intro .eyebrow { display: block; margin-bottom: .75rem; }
+  .intro h1 { margin-bottom: .9rem; }
+
+  .info-list { display: grid; gap: .6rem; margin-top: 1rem; }
+  .info-item { display: flex; gap: .7rem; align-items: flex-start; }
+  .info-item .dot { color: var(--ia-teal); font-weight: 700; line-height: 1.55; }
+  .info-item p { color: var(--muted); font-size: 14px; line-height: 1.6; }
+  .info-item strong { color: var(--text); font-weight: 600; }
+
+  .how-grid { display: grid; grid-template-columns: 1fr; gap: .75rem; margin-top: 1rem; }
+  @media (min-width: 640px) { .how-grid { grid-template-columns: repeat(3, 1fr); } }
+  .how-box { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-md); padding: .9rem 1rem; }
+  .how-box h3 { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: .3rem; }
+  .how-box p { font-size: 12.5px; color: var(--muted); line-height: 1.55; }
+
+  /* Combobox */
+  .field-label { display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: .5rem; }
+  .combo { position: relative; }
+  .combo-input, .portal-input {
+    width: 100%; background: var(--bg); color: var(--text);
+    border: 1px solid var(--border-md); border-radius: var(--r-md);
+    padding: .8rem .95rem; font-size: 15px; outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .combo-input:focus, .portal-input:focus { border-color: var(--ia-teal); box-shadow: 0 0 0 3px rgba(0,169,224,0.12); }
+  .combo-panel {
+    position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + 6px);
+    background: var(--surface); border: 1px solid var(--border-md); border-radius: var(--r-md);
+    max-height: 280px; overflow-y: auto; box-shadow: var(--shadow-card); display: none;
+  }
+  .combo-panel.open { display: block; }
+  .combo-opt { padding: .6rem .95rem; font-size: 14px; cursor: pointer; border-bottom: 1px solid var(--border); }
+  .combo-opt:last-child { border-bottom: none; }
+  .combo-opt:hover, .combo-opt.active { background: var(--surface-2); }
+  .combo-opt .rid { color: var(--muted-2); font-size: 12px; font-family: 'JetBrains Mono', monospace; margin-left: .4rem; }
+  .combo-empty { padding: .8rem .95rem; font-size: 13px; color: var(--muted); }
+
+  .selected-chip {
+    display: none; align-items: center; gap: .6rem; margin-top: .7rem;
+    background: rgba(0,169,224,0.08); border: 1px solid rgba(0,169,224,0.3);
+    border-radius: var(--r-md); padding: .65rem .85rem; font-size: 14px;
+  }
+  .selected-chip.show { display: flex; }
+  .selected-chip .nm { font-weight: 600; }
+  .selected-chip .rid { color: var(--muted); font-size: 12px; font-family: 'JetBrains Mono', monospace; }
+  .selected-chip button { margin-left: auto; background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; }
+  .selected-chip button:hover { color: var(--danger); }
+
+  .fallback { margin-top: 1rem; }
+  .fallback summary { cursor: pointer; font-size: 13.5px; color: var(--ia-teal); font-weight: 600; list-style: none; }
+  .fallback summary::-webkit-details-marker { display: none; }
+  .fallback summary::before { content: "＋ "; }
+  .fallback[open] summary::before { content: "－ "; }
+  .fallback-body { margin-top: .8rem; }
+  .portal-row { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+  .portal-prefix { font-size: 12px; color: var(--muted-2); font-family: 'JetBrains Mono', monospace; word-break: break-all; }
+  .portal-input { max-width: 160px; letter-spacing: .05em; }
+
+  /* Consent checkboxes */
+  .consent-box { margin-top: 1.25rem; display: grid; gap: .9rem; }
+  .check { display: flex; gap: .7rem; align-items: flex-start; cursor: pointer; }
+  .check input { margin-top: .2rem; width: 18px; height: 18px; accent-color: var(--ia-teal); flex-shrink: 0; }
+  .check span { font-size: 13.5px; color: var(--text); line-height: 1.55; }
+  .check span small { color: var(--muted); }
+
+  .submit-row { margin-top: 1.5rem; }
+{% endblock %}
+
+{% block content %}
+
+<section class="intro">
+  <span class="eyebrow">Evaluación · Personal Docente e Investigador</span>
+  <h1>Consentimiento y contexto</h1>
+  <p class="lead">
+    Este formulario forma parte de la evaluación cualitativa de un sistema de recomendación de
+    tutores académicos basado en publicaciones, tópicos, resúmenes generados automáticamente y
+    técnicas de recuperación semántica.
+  </p>
+</section>
+
+<!-- Purpose & GDPR -->
+<div class="card">
+  <div class="card-head"><span class="card-num">i</span><h2>Antes de empezar</h2></div>
+  <div class="info-list">
+    <div class="info-item"><span class="dot">•</span><p><strong>No se le evalúa a usted.</strong> El objetivo es validar si el perfil generado representa adecuadamente su actividad investigadora y si permitiría recomendarle como tutor de TFG o TFM.</p></div>
+    <div class="info-item"><span class="dot">•</span><p><strong>Uso académico y agregado.</strong> Sus respuestas se analizarán de forma agregada, con fines exclusivamente académicos y de mejora del sistema.</p></div>
+    <div class="info-item"><span class="dot">•</span><p><strong>Sin datos personales.</strong> No se almacena su nombre, correo ni identificador junto a las respuestas. Solo se guardan las valoraciones y el contenido generado que usted revisa. El identificador seleccionado se emplea únicamente durante la sesión para mostrarle su perfil.</p></div>
+    <div class="info-item"><span class="dot">•</span><p><strong>Ámbito provisional.</strong> De forma inicial el cuestionario se dirige a las escuelas de ingeniería de telecomunicación e informática (ETSIST, ETSISI, ETSIT y ETSII). Más adelante se extenderá al conjunto de la universidad.</p></div>
+  </div>
+</div>
+
+<!-- How the profile is built -->
+<div class="card">
+  <div class="card-head"><span class="card-num">?</span><h2>Cómo se genera su perfil</h2></div>
+  <p class="card-sub">Todo se construye a partir de información pública del Portal Científico de la UPM.</p>
+  <div class="how-grid">
+    <div class="how-box">
+      <h3>Perfil genérico</h3>
+      <p>Se parte de sus publicaciones, proyectos y tópicos públicos. Al identificarse podrá abrir su ficha en el
+        <a class="inline-link" href="https://portalcientifico.upm.es" target="_blank" rel="noopener">Portal Científico</a> para revisar todo lo que consta sobre usted.</p>
+    </div>
+    <div class="how-box">
+      <h3>Resumen</h3>
+      <p>Un modelo de lenguaje sintetiza su actividad. El resumen actual fusiona los resúmenes anuales dando más peso a lo más reciente.</p>
+    </div>
+    <div class="how-box">
+      <h3>Palabras clave</h3>
+      <p>Se extraen dominios de expertise de forma incremental, año a año, acumulando sus áreas de investigación.</p>
+    </div>
+  </div>
+</div>
+
+<!-- PDI selection -->
+<form method="post" action="{{ url_for('eval.eval_pdi_start') }}" id="consent-form">
+  <div class="card">
+    <div class="card-head"><span class="card-num">1</span><h2>Identifíquese</h2></div>
+    <p class="card-sub">Seleccione su nombre para poder mostrarle su perfil generado. No se guardará junto a sus respuestas.</p>
+
+    {% if not_found %}
+    <div class="alert" style="margin-top:1rem">
+      No hemos encontrado ese perfil en el sistema. Compruebe el identificador o escriba a
+      <a class="inline-link" href="mailto:{{ contact_email }}">{{ contact_email }}</a> (Carlos Badenes) para que se le incorpore.
+    </div>
+    {% endif %}
+
+    <div style="margin-top:1rem">
+      <label class="field-label" for="pdi-search">Busque su nombre</label>
+      <div class="combo">
+        <input type="text" id="pdi-search" class="combo-input" autocomplete="off"
+               placeholder="Empiece a escribir su nombre o apellidos…" aria-expanded="false" aria-controls="pdi-panel"/>
+        <div class="combo-panel" id="pdi-panel" role="listbox"></div>
+      </div>
+
+      <div class="selected-chip" id="selected-chip">
+        <span class="nm" id="selected-name"></span>
+        <span class="rid" id="selected-rid"></span>
+        <button type="button" id="clear-selection">Cambiar</button>
+      </div>
+
+      <input type="hidden" name="pdi_id" id="pdi-id" value=""/>
+    </div>
+
+    <details class="fallback">
+      <summary>No encuentro mi nombre</summary>
+      <div class="fallback-body">
+        <p class="card-sub" style="margin-top:0">
+          Puede identificarse con su <strong>ID del Portal Científico</strong>: son los seis dígitos del final de la
+          dirección de su perfil.
+        </p>
+        <div class="portal-row" style="margin-top:.7rem">
+          <span class="portal-prefix">{{ portal_url_prefix }}</span>
+          <input type="text" name="portal_id" id="portal-id" class="portal-input" inputmode="numeric"
+                 pattern="\d{{ '{5,6}' }}" maxlength="6" placeholder="308607" autocomplete="off"/>
+        </div>
+        <p class="card-sub" style="margin-top:.7rem">
+          Si aun así no aparece, escriba a <a class="inline-link" href="mailto:{{ contact_email }}">{{ contact_email }}</a>
+          (Carlos Badenes) para que su perfil se incorpore al sistema.
+        </p>
+      </div>
+    </details>
+  </div>
+
+  <!-- Consent -->
+  <div class="card">
+    <div class="card-head"><span class="card-num">2</span><h2>Consentimiento</h2></div>
+    <div class="consent-box">
+      <label class="check">
+        <input type="checkbox" name="consent_aggregated" id="c1"/>
+        <span>Acepto que mis respuestas se utilicen de forma <strong>agregada y con fines académicos</strong> para la evaluación y mejora del sistema.</span>
+      </label>
+      <label class="check">
+        <input type="checkbox" name="privacy_terms" id="c2"/>
+        <span>He leído la información anterior y entiendo que <strong>no se almacenan datos personales identificativos</strong> junto a mis respuestas.</span>
+      </label>
+    </div>
+
+    <div class="submit-row">
+      <button type="submit" class="btn btn-primary btn-lg btn-block" id="start-btn" disabled>
+        Comenzar el cuestionario
+      </button>
+    </div>
+  </div>
+</form>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const PDIS = {{ pdis|tojson }};
+
+  // Accent-insensitive normaliser (strips combining diacritics via unicode property).
+  const norm = s => (s || "").toString().toLowerCase()
+    .normalize("NFD").replace(/\p{Diacritic}/gu, "");
+
+  const searchEl   = document.getElementById("pdi-search");
+  const panelEl    = document.getElementById("pdi-panel");
+  const hiddenId   = document.getElementById("pdi-id");
+  const chip       = document.getElementById("selected-chip");
+  const chipName   = document.getElementById("selected-name");
+  const chipRid    = document.getElementById("selected-rid");
+  const clearBtn   = document.getElementById("clear-selection");
+  const portalEl   = document.getElementById("portal-id");
+  const c1         = document.getElementById("c1");
+  const c2         = document.getElementById("c2");
+  const startBtn   = document.getElementById("start-btn");
+  const MAX_SHOWN  = 40;
+
+  function refreshSubmit() {
+    const hasPdi = !!hiddenId.value;
+    const hasPortal = /^\d{5,6}$/.test((portalEl.value || "").trim());
+    startBtn.disabled = !((hasPdi || hasPortal) && c1.checked && c2.checked);
+  }
+
+  function closePanel() { panelEl.classList.remove("open"); searchEl.setAttribute("aria-expanded", "false"); }
+
+  function renderMatches(q) {
+    const nq = norm(q);
+    const matches = (nq ? PDIS.filter(p => norm(p.name).includes(nq)) : PDIS).slice(0, MAX_SHOWN);
+    if (matches.length === 0) {
+      panelEl.innerHTML = '<div class="combo-empty">Sin coincidencias. Use el ID del Portal Científico más abajo.</div>';
+    } else {
+      panelEl.innerHTML = matches.map(p =>
+        `<div class="combo-opt" role="option" data-id="${p.id}" data-name="${p.name.replace(/"/g, '&quot;')}">`
+        + `${p.name}<span class="rid">#${p.id}</span></div>`
+      ).join("");
+    }
+    panelEl.classList.add("open");
+    searchEl.setAttribute("aria-expanded", "true");
+  }
+
+  function selectPdi(id, name) {
+    hiddenId.value = id;
+    chipName.textContent = name;
+    chipRid.textContent = "#" + id;
+    chip.classList.add("show");
+    searchEl.value = "";
+    searchEl.style.display = "none";
+    if (portalEl) portalEl.value = "";
+    closePanel();
+    refreshSubmit();
+  }
+
+  function clearSelection() {
+    hiddenId.value = "";
+    chip.classList.remove("show");
+    searchEl.style.display = "";
+    searchEl.focus();
+    refreshSubmit();
+  }
+
+  searchEl.addEventListener("input", () => renderMatches(searchEl.value));
+  searchEl.addEventListener("focus", () => { if (!hiddenId.value) renderMatches(searchEl.value); });
+  panelEl.addEventListener("click", e => {
+    const opt = e.target.closest(".combo-opt");
+    if (opt) selectPdi(opt.dataset.id, opt.dataset.name);
+  });
+  clearBtn.addEventListener("click", clearSelection);
+  document.addEventListener("click", e => {
+    if (!e.target.closest(".combo")) closePanel();
+  });
+
+  if (portalEl) portalEl.addEventListener("input", () => {
+    // Manual portal id and dropdown selection are mutually exclusive.
+    if (portalEl.value.trim() && hiddenId.value) clearSelection();
+    refreshSubmit();
+  });
+  c1.addEventListener("change", refreshSubmit);
+  c2.addEventListener("change", refreshSubmit);
+  refreshSubmit();
+</script>
+{% endblock %}
