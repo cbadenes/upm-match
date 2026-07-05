@@ -25,6 +25,7 @@ dependencies = [
     "python-arango>=8.3.1",
     "qdrant-client[fastembed]>=1.18.0",
     "requests>=2.32.5",
+    "scipy>=1.18.0",
     "scrapy>=2.14.2",
     "tenacity>=9.1.4",
     "tqdm>=4.67.3",
