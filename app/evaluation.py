@@ -15,6 +15,8 @@ GDPR / proportionality:
 
 from __future__ import annotations
 
+import json
+import math
 import os
 import re
 import uuid
@@ -22,6 +24,7 @@ from datetime import datetime, timezone
 
 from flask import (
     Blueprint,
+    jsonify,
     redirect,
     render_template,
     request,
@@ -37,9 +40,13 @@ eval_bp = Blueprint("eval", __name__)
 # Data sources
 
 SUMMARY_COLLECTION = "researcher_summaries"
+SUMMARY_DENSE_VECTOR = "dense"
+# Number of similar PDIs (including the seed) that form one recommendation case.
+CASE_GROUP_SIZE = 10
 # Enrichment document layout in MinIO (see utils.researchers.ENRICHMENT_KEY_TEMPLATE).
 _ENRICHMENT_KEY_TEMPLATE = "researchers/{researcher_id}/enrichment.json"
 PORTAL_URL_TEMPLATE = "https://portalcientifico.upm.es/es/ipublic/researcher/{id}"
+PORTAL_ITEM_URL_TEMPLATE = "https://portalcientifico.upm.es/es/ipublic/item/{id}"
 
 # Years shown in the temporal-evolution section (most recent first at render time).
 EVOLUTION_YEARS = (2023, 2024, 2025, 2026)
@@ -48,6 +55,9 @@ EVOLUTION_YEARS = (2023, 2024, 2025, 2026)
 EVAL_BUCKET = os.environ.get("MINIO_EVAL_BUCKET", "upm-match-evaluations")
 
 FORM_VERSION = "pdi-v1"
+# Bumped when the shape of the stored record (metadata/answers layout) changes,
+# so later analysis can branch on it independently of the questionnaire version.
+RECORD_SCHEMA = "1"
 SCALE_MIN, SCALE_MAX = 1, 5
 SCALE = f"{SCALE_MIN}-{SCALE_MAX}"
 
@@ -191,6 +201,145 @@ QUESTIONS = {
     "section6_open": SECTION6_OPEN,
 }
 
+# Section 5 — direct recommendation evaluation. Each generated case is rated with
+# these Likert items (optional; the PDI may add as many cases as they want).
+SECTION5_LIKERT = [
+    ("tutor_adecuado", "Yo sería un tutor adecuado para esta consulta.", "positive"),
+    ("primeros", "Debería aparecer entre los primeros resultados para esta consulta.", "positive"),
+    ("justificacion", "La recomendación de estos perfiles está justificada para esta consulta.", "positive"),
+]
+SECTION5_OPINION = ("opinion", "¿Algún comentario sobre esta consulta o sus recomendaciones?")
+
+
+# --- Student questionnaire schema (see docs/cuestionario_alumnos.md) ---------
+# Feedback about the app itself, not a student profile. Single page, incremental
+# intake shown/hidden client-side. No identifying data stored.
+
+STUDENT_FORM_VERSION = "student-v1"
+
+SCHOOLS = ["ETSIST", "ETSISI", "ETSIT", "ETSII"]
+LEVELS = [
+    ("grado", "Grado"),
+    ("master", "Máster"),
+    ("tesis", "Doctorado / Tesis"),
+]
+USED_OPTIONS = [
+    ("yes_useful", "Sí, y encontré resultados útiles"),
+    ("yes_unconvincing", "Sí, pero no me convencieron"),
+    ("no", "No, aún no la he usado"),
+]
+
+STUDENT_S1_LIKERT = [
+    ("st1_facil", "La aplicación fue fácil de usar.", "positive"),
+    (
+        "st1_relevantes",
+        "Las recomendaciones fueron relevantes para mi interés.",
+        "positive",
+    ),
+    (
+        "st1_clara",
+        "La información mostrada de cada profesor (resumen, temas, puntuación) fue clara.",
+        "positive",
+    ),
+    ("st1_entendi", "Entendí por qué se me recomendaba a cada profesor.", "positive"),
+    ("st1_costo_decidir", "Me costó decidir a partir de los resultados.", "negative"),
+    (
+        "st1_encontre",
+        "Encontré al menos un tutor que encajaba con lo que buscaba.",
+        "positive",
+    ),
+]
+STUDENT_S1_OPEN = [
+    ("st1o_experiencia", "¿Qué te gustó y qué te frustró al usarla?"),
+]
+
+STUDENT_S2_MULTI = (
+    "st2_info",
+    "¿Qué información te resultaría más útil al ver una recomendación? (elige hasta 3)",
+    [
+        ("resumen", "Resumen del profesor"),
+        ("temas", "Temas coincidentes"),
+        ("afinidad", "Puntuación de afinidad"),
+        ("publicaciones", "Publicaciones recientes"),
+        ("proyectos", "Proyectos"),
+        ("portal", "Enlace al Portal Científico"),
+    ],
+)
+STUDENT_S2_MULTI_MAX = 3
+STUDENT_S2_LIKERT = [
+    (
+        "st2_otra_escuela",
+        "Me resultaría útil que me recomendara profesores de otra escuela, antes que de la mía, si encajan con mi tema.",
+        "positive",
+    ),
+    (
+        "st2_poca_trayectoria",
+        "Me resultaría útil que me recomendara profesores con poca trayectoria investigadora (p. ej. doctorandos) si encajan con mi tema.",
+        "positive",
+    ),
+    (
+        "st2_apoyo",
+        "Confiaría en el sistema como apoyo para decidir tutor (no como decisión final).",
+        "positive",
+    ),
+    (
+        "st2_explicacion",
+        "Necesitaría ver la explicación de por qué se me recomienda a alguien para fiarme.",
+        "neutral",
+    ),
+]
+STUDENT_S2_SINGLE = (
+    "st2_prioridad",
+    "¿Qué preferirías que priorice el sistema?",
+    [
+        ("afinidad", "Afinidad temática pura"),
+        ("cercania", "Cercanía (misma escuela o titulación)"),
+        ("equilibrio", "Un equilibrio de ambas"),
+        ("no_claro", "No lo tengo claro"),
+    ],
+)
+
+STUDENT_S3_LIKERT = [
+    ("st3_tiempo", "Un sistema así me ahorraría tiempo al buscar tutor.", "positive"),
+    ("st3_descubrir", "Me ayudaría a descubrir tutores que no conocía.", "positive"),
+    (
+        "st3_confianza",
+        "Me daría más confianza para contactar con un profesor.",
+        "positive",
+    ),
+    (
+        "st3_usaria",
+        "Lo usaría si estuviera disponible para mi TFG/TFM/Tesis.",
+        "positive",
+    ),
+    (
+        "st3_portal",
+        "Me parecería útil que estuviera integrado en un portal institucional de la UPM y se le diera difusión.",
+        "positive",
+    ),
+]
+STUDENT_S4_OPEN = [
+    (
+        "st4_info_adicional",
+        "¿Qué información adicional te gustaría que mostrara el sistema al hacer una recomendación?",
+    ),
+    ("st4_falta", "¿Qué has echado en falta o qué añadirías?"),
+    ("st4_comentarios", "Cualquier otro comentario o sugerencia."),
+]
+
+STUDENT_QUESTIONS = {
+    "s1_likert": STUDENT_S1_LIKERT,
+    "s1_open": STUDENT_S1_OPEN,
+    "s2_multi": STUDENT_S2_MULTI,
+    "s2_multi_max": STUDENT_S2_MULTI_MAX,
+    "s2_likert": STUDENT_S2_LIKERT,
+    "s2_single": STUDENT_S2_SINGLE,
+    "s3_likert": STUDENT_S3_LIKERT,
+    "s4_open": STUDENT_S4_OPEN,
+}
+STUDENT_LEVEL_VALUES = {value for value, _ in LEVELS}
+STUDENT_USED_VALUES = {value for value, _ in USED_OPTIONS}
+
 
 # Helpers
 
@@ -255,9 +404,39 @@ def load_profile(researcher_id: int) -> dict | None:
     }
 
 
+def _publications_for_year(publications: list | None, year: int) -> list[dict]:
+    """Publications used to build a given year's summary: title, abstract (if any)
+    and a Portal Científico item link when the id is stored in the bucket.
+
+    Near-duplicate titles are collapsed keeping the longest abstract, mirroring the
+    de-duplication phase 6 applies before summarising.
+    """
+    seen: dict[str, dict] = {}
+    for pub in publications or []:
+        if pub.get("year") != year:
+            continue
+        title = (pub.get("title") or "").strip()
+        abstract = (pub.get("abstract") or "").strip()
+        if not title and not abstract:
+            continue
+        item_id = pub.get("id")
+        key = title.lower() or f"__id__{item_id}"
+        existing = seen.get(key)
+        if existing and len(abstract) <= len(existing["abstract"] or ""):
+            continue
+        seen[key] = {
+            "title": title or "(sin título)",
+            "abstract": abstract or None,
+            "item_id": item_id,
+            "url": PORTAL_ITEM_URL_TEMPLATE.format(id=item_id) if item_id else None,
+        }
+    return list(seen.values())
+
+
 def load_yearly(researcher_id: int) -> list[dict]:
     """Load the per-year generated summaries (MinIO `history`) for the evolution
-    section, restricted to EVOLUTION_YEARS and ordered most-recent-first."""
+    section, restricted to EVOLUTION_YEARS and ordered most-recent-first. Each year
+    also carries the publications used to generate its summary."""
     try:
         from dbs import minio  # lazy: keeps the main app import light
 
@@ -268,6 +447,7 @@ def load_yearly(researcher_id: int) -> list[dict]:
         return []
 
     history = (data or {}).get("history") or {}
+    publications = (data or {}).get("publications") or []
     years: list[dict] = []
     for year in EVOLUTION_YEARS:
         snap = history.get(str(year))
@@ -278,10 +458,130 @@ def load_yearly(researcher_id: int) -> list[dict]:
                     "year": year,
                     "profile": profile.strip(),
                     "domains": (snap or {}).get("domains") or [],
+                    "publications": _publications_for_year(publications, year),
                 }
             )
     years.sort(key=lambda y: y["year"], reverse=True)
     return years
+
+
+# --- Section 5: recommendation-case generation -----------------------------
+
+def _dense(raw_vector) -> list[float] | None:
+    """Extract the dense vector from Qdrant's (possibly named) vector container."""
+    if isinstance(raw_vector, dict):
+        return raw_vector.get(SUMMARY_DENSE_VECTOR) or raw_vector.get("dense")
+    return raw_vector
+
+
+def _centroid(vectors: list[list[float]]) -> list[float]:
+    n = len(vectors)
+    dim = len(vectors[0])
+    return [sum(v[i] for v in vectors) / n for i in range(dim)]
+
+
+def _cosine(a: list[float], b: list[float]) -> float:
+    dot = sum(x * y for x, y in zip(a, b))
+    na = math.sqrt(sum(x * x for x in a))
+    nb = math.sqrt(sum(y * y for y in b))
+    return dot / (na * nb) if na and nb else 0.0
+
+
+def _matched_domains(keywords: list[str], domains: list[str]) -> list[str]:
+    """Domains that overlap (containment, case-insensitive) with any keyword."""
+    matched: list[str] = []
+    for domain in domains:
+        dl = domain.lower()
+        for kw in keywords:
+            kl = kw.lower()
+            if kl == dl or kl in dl or dl in kl:
+                matched.append(domain)
+                break
+    return matched
+
+
+def build_recommendation_case(seed_id: int) -> dict | None:
+    """Build one recommendation-evaluation case for a seed PDI.
+
+    Retrieves the seed's point plus its nearest neighbours, reverse-engineers a
+    plausible student query from the group with an LLM, and returns both a rich
+    display payload (with names) and a sanitised `store` payload (no identities).
+    """
+    from app.agent import generate_student_case  # lazy: pulls in agno/ollama
+
+    collection = _summaries_collection()
+    seed = _db.get_point(collection, seed_id)
+    if not seed:
+        return None
+    seed_vec = _dense(seed["vector"])
+    if not seed_vec:
+        return None
+
+    neighbours = _db.nearest_by_vector(
+        collection, seed_vec, using=SUMMARY_DENSE_VECTOR, limit=CASE_GROUP_SIZE
+    )
+
+    members: list[dict] = []
+    seen_ids: set = set()
+    for n in neighbours:
+        vec = _dense(n["vector"])
+        if not vec or n["id"] in seen_ids:
+            continue
+        seen_ids.add(n["id"])
+        payload = n["payload"]
+        members.append(
+            {
+                "id": n["id"],
+                "name": (payload.get("name") or "").strip() or f"PDI {n['id']}",
+                "summary": (payload.get("summary") or "").strip(),
+                "domains": payload.get("domains") or [],
+                "vector": vec,
+            }
+        )
+    if not members:
+        return None
+
+    centroid = _centroid([m["vector"] for m in members])
+    case = generate_student_case(
+        [{"summary": m["summary"], "domains": m["domains"]} for m in members]
+    )
+    keywords = case.keywords or []
+
+    for m in members:
+        m["central"] = _cosine(m["vector"], centroid)
+        m["matched"] = _matched_domains(keywords, m["domains"])
+    # Rank by query relevance (matched domains), tie-broken by centrality.
+    members.sort(key=lambda m: (len(m["matched"]), m["central"]), reverse=True)
+
+    case_id = uuid.uuid4().hex[:12]
+    display: list[dict] = []
+    store_recs: list[dict] = []
+    for rank, m in enumerate(members, 1):
+        is_seed = m["id"] == seed_id
+        numeric = _numeric_id(m["id"]) or m["id"]
+        display.append(
+            {
+                "rank": rank,
+                "name": m["name"],
+                "portal_url": PORTAL_URL_TEMPLATE.format(id=numeric),
+                "matched": m["matched"],
+                "domains": m["domains"][:8],
+                "is_seed": is_seed,
+            }
+        )
+        # Stored form carries NO names/ids (keeps the respondent anonymous).
+        store_recs.append({"rank": rank, "is_seed": is_seed, "matched": m["matched"]})
+
+    return {
+        "case_id": case_id,
+        "query": case.query,
+        "recommendations": display,
+        "store": {
+            "query": case.query,
+            "keywords": keywords,
+            "recommendations": store_recs,
+        },
+    }
 
 
 def _int_answer(raw: str | None) -> int | None:
@@ -312,7 +612,181 @@ def _collect_open(items, form) -> list[dict]:
     ]
 
 
-def _build_record(profile: dict, yearly: list[dict], form) -> dict:
+def _collect_multi(spec, form) -> dict:
+    qid, text, options = spec
+    valid = {value for value, _ in options}
+    selected = [v for v in form.getlist(qid) if v in valid]
+    return {
+        "id": qid,
+        "text": text,
+        "options": [{"value": v, "label": lbl} for v, lbl in options],
+        "selected": selected,
+    }
+
+
+def _collect_single(spec, form) -> dict:
+    qid, text, options = spec
+    valid = {value for value, _ in options}
+    value = form.get(qid)
+    return {
+        "id": qid,
+        "text": text,
+        "options": [{"value": v, "label": lbl} for v, lbl in options],
+        "value": value if value in valid else None,
+    }
+
+
+def _stats_from_lists(likert: list[dict], open_items: list[dict]) -> dict:
+    return {
+        "likert_total": len(likert),
+        "likert_answered": sum(1 for x in likert if x.get("value") is not None),
+        "open_total": len(open_items),
+        "open_answered": sum(1 for x in open_items if (x.get("value") or "").strip()),
+    }
+
+
+def _device_from_ua() -> str:
+    """Coarse device class from the User-Agent (no raw UA is stored).
+
+    Kept intentionally low-resolution ('mobile'/'tablet'/'desktop') so it helps
+    segment analysis without contributing to fingerprinting.
+    """
+    ua = (request.user_agent.string or "").lower()
+    if any(t in ua for t in ("ipad", "tablet", "kindle", "silk", "playbook")):
+        return "tablet"
+    if any(t in ua for t in ("mobi", "android", "iphone", "ipod")):
+        return "mobile"
+    return "desktop"
+
+
+def _duration_seconds(started_at_iso: str | None, now: datetime) -> int | None:
+    """Whole seconds between the session start and submission, or None."""
+    if not started_at_iso:
+        return None
+    try:
+        start = datetime.fromisoformat(started_at_iso)
+    except (ValueError, TypeError):
+        return None
+    if start.tzinfo is None:
+        start = start.replace(tzinfo=timezone.utc)
+    delta = (now - start).total_seconds()
+    return int(delta) if delta >= 0 else None
+
+
+def _build_metadata(role: str, form_version: str, started_at_iso: str | None) -> dict:
+    """Non-identifying metadata attached to every submission, useful for later
+    retrieval and analysis (time, completion time, device, language, versions)."""
+    now = datetime.now(timezone.utc)
+    return {
+        "submission_id": str(uuid.uuid4()),
+        "record_schema": RECORD_SCHEMA,
+        "form_version": form_version,
+        "role": role,
+        "submitted_at": now.isoformat(),
+        "submitted_date": now.date().isoformat(),
+        "started_at": started_at_iso,
+        "duration_seconds": _duration_seconds(started_at_iso, now),
+        "device": _device_from_ua(),
+        "language": (request.accept_languages.best or "").split("-")[0] or None,
+    }
+
+
+def _response_stats(answers: dict) -> dict:
+    """Completion counts across the whole instrument, to flag partial/careless
+    responses at analysis time."""
+    likert_total = likert_answered = open_total = open_answered = 0
+
+    def tally_likert(items):
+        nonlocal likert_total, likert_answered
+        for it in items or []:
+            likert_total += 1
+            if it.get("value") is not None:
+                likert_answered += 1
+
+    def tally_open(items):
+        nonlocal open_total, open_answered
+        for it in items or []:
+            open_total += 1
+            if (it.get("value") or "").strip():
+                open_answered += 1
+
+    for sec in ("section2", "section6"):
+        block = answers.get(sec) or {}
+        tally_likert(block.get("likert"))
+        tally_open(block.get("open"))
+    tally_open((answers.get("section4") or {}).get("open"))
+    for year in answers.get("section3") or []:
+        tally_likert(year.get("likert"))
+        if year.get("open"):
+            tally_open([year["open"]])
+
+    return {
+        "likert_total": likert_total,
+        "likert_answered": likert_answered,
+        "open_total": open_total,
+        "open_answered": open_answered,
+    }
+
+
+def _collect_keywords(profile: dict, form) -> dict:
+    """PDI validation of the generated keywords: which generated domains were kept
+    (checkbox left ticked) vs removed, plus any domains the PDI added themselves."""
+    kept = set(form.getlist("kw_keep"))
+    generated = [
+        {"keyword": k, "kept": k in kept} for k in (profile.get("keywords") or [])
+    ]
+    added: list[str] = []
+    seen: set[str] = set()
+    for raw in form.getlist("kw_added"):
+        value = (raw or "").strip()
+        low = value.lower()
+        if value and low not in seen:
+            seen.add(low)
+            added.append(value)
+    return {"generated": generated, "added": added}
+
+
+def _collect_section5(form) -> list[dict]:
+    """Collect the (optional) recommendation-evaluation cases and their ratings.
+
+    Each generated case posts a hidden `s5_case_<id>` field carrying the sanitised
+    stimulus (query + keywords + anonymous recommendations) plus per-case ratings.
+    """
+    cases: list[dict] = []
+    for key in form.keys():
+        if not key.startswith("s5_case_"):
+            continue
+        case_id = key[len("s5_case_") :]
+        try:
+            stored = json.loads(form.get(key) or "{}")
+        except (ValueError, TypeError):
+            continue
+        likert = [
+            {
+                "id": f"s5_{case_id}_{qkey}",
+                "text": text,
+                "polarity": polarity,
+                "scale": SCALE,
+                "value": _int_answer(form.get(f"s5_{case_id}_{qkey}")),
+            }
+            for (qkey, text, polarity) in SECTION5_LIKERT
+        ]
+        cases.append(
+            {
+                "case_id": case_id,
+                "query": stored.get("query"),
+                "keywords": stored.get("keywords") or [],
+                "recommendations": stored.get("recommendations") or [],
+                "likert": likert,
+                "opinion": (form.get(f"s5_{case_id}_{SECTION5_OPINION[0]}") or "").strip(),
+            }
+        )
+    return cases
+
+
+def _build_record(
+    profile: dict, yearly: list[dict], form, started_at: str | None = None
+) -> dict:
     """Assemble the anonymised submission document (no identifying fields)."""
     section3: list[dict] = []
     for year in yearly:
@@ -340,11 +814,26 @@ def _build_record(profile: dict, yearly: list[dict], form) -> dict:
             }
         )
 
+    answers = {
+        "section2": {
+            "likert": _collect_likert(SECTION2_LIKERT, form),
+            "open": _collect_open(SECTION2_OPEN, form),
+        },
+        "keywords": _collect_keywords(profile, form),
+        "section3": section3,
+        "section4": {"open": _collect_open(SECTION4_OPEN, form)},
+        "section5": _collect_section5(form),
+        "section6": {
+            "likert": _collect_likert(SECTION6_LIKERT, form),
+            "open": _collect_open(SECTION6_OPEN, form),
+        },
+    }
+
+    metadata = _build_metadata("pdi", FORM_VERSION, started_at)
+    metadata["response_stats"] = _response_stats(answers)
+
     return {
-        "submission_id": str(uuid.uuid4()),
-        "form_version": FORM_VERSION,
-        "role": "pdi",
-        "submitted_at": datetime.now(timezone.utc).isoformat(),
+        "metadata": metadata,
         "consent": {
             "academic_aggregated_use": True,
             "privacy_terms": True,
@@ -357,52 +846,167 @@ def _build_record(profile: dict, yearly: list[dict], form) -> dict:
             "topics": profile.get("topics"),
             "last_active_year": profile.get("year"),
             "yearly": [
-                {"year": y["year"], "profile": y["profile"], "domains": y["domains"]}
+                {
+                    "year": y["year"],
+                    "profile": y["profile"],
+                    "domains": y["domains"],
+                    "publications": [
+                        {"title": p["title"], "item_id": p.get("item_id")}
+                        for p in y.get("publications", [])
+                    ],
+                }
                 for y in yearly
             ],
         },
-        "answers": {
-            "section2": {
-                "likert": _collect_likert(SECTION2_LIKERT, form),
-                "open": _collect_open(SECTION2_OPEN, form),
-            },
-            "section3": section3,
-            "section4": {"open": _collect_open(SECTION4_OPEN, form)},
-            "section6": {
-                "likert": _collect_likert(SECTION6_LIKERT, form),
-                "open": _collect_open(SECTION6_OPEN, form),
-            },
-        },
+        "answers": answers,
+    }
+
+
+def _build_student_record(form, started_at: str | None = None) -> dict:
+    """Assemble the anonymised student submission (no identifying fields).
+
+    Section 1 (usage experience) is only included when the student reports having
+    used the app. Academic context (school, level, degrees, interest) is stored as
+    coarse categories/interests — no name, e-mail or enrolment id.
+    """
+    used = form.get("used_app")
+    used_yes = (used or "").startswith("yes")
+
+    context = {
+        "school": form.get("school"),
+        "level": form.get("level"),
+        "degree": (form.get("degree") or "").strip() or None,
+        "master": (form.get("master") or "").strip() or None,
+        "thesis_topic": (form.get("thesis_topic") or "").strip() or None,
+        "favorite_topic": (form.get("favorite_topic") or "").strip(),
+        "used_app": used,
+    }
+
+    section1 = None
+    if used_yes:
+        section1 = {
+            "likert": _collect_likert(STUDENT_S1_LIKERT, form),
+            "open": _collect_open(STUDENT_S1_OPEN, form),
+        }
+    section2 = {
+        "multi": _collect_multi(STUDENT_S2_MULTI, form),
+        "likert": _collect_likert(STUDENT_S2_LIKERT, form),
+        "single": _collect_single(STUDENT_S2_SINGLE, form),
+    }
+    section3 = {"likert": _collect_likert(STUDENT_S3_LIKERT, form)}
+    section4 = {"open": _collect_open(STUDENT_S4_OPEN, form)}
+
+    answers = {
+        "section1": section1,
+        "section2": section2,
+        "section3": section3,
+        "section4": section4,
+    }
+
+    likert_all = list(section2["likert"]) + list(section3["likert"])
+    open_all = list(section4["open"])
+    if section1:
+        likert_all += section1["likert"]
+        open_all += section1["open"]
+
+    metadata = _build_metadata("student", STUDENT_FORM_VERSION, started_at)
+    metadata["response_stats"] = _stats_from_lists(likert_all, open_all)
+
+    return {
+        "metadata": metadata,
+        "consent": {"academic_aggregated_use": True, "privacy_terms": True},
+        "context": context,
+        "answers": answers,
     }
 
 
 def _persist(record: dict) -> bool:
     from dbs import minio  # lazy
 
-    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
-    object_name = f"responses/pdi/{ts}_{record['submission_id']}.json"
+    meta = record["metadata"]
+    role = meta.get("role") or "unknown"
+    date = meta.get("submitted_date") or datetime.now(timezone.utc).date().isoformat()
+    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    # Partitioned by role and date for easy listing/retrieval and analysis.
+    object_name = f"responses/{role}/{date}/{ts}_{meta['submission_id']}.json"
     return minio.upload_json(EVAL_BUCKET, record, object_name)
 
 
 # --- Routes ----------------------------------------------------------------
 
 
-@eval_bp.get("/evaluacion")
+@eval_bp.get("/evaluation")
 def eval_home():
     """Role choice: PDI (implemented) or student (placeholder)."""
-    return render_template("evaluacion/home.html")
+    return render_template("evaluation/home.html")
 
 
-@eval_bp.get("/evaluacion/estudiante")
+def _student_form_context(**extra) -> dict:
+    ctx = {
+        "schools": SCHOOLS,
+        "levels": LEVELS,
+        "used_options": USED_OPTIONS,
+        "main_app_url": url_for("main.match"),
+        "q": STUDENT_QUESTIONS,
+    }
+    ctx.update(extra)
+    return ctx
+
+
+@eval_bp.get("/evaluation/student")
 def eval_student():
-    return render_template("evaluacion/student_placeholder.html")
+    # Single page; store the start time to measure completion duration.
+    session["eval"] = {
+        "role": "student",
+        "started_at": datetime.now(timezone.utc).isoformat(),
+    }
+    return render_template("evaluation/student_form.html", **_student_form_context())
 
 
-@eval_bp.get("/evaluacion/pdi")
+@eval_bp.post("/evaluation/student/submit")
+def eval_student_submit():
+    form = request.form
+    if not form.get("consent"):
+        return render_template(
+            "evaluation/student_form.html",
+            **_student_form_context(consent_error=True),
+        ), 400
+
+    school = form.get("school")
+    level = form.get("level")
+    favorite = (form.get("favorite_topic") or "").strip()
+    used = form.get("used_app")
+    if (
+        school not in SCHOOLS
+        or level not in STUDENT_LEVEL_VALUES
+        or used not in STUDENT_USED_VALUES
+        or not favorite
+    ):
+        return render_template(
+            "evaluation/student_form.html",
+            **_student_form_context(validation_error=True),
+        ), 400
+
+    started_at = (session.get("eval") or {}).get("started_at")
+    record = _build_student_record(form, started_at=started_at)
+    submission_id = record["metadata"]["submission_id"]
+    if not _persist(record):
+        logger.error("Failed to persist student submission {}", submission_id)
+        return render_template(
+            "evaluation/student_form.html",
+            **_student_form_context(save_error=True),
+        ), 500
+
+    session.pop("eval", None)
+    logger.info("Stored student submission {}", submission_id)
+    return redirect(url_for("eval.eval_thanks"))
+
+
+@eval_bp.get("/evaluation/pdi")
 def eval_pdi_consent():
     not_found = request.args.get("notfound")
     return render_template(
-        "evaluacion/consent.html",
+        "evaluation/consent.html",
         pdis=list_pdis(),
         portal_url_prefix="https://portalcientifico.upm.es/es/ipublic/researcher/",
         contact_email="carlos.badenes@upm.es",
@@ -410,7 +1014,7 @@ def eval_pdi_consent():
     )
 
 
-@eval_bp.post("/evaluacion/pdi/iniciar")
+@eval_bp.post("/evaluation/pdi/start")
 def eval_pdi_start():
     """Validate consent + PDI selection, open a session, go to the form."""
     if not (
@@ -441,7 +1045,7 @@ def _session_pdi() -> int | None:
     return ev.get("pdi_id")
 
 
-@eval_bp.get("/evaluacion/pdi/cuestionario")
+@eval_bp.get("/evaluation/pdi/questionnaire")
 def eval_pdi_form():
     researcher_id = _session_pdi()
     if researcher_id is None:
@@ -453,14 +1057,32 @@ def eval_pdi_form():
         return redirect(url_for("eval.eval_pdi_consent", notfound=1))
 
     return render_template(
-        "evaluacion/questionnaire.html",
+        "evaluation/questionnaire.html",
         profile=profile,
         yearly=load_yearly(researcher_id),
         q=QUESTIONS,
+        s5_likert=[{"key": k, "text": t} for k, t, _ in SECTION5_LIKERT],
+        s5_opinion=SECTION5_OPINION[1],
     )
 
 
-@eval_bp.post("/evaluacion/pdi/enviar")
+@eval_bp.post("/evaluation/pdi/case")
+def eval_pdi_case():
+    """Generate one recommendation-evaluation case for the session's PDI (JSON)."""
+    seed_id = _session_pdi()
+    if seed_id is None:
+        return jsonify({"error": "Sesión no válida."}), 403
+    try:
+        case = build_recommendation_case(seed_id)
+    except Exception as exc:  # noqa: BLE001 — surface a friendly error to the UI
+        logger.exception("Recommendation case generation failed")
+        return jsonify({"error": f"No se pudo generar el caso: {exc}"}), 500
+    if not case:
+        return jsonify({"error": "No hay datos suficientes para generar un caso."}), 500
+    return jsonify(case)
+
+
+@eval_bp.post("/evaluation/pdi/submit")
 def eval_pdi_submit():
     researcher_id = _session_pdi()
     if researcher_id is None:
@@ -471,14 +1093,16 @@ def eval_pdi_submit():
         session.pop("eval", None)
         return redirect(url_for("eval.eval_pdi_consent", notfound=1))
 
-    record = _build_record(profile, load_yearly(researcher_id), request.form)
+    started_at = (session.get("eval") or {}).get("started_at")
+    record = _build_record(
+        profile, load_yearly(researcher_id), request.form, started_at=started_at
+    )
+    submission_id = record["metadata"]["submission_id"]
     ok = _persist(record)
     if not ok:
-        logger.error(
-            "Failed to persist evaluation submission {}", record["submission_id"]
-        )
+        logger.error("Failed to persist evaluation submission {}", submission_id)
         return render_template(
-            "evaluacion/questionnaire.html",
+            "evaluation/questionnaire.html",
             profile=profile,
             yearly=load_yearly(researcher_id),
             q=QUESTIONS,
@@ -486,10 +1110,10 @@ def eval_pdi_submit():
         ), 500
 
     session.pop("eval", None)
-    logger.info("Stored evaluation submission {}", record["submission_id"])
+    logger.info("Stored evaluation submission {}", submission_id)
     return redirect(url_for("eval.eval_thanks"))
 
 
-@eval_bp.get("/evaluacion/gracias")
+@eval_bp.get("/evaluation/thanks")
 def eval_thanks():
-    return render_template("evaluacion/thanks.html")
+    return render_template("evaluation/thanks.html")

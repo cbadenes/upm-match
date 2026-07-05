@@ -140,3 +140,70 @@ def enrich_query(idea: str) -> str:
         return EnrichedQuery.model_validate(response.content).text
 
     raise RuntimeError(f"Agent returned unexpected type: {type(response.content)}")
+
+
+# Student-case generation agent (used by the PDI questionnaire, section 5)
+_CASE_DESCRIPTION = (
+    "You write realistic student research queries to evaluate an academic supervisor "
+    "recommender. You are given several researcher profiles that are ALL suitable "
+    "supervisors for the same hypothetical thesis project."
+)
+_CASE_INSTRUCTIONS = [
+    "Write ONE plausible research idea that a university student (TFG/TFM) might submit "
+    "when looking for a thesis supervisor, such that the given researchers would all be good matches.",
+    "RULES:",
+    "  1. Write the `query` in SPANISH, 2 to 4 sentences, in natural language as a student would phrase it.",
+    "  2. Make it realistic and concrete, but broad enough to fit the shared expertise of the group.",
+    "  3. Do NOT mention researcher names, institutions, or that this text was generated.",
+    "  4. Also return `keywords`: 5 to 10 lowercase ENGLISH keywords (1-3 words each) capturing the core topics.",
+    "  5. Base the idea ONLY on the expertise shown; do not invent unrelated fields.",
+]
+
+
+class StudentCase(BaseModel):
+    """A generated student query plus keywords, for the recommendation-evaluation section."""
+
+    query: str = Field(
+        description="2–4 sentence plausible student research idea, in Spanish."
+    )
+    keywords: list[str] = Field(
+        default_factory=list,
+        description="5–10 lowercase English keywords capturing the topic, for matching.",
+    )
+
+
+def generate_student_case(profiles: list[dict]) -> StudentCase:
+    """Generate a plausible student query for a cluster of similar researcher profiles.
+
+    :param profiles: list of {"summary": str, "domains": list[str]} for the group.
+    :return: StudentCase with a Spanish query and English keywords.
+    :raises RuntimeError: If the agent fails to produce a valid structured response.
+    """
+    blocks = []
+    for i, p in enumerate(profiles, 1):
+        domains = ", ".join(p.get("domains") or [])
+        summary = (p.get("summary") or "").strip()
+        blocks.append(f"Researcher {i}:\nDomains: {domains}\nProfile: {summary}")
+    prompt = (
+        "These researchers are all suitable supervisors for the SAME student project:\n\n"
+        + "\n\n".join(blocks)
+        + "\n\nWrite the student query and keywords."
+    )
+
+    agent = Agent(
+        model=Ollama(id=_OLLAMA_MODEL, host=_OLLAMA_HOST, options=_OLLAMA_OPTIONS),
+        description=_CASE_DESCRIPTION,
+        instructions=_CASE_INSTRUCTIONS,
+        output_schema=StudentCase,
+        markdown=False,
+    )
+    response = agent.run(prompt)
+
+    if isinstance(response.content, str):
+        raise RuntimeError(f"Ollama error: {response.content}")
+    if isinstance(response.content, StudentCase):
+        return response.content
+    if isinstance(response.content, dict):
+        return StudentCase.model_validate(response.content)
+
+    raise RuntimeError(f"Agent returned unexpected type: {type(response.content)}")

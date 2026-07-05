@@ -215,6 +215,54 @@ class QdrantBackend:
             return None
         return records[0].payload or {}
 
+    def get_point(self, collection: str, point_id: int) -> dict | None:
+        """Fetch a point's payload AND vectors by id, or None if absent.
+
+        :return: {"id", "payload", "vector"} where vector is the stored vector(s), for named vectors it is a dict {name: [...]}.
+        """
+        if not self.collection_exists(collection):
+            return None
+        records = self._client.retrieve(
+            collection_name=collection,
+            ids=[point_id],
+            with_payload=True,
+            with_vectors=True,
+        )
+        if not records:
+            return None
+        rec = records[0]
+        return {"id": rec.id, "payload": rec.payload or {}, "vector": rec.vector}
+
+    def nearest_by_vector(
+        self,
+        collection: str,
+        vector: list[float],
+        using: str,
+        limit: int = 10,
+        with_vectors: bool = True,
+    ) -> list[dict]:
+        """Nearest points to a dense query vector, optionally returning their vectors.
+
+        :return: list of {"id", "score", "payload", "vector"} sorted by similarity.
+        """
+        results = self._client.query_points(
+            collection_name=collection,
+            query=vector,
+            using=using,
+            limit=limit,
+            with_payload=True,
+            with_vectors=with_vectors,
+        )
+        return [
+            {
+                "id": p.id,
+                "score": p.score,
+                "payload": p.payload or {},
+                "vector": p.vector,
+            }
+            for p in results.points
+        ]
+
     def upsert_points(
         self,
         collection: str,

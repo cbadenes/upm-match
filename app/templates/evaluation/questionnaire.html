@@ -1,0 +1,512 @@
+{% extends "evaluation/base_eval.html" %}
+
+{% block title %}Cuestionario · Evaluación PDI · UPM Match{% endblock %}
+
+{% macro likert(qid, text) %}
+  <div class="likert-row" role="radiogroup" aria-labelledby="{{ qid }}_lbl">
+    <div class="likert-stmt" id="{{ qid }}_lbl">{{ text }}</div>
+    <div class="likert-options">
+      {% for v in range(1, 6) %}
+      <label class="likert-opt">
+        <input type="radio" name="{{ qid }}" value="{{ v }}" required/>
+        <span>{{ v }}</span>
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+{% endmacro %}
+
+{% macro openq(qid, text, rows=3, required=False) %}
+  <div class="field">
+    <label class="field-q" for="{{ qid }}">
+      {{ text }}
+      {% if required %}<span class="req" title="Respuesta obligatoria">*</span>{% else %}<span class="opt">(opcional)</span>{% endif %}
+    </label>
+    <textarea id="{{ qid }}" name="{{ qid }}" rows="{{ rows }}" class="field-ta"{% if required %} required{% endif %}></textarea>
+  </div>
+{% endmacro %}
+
+{% block extra_css %}
+  .intro-block { padding: .25rem 0 0; }
+  .intro-block .eyebrow { display: block; margin-bottom: .6rem; }
+  .intro-block h1 { margin-bottom: .6rem; }
+
+  /* Profile stimulus */
+  .profile-name { font-size: 1.05rem; font-weight: 600; }
+  .profile-meta { font-size: 12.5px; color: var(--muted); margin-top: .2rem; }
+  .profile-summary { font-size: 14.5px; line-height: 1.7; color: var(--text); margin-top: .9rem; }
+  .kw-wrap { margin-top: 1rem; }
+  .kw-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: .5rem; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { background: var(--surface-2); color: var(--muted); font-size: 12px; border-radius: var(--r-full); padding: 4px 11px; }
+  .chip.kw { background: rgba(0,169,224,0.14); color: #7fd8ef; }
+  .portal-btn { margin-top: 1rem; }
+
+  /* Likert */
+  .likert-scale-legend { font-size: 12px; color: var(--muted); margin: .25rem 0 1.1rem; display: flex; justify-content: space-between; gap: 1rem; }
+  .likert-scale-legend span { display: inline-flex; align-items: center; gap: .35rem; }
+  .likert-row { border: none; padding: .9rem 0; border-top: 1px solid var(--border); display: grid; grid-template-columns: 1fr; gap: .7rem; }
+  .likert-row:first-of-type { border-top: none; }
+  .likert-stmt { font-size: 14.5px; color: var(--text); line-height: 1.5; padding: 0; }
+  .likert-options { display: flex; gap: 6px; }
+  .likert-opt { flex: 1; position: relative; }
+  .likert-opt input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+  .likert-opt span {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 44px; border: 1px solid var(--border-md); border-radius: var(--r-md);
+    font-size: 15px; font-weight: 600; color: var(--muted);
+    background: var(--bg); transition: border-color .12s, background .12s, color .12s;
+  }
+  .likert-opt input:hover + span { border-color: rgba(0,169,224,0.5); color: var(--text); }
+  .likert-opt input:checked + span { background: var(--ia-teal); border-color: var(--ia-teal); color: #04121a; }
+  .likert-opt input:focus-visible + span { outline: 2px solid var(--ia-teal); outline-offset: 2px; }
+  @media (min-width: 680px) {
+    .likert-row { grid-template-columns: 1fr 300px; align-items: center; gap: 1.25rem; }
+    .likert-stmt { padding-right: .5rem; }
+  }
+
+  /* Open questions */
+  .field { margin-top: 1.1rem; }
+  .field:first-of-type { margin-top: .5rem; }
+  .field-q { display: block; font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: .5rem; line-height: 1.5; }
+  .field-q .req { color: var(--ia-teal); font-weight: 700; }
+  .field-q .opt { color: var(--muted-2); font-weight: 400; font-size: 12px; }
+  .field-ta {
+    width: 100%; background: var(--bg); color: var(--text);
+    border: 1px solid var(--border-md); border-radius: var(--r-md);
+    padding: .75rem .9rem; font-size: 14.5px; line-height: 1.6; resize: vertical; outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .field-ta:focus { border-color: var(--ia-teal); box-shadow: 0 0 0 3px rgba(0,169,224,0.12); }
+
+  .subhead { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: 1.5rem 0 .5rem; }
+
+  /* Yearly */
+  .year-item { border: 1px solid var(--border); border-radius: var(--r-lg); padding: 1.1rem 1.2rem; margin-top: 1rem; background: rgba(24,32,48,0.3); }
+  .year-head { display: flex; align-items: baseline; gap: .6rem; margin-bottom: .6rem; }
+  .year-num { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--ia-teal); font-size: 1.1rem; }
+  .year-summary { font-size: 14px; line-height: 1.65; color: var(--muted); background: var(--surface); border-left: 2px solid var(--ia-teal); border-radius: 0 var(--r-sm) var(--r-sm) 0; padding: .7rem .85rem; margin-bottom: .9rem; }
+
+  /* Placeholder (section 5) */
+  .placeholder-card { border-style: dashed; border-color: var(--border-md); background: rgba(15,21,32,0.35); }
+  .placeholder-badge { display: inline-block; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .12em; color: var(--muted-2); border: 1px solid var(--border); border-radius: var(--r-full); padding: 3px 9px; margin-bottom: .6rem; }
+
+  /* Submit */
+  .submit-card { text-align: center; }
+  .submit-hint { font-size: 12.5px; color: var(--muted); margin-top: .8rem; }
+
+  /* Generic utility */
+  .hidden { display: none !important; }
+
+  /* ── Keyword validation ── */
+  .kw-toggle-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 1rem; }
+  .kw-toggle { position: relative; }
+  .kw-toggle input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+  .kw-toggle span {
+    display: inline-flex; align-items: center; padding: 7px 13px;
+    border: 1px solid var(--ia-teal); border-radius: var(--r-full);
+    font-size: 13px; font-weight: 500; color: #04121a; background: var(--ia-teal);
+    transition: background .12s, color .12s, border-color .12s, opacity .12s;
+  }
+  /* Unchecked = the PDI says this domain does NOT reflect their activity */
+  .kw-toggle input:not(:checked) + span {
+    background: transparent; color: var(--muted); border-color: var(--border-md);
+    text-decoration: line-through; opacity: .75;
+  }
+  .kw-toggle input:hover:not(:checked) + span { color: var(--text); }
+  .kw-toggle input:focus-visible + span { outline: 2px solid var(--ia-teal); outline-offset: 2px; }
+
+  .kw-add-block { margin-top: 1.6rem; }
+  .kw-add-row { display: flex; gap: 8px; }
+  .text-input {
+    width: 100%; background: var(--bg); color: var(--text);
+    border: 1px solid var(--border-md); border-radius: var(--r-md);
+    padding: .7rem .9rem; font-size: 14.5px; outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .text-input:focus { border-color: var(--ia-teal); box-shadow: 0 0 0 3px rgba(0,169,224,0.12); }
+  .kw-add-row .text-input { flex: 1; }
+  .kw-add-btn { flex-shrink: 0; }
+  .kw-added-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: .9rem; }
+  .kw-added {
+    display: inline-flex; align-items: center; gap: 8px; padding: 6px 6px 6px 13px;
+    border: 1px solid rgba(0,169,224,0.4); border-radius: var(--r-full);
+    font-size: 13px; color: var(--text); background: rgba(0,169,224,0.10);
+  }
+  .kw-added button {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; border: none; border-radius: 50%;
+    background: rgba(255,255,255,0.08); color: var(--muted); cursor: pointer; font-size: 12px; line-height: 1;
+  }
+  .kw-added button:hover { background: rgba(220,38,38,0.25); color: var(--danger); }
+
+  /* ── Publications per year ── */
+  .pubs { margin: .3rem 0 1rem; border: 1px solid var(--border); border-radius: var(--r-md); overflow: hidden; }
+  .pubs-toggle, .pub-head {
+    width: 100%; display: flex; align-items: center; justify-content: space-between; gap: .6rem;
+    border: none; color: var(--text); padding: .6rem .85rem; font-size: 13px; text-align: left; cursor: pointer;
+  }
+  .pubs-toggle { background: rgba(24,32,48,0.55); font-weight: 600; color: var(--muted); }
+  .pubs-toggle:hover, .pub-head:hover { color: var(--text); }
+  .pubs-list { border-top: 1px solid var(--border); }
+  .pub { border-top: 1px solid var(--border); }
+  .pub:first-child { border-top: none; }
+  .pub-head { background: transparent; align-items: flex-start; }
+  .pub-title { font-size: 13px; line-height: 1.45; }
+  .caret { transition: transform .15s; flex-shrink: 0; color: var(--muted); }
+  .caret.open { transform: rotate(180deg); }
+  .pub-body { padding: 0 .85rem .8rem; }
+  .pub-abstract { font-size: 13px; line-height: 1.6; color: var(--muted); }
+  .pub-none { font-size: 13px; color: var(--muted-2); font-style: italic; }
+  .pub-link { display: inline-block; margin-top: .5rem; font-size: 12.5px; }
+
+  /* ── Section 5: recommendation cases ── */
+  .s5-case { border: 1px solid var(--border-md); border-radius: var(--r-lg); padding: 1.2rem 1.3rem; margin-top: 1.1rem; background: rgba(24,32,48,0.35); }
+  .s5-case-num { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ia-teal); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 2px 8px; }
+  .s5-query { margin: .9rem 0 1.1rem; background: var(--surface); border-left: 2px solid var(--ia-teal); border-radius: 0 var(--r-sm) var(--r-sm) 0; padding: .8rem 1rem; }
+  .s5-query-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: .4rem; }
+  .s5-query p { font-size: 14.5px; line-height: 1.6; color: var(--text); }
+  .s5-recs-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: .6rem; }
+  .s5-rec-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 1.2rem; }
+  .s5-rec { display: grid; grid-template-columns: 2rem 1fr; gap: .5rem .8rem; align-items: start; padding: .6rem .7rem; border: 1px solid var(--border); border-radius: var(--r-md); }
+  .s5-rec.seed { border-color: rgba(0,169,224,0.5); background: rgba(0,169,224,0.07); }
+  .s5-rank { font-family: 'JetBrains Mono', monospace; font-size: 1rem; font-weight: 600; color: var(--ia-teal); }
+  .s5-rec-name { font-size: 13.5px; font-weight: 600; display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+  .s5-you { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: #04121a; background: var(--ia-teal); border-radius: var(--r-full); padding: 2px 8px; }
+  .s5-portal { color: var(--muted); font-size: 13px; }
+  .s5-portal:hover { color: var(--ia-teal); }
+  .s5-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
+  .tagchip { background: rgba(0,169,224,0.14); color: #7fd8ef; font-size: 11px; border-radius: var(--r-full); padding: 2px 9px; }
+  .s5-nomatch { font-size: 12px; color: var(--muted); font-style: italic; }
+  .s5-opinion { margin-top: 1rem; }
+  #s5-add[disabled] { opacity: .6; cursor: progress; }
+{% endblock %}
+
+{% block content %}
+
+<section class="intro-block">
+  <span class="eyebrow">Cuestionario · Personal Docente e Investigador</span>
+  <h1>Evaluación de su perfil y de las recomendaciones</h1>
+  <p class="lead">Revise el perfil generado a partir de su actividad pública y valore en qué medida lo representa. Sus respuestas se guardan de forma agregada, sin datos personales.</p>
+</section>
+
+<form method="post" action="{{ url_for('eval.eval_pdi_submit') }}" id="eval-form">
+
+  {% if save_error %}
+  <div class="alert" style="margin-top:1.25rem">No se pudieron guardar sus respuestas. Vuelva a intentarlo; si persiste, avise a los responsables del proyecto.</div>
+  {% endif %}
+
+  <!-- Profile stimulus -->
+  <div class="card">
+    <div class="profile-name">{{ profile.name }}</div>
+    <div class="profile-meta">Perfil generado · Portal Científico #{{ profile.researcher_id }}</div>
+    {% if profile.summary %}
+    <p class="profile-summary">{{ profile.summary }}</p>
+    {% else %}
+    <p class="profile-summary" style="color:var(--muted)">No hay un resumen consolidado disponible para este perfil.</p>
+    {% endif %}
+    <a class="btn btn-ghost portal-btn" href="{{ profile.portal_url }}" target="_blank" rel="noopener">
+      Ver mi perfil público en el Portal Científico &nearr;
+    </a>
+  </div>
+
+  <!-- Section 2: current summary validation -->
+  <div class="card">
+    <div class="card-head"><span class="card-num">1</span><h2>Validación del resumen actual</h2></div>
+    <p class="card-sub">Valore las siguientes afirmaciones sobre el resumen mostrado arriba.</p>
+    <div class="likert-scale-legend">
+      <span>1 · Totalmente en desacuerdo</span><span>5 · Totalmente de acuerdo</span>
+    </div>
+    {% for qid, text, pol in q.section2_likert %}{{ likert(qid, text) }}{% endfor %}
+
+    <div class="subhead">Comentarios</div>
+    {% for qid, text in q.section2_open %}{{ openq(qid, text) }}{% endfor %}
+  </div>
+
+  <!-- Keywords validation -->
+  <div class="card">
+    <div class="card-head"><span class="card-num">2</span><h2>Validación de las palabras clave</h2></div>
+    <p class="card-sub">Estos son los dominios de expertise generados para su perfil. Están todos marcados: <strong>desmarque los que no reflejan su actividad investigadora</strong>.</p>
+
+    {% if profile.keywords %}
+    <div class="kw-toggle-grid" id="kw-generated">
+      {% for k in profile.keywords %}
+      <label class="kw-toggle">
+        <input type="checkbox" name="kw_keep" value="{{ k }}" checked/>
+        <span>{{ k }}</span>
+      </label>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="card-sub" style="margin-top:.5rem">No se generaron palabras clave para este perfil.</p>
+    {% endif %}
+
+    <div class="kw-add-block">
+      <div class="subhead" style="margin-bottom:.6rem">¿Falta algún dominio? Añádalo</div>
+      <div class="kw-add-row">
+        <input type="text" id="kw-input" class="text-input" autocomplete="off"
+               placeholder="Ej.: aprendizaje por refuerzo" aria-label="Nuevo dominio"/>
+        <button type="button" class="btn btn-ghost kw-add-btn" id="kw-add-btn">Añadir</button>
+      </div>
+      <div class="kw-added-list" id="kw-added-list" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <!-- Section 3: temporal evolution -->
+  <div class="card">
+    <div class="card-head"><span class="card-num">3</span><h2>Evolución temporal</h2></div>
+    {% if yearly %}
+    <p class="card-sub">Para cada año se muestra el resumen generado a partir de las publicaciones de ese periodo.</p>
+    <div class="likert-scale-legend">
+      <span>1 · Totalmente en desacuerdo</span><span>5 · Totalmente de acuerdo</span>
+    </div>
+    {% for y in yearly %}
+    <div class="year-item">
+      <div class="year-head"><span class="year-num">{{ y.year }}</span></div>
+      <p class="year-summary">{{ y.profile }}</p>
+
+      {% if y.publications %}
+      <div class="pubs">
+        <button type="button" class="pubs-toggle" data-pubs-toggle>
+          <span>Publicaciones utilizadas ({{ y.publications|length }})</span>
+          <span class="caret" aria-hidden="true">▾</span>
+        </button>
+        <div class="pubs-list hidden">
+          {% for p in y.publications %}
+          <div class="pub">
+            <button type="button" class="pub-head" data-pub-toggle>
+              <span class="pub-title">{{ p.title }}</span>
+              <span class="caret" aria-hidden="true">▾</span>
+            </button>
+            <div class="pub-body hidden">
+              {% if p.abstract %}<p class="pub-abstract">{{ p.abstract }}</p>
+              {% else %}<p class="pub-none">Abstract no disponible en el Portal Científico.</p>{% endif %}
+              {% if p.url %}<a class="inline-link pub-link" href="{{ p.url }}" target="_blank" rel="noopener">Ver en el Portal Científico ↗</a>{% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      {% for key, text, pol in q.section3_likert %}{{ likert("s3_%s_%s"|format(y.year, key), text) }}{% endfor %}
+      {{ openq("s3_%s_%s"|format(y.year, q.section3_open[0]), q.section3_open[1], 2) }}
+    </div>
+    {% endfor %}
+    {% else %}
+    <p class="card-sub">No hay resúmenes anuales disponibles para el periodo {{ 2023 }}–{{ 2026 }} en este perfil, por lo que esta sección se omite.</p>
+    {% endif %}
+  </div>
+
+  <!-- Section 4: ideal description -->
+  <div class="card">
+    <div class="card-head"><span class="card-num">4</span><h2>Descripción ideal para ser recomendado</h2></div>
+    <p class="card-sub">Imagine que un estudiante busca tutor para un TFG o TFM. ¿Qué debería plantear para que usted fuera una recomendación adecuada?</p>
+    {{ openq(q.section4_open[0][0], q.section4_open[0][1], 4, required=True) }}
+    {{ openq(q.section4_open[1][0], q.section4_open[1][1], 2) }}
+    {{ openq(q.section4_open[2][0], q.section4_open[2][1], 2) }}
+  </div>
+
+  <!-- Section 5: recommendation evaluation -->
+  <div class="card" id="sec5">
+    <div class="card-head"><span class="card-num">5</span><h2>Evaluación directa de recomendaciones</h2></div>
+    <p class="card-sub">Generamos una consulta plausible de estudiante a partir de perfiles cercanos al suyo y le mostramos a quién recomendaría el sistema. Valore uno o varios casos; es opcional.</p>
+
+    <div id="s5-cases"></div>
+    <div class="alert" id="s5-error" style="display:none; margin-top:1rem"></div>
+
+    <button type="button" class="btn btn-ghost" id="s5-add" style="margin-top:1.25rem">
+      Generar un caso de evaluación
+    </button>
+  </div>
+
+  <!-- Section 6: system utility -->
+  <div class="card">
+    <div class="card-head"><span class="card-num">6</span><h2>Utilidad del sistema</h2></div>
+    <p class="card-sub">Valore el sistema en términos generales.</p>
+    <div class="likert-scale-legend">
+      <span>1 · Totalmente en desacuerdo</span><span>5 · Totalmente de acuerdo</span>
+    </div>
+    {% for qid, text, pol in q.section6_likert %}{{ likert(qid, text) }}{% endfor %}
+
+    <div class="subhead">Comentarios</div>
+    {% for qid, text in q.section6_open %}{{ openq(qid, text) }}{% endfor %}
+  </div>
+
+  <!-- Submit -->
+  <div class="card submit-card">
+    <button type="submit" class="btn btn-primary btn-lg btn-block" id="submit-btn">Enviar respuestas</button>
+    <p class="submit-hint">Al enviar, sus valoraciones se guardan de forma anónima y agregada.</p>
+  </div>
+
+</form>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const form = document.getElementById("eval-form");
+
+  // ── Keyword validation: add / remove custom domains ──
+  const kwInput = document.getElementById("kw-input");
+  const kwAddBtn = document.getElementById("kw-add-btn");
+  const kwAddedList = document.getElementById("kw-added-list");
+  const kwAdded = new Set();
+
+  function addDomain() {
+    const value = (kwInput.value || "").trim();
+    if (!value) return;
+    const low = value.toLowerCase();
+    if (kwAdded.has(low)) { kwInput.value = ""; return; }
+    kwAdded.add(low);
+
+    const chip = document.createElement("span");
+    chip.className = "kw-added";
+    const label = document.createElement("span");
+    label.textContent = value;
+    const hidden = document.createElement("input");
+    hidden.type = "hidden"; hidden.name = "kw_added"; hidden.value = value;
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.setAttribute("aria-label", "Quitar " + value);
+    remove.textContent = "✕";
+    remove.addEventListener("click", () => { chip.remove(); kwAdded.delete(low); });
+
+    chip.append(label, hidden, remove);
+    kwAddedList.appendChild(chip);
+    kwInput.value = "";
+    kwInput.focus();
+  }
+
+  if (kwAddBtn) kwAddBtn.addEventListener("click", addDomain);
+  if (kwInput) kwInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); addDomain(); }
+  });
+
+  // ── Collapsible publications (two levels: the list, and each abstract) ──
+  document.querySelectorAll("[data-pubs-toggle], [data-pub-toggle]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const body = btn.nextElementSibling;
+      if (!body) return;
+      const willShow = body.classList.contains("hidden");
+      body.classList.toggle("hidden", !willShow);
+      const caret = btn.querySelector(".caret");
+      if (caret) caret.classList.toggle("open", willShow);
+    });
+  });
+
+  // ── Section 5: generate & rate recommendation cases ──
+  const S5_URL = "{{ url_for('eval.eval_pdi_case') }}";
+  const S5_LIKERT = {{ s5_likert|tojson }};
+  const S5_OPINION = {{ s5_opinion|tojson }};
+  const s5Add = document.getElementById("s5-add");
+  const s5Cases = document.getElementById("s5-cases");
+  const s5Error = document.getElementById("s5-error");
+  let s5Count = 0;
+
+  const esc = (s) => { const d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; };
+
+  function s5LikertRow(name, text) {
+    const row = document.createElement("div");
+    row.className = "likert-row"; row.setAttribute("role", "radiogroup");
+    const stmt = document.createElement("div"); stmt.className = "likert-stmt"; stmt.textContent = text;
+    const opts = document.createElement("div"); opts.className = "likert-options";
+    for (let v = 1; v <= 5; v++) {
+      const label = document.createElement("label"); label.className = "likert-opt";
+      const input = document.createElement("input"); input.type = "radio"; input.name = name; input.value = v;
+      const span = document.createElement("span"); span.textContent = v;
+      label.append(input, span); opts.appendChild(label);
+    }
+    row.append(stmt, opts);
+    return row;
+  }
+
+  function renderCase(data) {
+    s5Count++;
+    const box = document.createElement("div");
+    box.className = "s5-case";
+
+    const hidden = document.createElement("input");
+    hidden.type = "hidden"; hidden.name = "s5_case_" + data.case_id;
+    hidden.value = JSON.stringify(data.store);
+    box.appendChild(hidden);
+
+    const head = document.createElement("div");
+    head.innerHTML = `<span class="s5-case-num">Caso ${s5Count}</span>`;
+    box.appendChild(head);
+
+    const q = document.createElement("div"); q.className = "s5-query";
+    q.innerHTML = `<div class="s5-query-label">Consulta de estudiante generada</div><p>${esc(data.query)}</p>`;
+    box.appendChild(q);
+
+    const recsLabel = document.createElement("div");
+    recsLabel.className = "s5-recs-label";
+    recsLabel.textContent = "Recomendaciones del sistema para esta consulta";
+    box.appendChild(recsLabel);
+
+    const list = document.createElement("div"); list.className = "s5-rec-list";
+    (data.recommendations || []).forEach((r) => {
+      const row = document.createElement("div");
+      row.className = "s5-rec" + (r.is_seed ? " seed" : "");
+      const chips = (r.matched && r.matched.length)
+        ? r.matched.map((m) => `<span class="tagchip">${esc(m)}</span>`).join("")
+        : '<span class="s5-nomatch">Relevante por afinidad semántica</span>';
+      const portal = r.portal_url
+        ? ` <a class="s5-portal" href="${esc(r.portal_url)}" target="_blank" rel="noopener" aria-label="Portal Científico">↗</a>` : "";
+      const you = r.is_seed ? ' <span class="s5-you">Usted</span>' : "";
+      row.innerHTML = `<span class="s5-rank">${r.rank}</span>
+        <div>
+          <div class="s5-rec-name">${esc(r.name)}${you}${portal}</div>
+          <div class="s5-chips">${chips}</div>
+        </div>`;
+      list.appendChild(row);
+    });
+    box.appendChild(list);
+
+    const legend = document.createElement("div"); legend.className = "likert-scale-legend";
+    legend.innerHTML = "<span>1 · Totalmente en desacuerdo</span><span>5 · Totalmente de acuerdo</span>";
+    box.appendChild(legend);
+    S5_LIKERT.forEach((item) => box.appendChild(s5LikertRow("s5_" + data.case_id + "_" + item.key, item.text)));
+
+    const field = document.createElement("div"); field.className = "field s5-opinion";
+    field.innerHTML = `<label class="field-q" for="s5_${data.case_id}_opinion">${esc(S5_OPINION)} <span class="opt">(opcional)</span></label>`;
+    const ta = document.createElement("textarea");
+    ta.className = "field-ta"; ta.rows = 2;
+    ta.id = "s5_" + data.case_id + "_opinion"; ta.name = "s5_" + data.case_id + "_opinion";
+    field.appendChild(ta);
+    box.appendChild(field);
+
+    s5Cases.appendChild(box);
+    s5Add.textContent = "Añadir otra evaluación";
+    box.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+
+  if (s5Add) s5Add.addEventListener("click", async () => {
+    s5Error.style.display = "none";
+    s5Add.disabled = true;
+    const restore = s5Count > 0 ? "Añadir otra evaluación" : "Generar un caso de evaluación";
+    s5Add.textContent = "Generando…";
+    try {
+      const resp = await fetch(S5_URL, { method: "POST", headers: { "X-Requested-With": "fetch" } });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || ("Error " + resp.status));
+      renderCase(data);
+    } catch (err) {
+      s5Error.textContent = err.message || "No se pudo generar el caso.";
+      s5Error.style.display = "block";
+    } finally {
+      s5Add.disabled = false;
+      s5Add.textContent = s5Count > 0 ? "Añadir otra evaluación" : restore;
+    }
+  });
+
+  // ── Warn before leaving with unsaved answers; release on real submit ──
+  let submitted = false;
+  form.addEventListener("submit", () => { submitted = true; });
+  window.addEventListener("beforeunload", (e) => {
+    if (submitted) return;
+    e.preventDefault();
+    e.returnValue = "";
+  });
+</script>
+{% endblock %}

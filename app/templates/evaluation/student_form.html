@@ -1,0 +1,350 @@
+{% extends "evaluation/base_eval.html" %}
+
+{% block title %}Cuestionario · Evaluación de estudiantes · UPM Match{% endblock %}
+
+{% macro likert(qid, text) %}
+  <div class="likert-row" role="radiogroup" aria-labelledby="{{ qid }}_lbl">
+    <div class="likert-stmt" id="{{ qid }}_lbl">{{ text }}</div>
+    <div class="likert-options">
+      {% for v in range(1, 6) %}
+      <label class="likert-opt">
+        <input type="radio" name="{{ qid }}" value="{{ v }}" required/>
+        <span>{{ v }}</span>
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+{% endmacro %}
+
+{% macro openq(qid, text, rows=3, required=False) %}
+  <div class="field">
+    <label class="field-q" for="{{ qid }}">
+      {{ text }}
+      {% if required %}<span class="req" title="Respuesta obligatoria">*</span>{% else %}<span class="opt">(opcional)</span>{% endif %}
+    </label>
+    <textarea id="{{ qid }}" name="{{ qid }}" rows="{{ rows }}" class="field-ta"{% if required %} required{% endif %}></textarea>
+  </div>
+{% endmacro %}
+
+{% block extra_css %}
+  .intro-block { padding: .25rem 0 0; }
+  .intro-block .eyebrow { display: block; margin-bottom: .6rem; }
+  .intro-block h1 { margin-bottom: .6rem; }
+
+  .q-label { display: block; font-size: 14.5px; font-weight: 600; color: var(--text); margin-bottom: .1rem; }
+  .q-label .req { color: var(--ia-teal); font-weight: 700; }
+  .q-help { font-size: 12.5px; color: var(--muted); margin-bottom: .7rem; }
+  .block { margin-top: 1.4rem; }
+  .block:first-of-type { margin-top: .4rem; }
+  .block.hidden { display: none; }
+
+  /* Choice pills (single-choice radios rendered as buttons) */
+  .choices { display: flex; flex-wrap: wrap; gap: 8px; }
+  .choices.cols { flex-direction: column; align-items: stretch; }
+  .choice { position: relative; }
+  .choice input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+  .choice span {
+    display: flex; align-items: center; min-height: 44px; padding: .55rem .95rem;
+    border: 1px solid var(--border-md); border-radius: var(--r-md);
+    font-size: 14px; color: var(--muted); background: var(--bg);
+    transition: border-color .12s, background .12s, color .12s;
+  }
+  .choice input:hover + span { border-color: rgba(0,169,224,0.5); color: var(--text); }
+  .choice input:checked + span { background: var(--ia-teal); border-color: var(--ia-teal); color: #04121a; font-weight: 600; }
+  .choice input:focus-visible + span { outline: 2px solid var(--ia-teal); outline-offset: 2px; }
+
+  /* Multi-select checkboxes */
+  .multi { display: grid; grid-template-columns: 1fr; gap: 8px; }
+  @media (min-width: 560px) { .multi { grid-template-columns: 1fr 1fr; } }
+  .checkopt { position: relative; }
+  .checkopt input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+  .checkopt span {
+    display: flex; align-items: center; gap: .55rem; min-height: 44px; padding: .55rem .9rem;
+    border: 1px solid var(--border-md); border-radius: var(--r-md);
+    font-size: 14px; color: var(--muted); background: var(--bg);
+    transition: border-color .12s, background .12s, color .12s;
+  }
+  .checkopt span::before {
+    content: ""; width: 16px; height: 16px; border-radius: 4px; flex-shrink: 0;
+    border: 1.5px solid var(--muted-2); transition: background .12s, border-color .12s;
+  }
+  .checkopt input:checked + span { border-color: var(--ia-teal); color: var(--text); }
+  .checkopt input:checked + span::before { background: var(--ia-teal); border-color: var(--ia-teal); }
+  .checkopt input:disabled + span { opacity: .45; cursor: not-allowed; }
+  .multi-error { display: none; color: var(--danger); font-size: 13px; margin-top: .6rem; }
+
+  /* Text inputs */
+  .text-input {
+    width: 100%; background: var(--bg); color: var(--text);
+    border: 1px solid var(--border-md); border-radius: var(--r-md);
+    padding: .75rem .9rem; font-size: 14.5px; outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .text-input:focus { border-color: var(--ia-teal); box-shadow: 0 0 0 3px rgba(0,169,224,0.12); }
+
+  /* Likert (same system as PDI form) */
+  .likert-scale-legend { font-size: 12px; color: var(--muted); margin: .25rem 0 1.1rem; display: flex; justify-content: space-between; gap: 1rem; }
+  .likert-row { border: none; padding: .9rem 0; border-top: 1px solid var(--border); display: grid; grid-template-columns: 1fr; gap: .7rem; }
+  .likert-row:first-of-type { border-top: none; }
+  .likert-stmt { font-size: 14.5px; color: var(--text); line-height: 1.5; }
+  .likert-options { display: flex; gap: 6px; }
+  .likert-opt { flex: 1; position: relative; }
+  .likert-opt input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+  .likert-opt span {
+    display: flex; align-items: center; justify-content: center; min-height: 44px;
+    border: 1px solid var(--border-md); border-radius: var(--r-md);
+    font-size: 15px; font-weight: 600; color: var(--muted); background: var(--bg);
+    transition: border-color .12s, background .12s, color .12s;
+  }
+  .likert-opt input:hover + span { border-color: rgba(0,169,224,0.5); color: var(--text); }
+  .likert-opt input:checked + span { background: var(--ia-teal); border-color: var(--ia-teal); color: #04121a; }
+  .likert-opt input:focus-visible + span { outline: 2px solid var(--ia-teal); outline-offset: 2px; }
+  @media (min-width: 680px) {
+    .likert-row { grid-template-columns: 1fr 300px; align-items: center; gap: 1.25rem; }
+  }
+
+  /* Open text */
+  .field { margin-top: 1.1rem; }
+  .field-q { display: block; font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: .5rem; line-height: 1.5; }
+  .field-q .req { color: var(--ia-teal); font-weight: 700; }
+  .field-q .opt { color: var(--muted-2); font-weight: 400; font-size: 12px; }
+  .field-ta {
+    width: 100%; background: var(--bg); color: var(--text);
+    border: 1px solid var(--border-md); border-radius: var(--r-md);
+    padding: .75rem .9rem; font-size: 14.5px; line-height: 1.6; resize: vertical; outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .field-ta:focus { border-color: var(--ia-teal); box-shadow: 0 0 0 3px rgba(0,169,224,0.12); }
+
+  .subhead { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: 1.5rem 0 .5rem; }
+
+  /* Consent */
+  .check { display: flex; gap: .7rem; align-items: flex-start; cursor: pointer; }
+  .check input { margin-top: .2rem; width: 18px; height: 18px; accent-color: var(--ia-teal); flex-shrink: 0; }
+  .check span { font-size: 13.5px; color: var(--text); line-height: 1.55; }
+
+  .submit-card { text-align: center; }
+  .submit-hint { font-size: 12.5px; color: var(--muted); margin-top: .8rem; }
+{% endblock %}
+
+{% block content %}
+
+<section class="intro-block">
+  <span class="eyebrow">Cuestionario · Estudiantes</span>
+  <h1>Tu opinión sobre UPM Match</h1>
+  <p class="lead">Ayúdanos a mejorar el buscador de tutores de la UPM. Son unos 5 minutos y tus respuestas se guardan de forma anónima y agregada, sin datos personales.</p>
+</section>
+
+<form method="post" action="{{ url_for('eval.eval_student_submit') }}" id="student-form">
+
+  {% if consent_error %}<div class="alert" style="margin-top:1.25rem">Debes aceptar el tratamiento de tus respuestas para continuar.</div>{% endif %}
+  {% if validation_error %}<div class="alert" style="margin-top:1.25rem">Revisa los campos obligatorios (escuela, nivel, tema de interés y uso de la app).</div>{% endif %}
+  {% if save_error %}<div class="alert" style="margin-top:1.25rem">No se pudieron guardar tus respuestas. Vuelve a intentarlo en unos segundos.</div>{% endif %}
+
+  <!-- Section 0: academic context -->
+  <div class="card">
+    <div class="card-head"><span class="card-num">1</span><h2>Sobre ti</h2></div>
+    <p class="card-sub">No pedimos datos personales: solo contexto académico para interpretar mejor tus respuestas.</p>
+
+    <div class="block">
+      <label class="q-label">¿A qué escuela perteneces? <span class="req">*</span></label>
+      <div class="q-help">De momento el cuestionario se dirige a las escuelas de ingeniería de telecomunicación e informática.</div>
+      <div class="choices">
+        {% for s in schools %}
+        <label class="choice"><input type="radio" name="school" value="{{ s }}" required/><span>{{ s }}</span></label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="block">
+      <label class="q-label">¿En qué nivel estás? <span class="req">*</span></label>
+      <div class="choices">
+        {% for value, label in levels %}
+        <label class="choice"><input type="radio" name="level" value="{{ value }}" data-level required/><span>{{ label }}</span></label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="block hidden" id="blk-degree">
+      <label class="q-label" for="degree">¿Qué grado cursas o cursaste? <span class="req req-degree">*</span></label>
+      <input type="text" id="degree" name="degree" class="text-input" autocomplete="off" placeholder="Ej.: Grado en Ingeniería Informática"/>
+    </div>
+
+    <div class="block hidden" id="blk-master">
+      <label class="q-label" for="master">¿Qué máster cursas o cursaste? <span class="req req-master">*</span></label>
+      <input type="text" id="master" name="master" class="text-input" autocomplete="off" placeholder="Ej.: Máster en Inteligencia Artificial"/>
+    </div>
+
+    <div class="block hidden" id="blk-thesis">
+      <label class="q-label" for="thesis_topic">Si buscas tesis, ¿qué estás investigando o quieres investigar? <span class="req">*</span></label>
+      <textarea id="thesis_topic" name="thesis_topic" rows="2" class="field-ta" placeholder="Descríbelo en una o dos frases."></textarea>
+    </div>
+
+    <div class="block">
+      <label class="q-label" for="favorite_topic">Área de especialización o tema en el que te gustaría trabajar <span class="req">*</span></label>
+      <div class="q-help">Aquello que escribirías en el buscador para encontrar tutor.</div>
+      <textarea id="favorite_topic" name="favorite_topic" rows="2" class="field-ta" required placeholder="Ej.: Visión por computador aplicada a imágenes médicas."></textarea>
+    </div>
+
+    <div class="block">
+      <label class="q-label">¿Has usado ya UPM Match? <span class="req">*</span></label>
+      <div class="choices cols">
+        {% for value, label in used_options %}
+        <label class="choice"><input type="radio" name="used_app" value="{{ value }}" data-used required/><span>{{ label }}</span></label>
+        {% endfor %}
+      </div>
+      <div class="note block hidden" id="used-note" style="margin-top:.9rem">
+        ¿Te animas a probarla antes de opinar? Puedes
+        <a class="inline-link" href="{{ main_app_url }}" target="_blank" rel="noopener">abrir el buscador en otra pestaña</a>
+        y volver aquí. No es obligatorio.
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 1: usage experience (only if used) -->
+  <div class="card hidden" id="sec-usage">
+    <div class="card-head"><span class="card-num">2</span><h2>Tu experiencia con la app</h2></div>
+    <div class="likert-scale-legend"><span>1 · Totalmente en desacuerdo</span><span>5 · Totalmente de acuerdo</span></div>
+    <div id="usage-likert">
+      {% for qid, text, pol in q.s1_likert %}{{ likert(qid, text) }}{% endfor %}
+    </div>
+    <div class="subhead">Comentario</div>
+    {{ openq(q.s1_open[0][0], q.s1_open[0][1], 2) }}
+  </div>
+
+  <!-- Section 2: perception of the recommender -->
+  <div class="card">
+    <div class="card-head"><span class="card-num">3</span><h2>Cómo debería recomendarte</h2></div>
+    <p class="card-sub">El sistema muestra, para cada profesor recomendado, un resumen de su actividad, los temas que coinciden con lo que buscas y una puntuación de afinidad.</p>
+
+    <div class="block">
+      <label class="q-label">{{ q.s2_multi[1] }}</label>
+      <div class="q-help">Marca las que más te interesarían (máximo {{ q.s2_multi_max }}).</div>
+      <div class="multi" id="multi-info">
+        {% for value, label in q.s2_multi[2] %}
+        <label class="checkopt"><input type="checkbox" name="{{ q.s2_multi[0] }}" value="{{ value }}"/><span>{{ label }}</span></label>
+        {% endfor %}
+      </div>
+      <div class="multi-error" id="multi-error">Elige al menos una opción.</div>
+    </div>
+
+    <div class="subhead">Sobre a quién te recomendaría</div>
+    <div class="likert-scale-legend"><span>1 · Totalmente en desacuerdo</span><span>5 · Totalmente de acuerdo</span></div>
+    {% for qid, text, pol in q.s2_likert %}{{ likert(qid, text) }}{% endfor %}
+
+    <div class="block">
+      <label class="q-label">{{ q.s2_single[1] }} <span class="req">*</span></label>
+      <div class="choices cols">
+        {% for value, label in q.s2_single[2] %}
+        <label class="choice"><input type="radio" name="{{ q.s2_single[0] }}" value="{{ value }}" required/><span>{{ label }}</span></label>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 3: usefulness -->
+  <div class="card">
+    <div class="card-head"><span class="card-num">4</span><h2>¿Te resultaría útil?</h2></div>
+    <div class="likert-scale-legend"><span>1 · Totalmente en desacuerdo</span><span>5 · Totalmente de acuerdo</span></div>
+    {% for qid, text, pol in q.s3_likert %}{{ likert(qid, text) }}{% endfor %}
+  </div>
+
+  <!-- Section 4: improvements -->
+  <div class="card">
+    <div class="card-head"><span class="card-num">5</span><h2>Mejoras y comentarios</h2></div>
+    {% for qid, text in q.s4_open %}{{ openq(qid, text, 2) }}{% endfor %}
+  </div>
+
+  <!-- Consent + submit -->
+  <div class="card submit-card">
+    <label class="check" style="text-align:left; margin-bottom:1.2rem">
+      <input type="checkbox" name="consent" id="consent"/>
+      <span>Acepto que mis respuestas se usen de forma <strong>anónima y agregada con fines académicos</strong> y entiendo que <strong>no se almacenan datos personales</strong>.</span>
+    </label>
+    <button type="submit" class="btn btn-primary btn-lg btn-block" id="submit-btn">Enviar respuestas</button>
+    <p class="submit-hint">Tiempo estimado: ~5 minutos. Puedes responder desde el móvil.</p>
+  </div>
+
+</form>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const form = document.getElementById("student-form");
+  const MAX_MULTI = {{ q.s2_multi_max }};
+
+  const $ = id => document.getElementById(id);
+  const show = (el, on) => el.classList.toggle("hidden", !on);
+  const checkedValue = name => {
+    const el = form.querySelector(`input[name="${name}"]:checked`);
+    return el ? el.value : null;
+  };
+  // Toggle `required` on every control inside a block (so hidden fields never block submit).
+  function setRequired(el, on) {
+    el.querySelectorAll("input, textarea, select").forEach(c => {
+      if (on) c.setAttribute("required", ""); else c.removeAttribute("required");
+    });
+  }
+
+  const blkDegree = $("blk-degree"), blkMaster = $("blk-master"), blkThesis = $("blk-thesis");
+  const secUsage = $("sec-usage"), usageLikert = $("usage-likert"), usedNote = $("used-note");
+
+  function updateIntake() {
+    const level = checkedValue("level");
+    const degreeReq = level === "grado" || level === "master";
+    const masterReq = level === "master";
+    show(blkDegree, level === "grado" || level === "master" || level === "tesis");
+    show(blkMaster, level === "master" || level === "tesis");
+    show(blkThesis, level === "tesis");
+    // Required: degree for grado/master; master for master; thesis for tesis.
+    setRequired(blkDegree, degreeReq);
+    setRequired(blkMaster, masterReq);
+    setRequired(blkThesis, level === "tesis");
+    // Keep the visible "*" marker in sync with the required state.
+    document.querySelectorAll(".req-degree").forEach(s => { s.style.display = degreeReq ? "" : "none"; });
+    document.querySelectorAll(".req-master").forEach(s => { s.style.display = masterReq ? "" : "none"; });
+  }
+
+  function updateUsage() {
+    const used = checkedValue("used_app");
+    show(usedNote, used === "no");
+    const usedYes = !!used && used.startsWith("yes");
+    show(secUsage, usedYes);
+    setRequired(usageLikert, usedYes);
+  }
+
+  form.querySelectorAll('input[name="level"]').forEach(r => r.addEventListener("change", updateIntake));
+  form.querySelectorAll('input[name="used_app"]').forEach(r => r.addEventListener("change", updateUsage));
+  updateIntake();
+  updateUsage();
+
+  // Multi-select: cap at MAX_MULTI, require at least one.
+  const multiBoxes = [...document.querySelectorAll('#multi-info input[type=checkbox]')];
+  const multiError = $("multi-error");
+  function enforceCap() {
+    const n = multiBoxes.filter(b => b.checked).length;
+    multiBoxes.forEach(b => { b.disabled = !b.checked && n >= MAX_MULTI; });
+    if (n > 0) multiError.style.display = "none";
+  }
+  multiBoxes.forEach(b => b.addEventListener("change", enforceCap));
+  enforceCap();
+
+  // Submit: enforce multi-select minimum, then release the unload guard.
+  let submitted = false;
+  form.addEventListener("submit", (e) => {
+    if (!multiBoxes.some(b => b.checked)) {
+      e.preventDefault();
+      multiError.style.display = "block";
+      document.getElementById("multi-info").scrollIntoView({ block: "center" });
+      return;
+    }
+    submitted = true;
+  });
+  window.addEventListener("beforeunload", (e) => {
+    if (submitted) return;
+    e.preventDefault();
+    e.returnValue = "";
+  });
+</script>
+{% endblock %}

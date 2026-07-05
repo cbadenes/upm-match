@@ -479,6 +479,8 @@
     .footer-logo { display: flex; align-items: center; gap: 8px; opacity: 0.72; }
     .footer-logo-text { font-size: 14px; font-weight: 600; letter-spacing: -0.02em; }
     .footer-tagline { font-size: 12px; color: var(--muted); max-width: 55ch; line-height: 1.6; }
+    .footer-eval-link { font-size: 13px; font-weight: 500; color: var(--ia-teal); margin-top: 4px; transition: opacity .15s; }
+    .footer-eval-link:hover { opacity: 0.8; }
     .footer-pie {
       border-top: 1px solid var(--border);
       max-width: 1280px; margin: 0 auto;
@@ -583,6 +585,9 @@
       <a href="{{ url_for('main.about') }}"
          class="nav-link {{ 'active' if active_page == 'about' else '' }}"
          data-i18n="nav.about">Sobre el proyecto</a>
+      <a href="{{ url_for('eval.eval_home') }}"
+         class="nav-link {{ 'active' if active_page == 'eval' else '' }}"
+         data-i18n="nav.evaluate">Evaluación</a>
     </nav>
 
     <div class="header-actions">
@@ -619,6 +624,7 @@
       <span class="footer-logo-text">UPM Match</span>
     </div>
     <p class="footer-tagline" data-i18n="footer.authorship">Desarrollado por Yago Boleas Francisco y Carlos Badenes-Olmedo en el marco del Proyecto de Innovación Educativa IE26.6102 de la Universidad Politécnica de Madrid.</p>
+    <a href="{{ url_for('eval.eval_home') }}" class="footer-eval-link" data-i18n="footer.evaluate">Evaluar la herramienta →</a>
   </div>
 
   <div class="footer-pie">
@@ -659,6 +665,7 @@
     "nav.logo_aria":   { es: "UPM Match · inicio", en: "UPM Match · home" },
     "nav.search":      { es: "Buscador", en: "Search" },
     "nav.about":       { es: "Sobre el proyecto", en: "About" },
+    "nav.evaluate":    { es: "Evaluación", en: "Feedback" },
     "nav.portal":      { es: "Portal Científico UPM ↗", en: "UPM Research Portal ↗" },
     "footer.authorship": {
       es: "Desarrollado por Yago Boleas Francisco y Carlos Badenes-Olmedo en el marco del Proyecto de Innovación Educativa IE26.6102 de la Universidad Politécnica de Madrid.",
@@ -680,6 +687,7 @@
       es: "© 2026 · Universidad Politécnica de Madrid",
       en: "© 2026 · Universidad Politécnica de Madrid"
     },
+    "footer.evaluate": { es: "Evaluar la herramienta →", en: "Evaluate the tool →" },
 
     /* ── Landing ── */
     "landing.title":       { es: "UPM Match · Encuentra tu director de TFG, TFM o Tesis", en: "UPM Match · Find your TFG, TFM or thesis supervisor" },

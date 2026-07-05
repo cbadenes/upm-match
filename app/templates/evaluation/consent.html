@@ -1,4 +1,4 @@
-{% extends "evaluacion/base_eval.html" %}
+{% extends "evaluation/base_eval.html" %}
 
 {% block title %}Consentimiento y contexto · Evaluación PDI · UPM Match{% endblock %}
 
@@ -86,7 +86,7 @@
 
 <!-- Purpose & GDPR -->
 <div class="card">
-  <div class="card-head"><span class="card-num">i</span><h2>Antes de empezar</h2></div>
+  <div class="card-head"><span class="card-num">❇️</span><h2>Antes de empezar</h2></div>
   <div class="info-list">
     <div class="info-item"><span class="dot">•</span><p><strong>No se le evalúa a usted.</strong> El objetivo es validar si el perfil generado representa adecuadamente su actividad investigadora y si permitiría recomendarle como tutor de TFG o TFM.</p></div>
     <div class="info-item"><span class="dot">•</span><p><strong>Uso académico y agregado.</strong> Sus respuestas se analizarán de forma agregada, con fines exclusivamente académicos y de mejora del sistema.</p></div>
@@ -97,7 +97,7 @@
 
 <!-- How the profile is built -->
 <div class="card">
-  <div class="card-head"><span class="card-num">?</span><h2>Cómo se genera su perfil</h2></div>
+  <div class="card-head"><span class="card-num">❓</span><h2>Cómo se genera su perfil</h2></div>
   <p class="card-sub">Todo se construye a partir de información pública del Portal Científico de la UPM.</p>
   <div class="how-grid">
     <div class="how-box">
@@ -107,11 +107,11 @@
     </div>
     <div class="how-box">
       <h3>Resumen</h3>
-      <p>Un modelo de lenguaje sintetiza su actividad. El resumen actual fusiona los resúmenes anuales dando más peso a lo más reciente.</p>
+      <p>Un modelo de lenguaje sintetiza su actividad año a año. El resumen actual fusiona los resúmenes anuales de manera incremental, dando más peso a lo más reciente.</p>
     </div>
     <div class="how-box">
       <h3>Palabras clave</h3>
-      <p>Se extraen dominios de expertise de forma incremental, año a año, acumulando sus áreas de investigación.</p>
+      <p>Se extraen dominios de forma incremental, año a año, acumulando sus áreas de investigación.</p>
     </div>
   </div>
 </div>
@@ -119,7 +119,7 @@
 <!-- PDI selection -->
 <form method="post" action="{{ url_for('eval.eval_pdi_start') }}" id="consent-form">
   <div class="card">
-    <div class="card-head"><span class="card-num">1</span><h2>Identifíquese</h2></div>
+    <div class="card-head"><span class="card-num">1️⃣</span><h2>Identifíquese</h2></div>
     <p class="card-sub">Seleccione su nombre para poder mostrarle su perfil generado. No se guardará junto a sus respuestas.</p>
 
     {% if not_found %}
@@ -156,7 +156,7 @@
         <div class="portal-row" style="margin-top:.7rem">
           <span class="portal-prefix">{{ portal_url_prefix }}</span>
           <input type="text" name="portal_id" id="portal-id" class="portal-input" inputmode="numeric"
-                 pattern="\d{{ '{5,6}' }}" maxlength="6" placeholder="308607" autocomplete="off"/>
+                 pattern="\d{{ '{5,6}' }}" maxlength="6" placeholder="XXXXXX" autocomplete="off"/>
         </div>
         <p class="card-sub" style="margin-top:.7rem">
           Si aun así no aparece, escriba a <a class="inline-link" href="mailto:{{ contact_email }}">{{ contact_email }}</a>
@@ -168,7 +168,7 @@
 
   <!-- Consent -->
   <div class="card">
-    <div class="card-head"><span class="card-num">2</span><h2>Consentimiento</h2></div>
+    <div class="card-head"><span class="card-num">2️⃣</span><h2>Consentimiento</h2></div>
     <div class="consent-box">
       <label class="check">
         <input type="checkbox" name="consent_aggregated" id="c1"/>
