@@ -140,6 +140,26 @@
   }
   .kw-added button:hover { background: rgba(220,38,38,0.25); color: var(--danger); }
 
+  /* ── Keyword importance levels (0-3) ── */
+  .kw-scale-legend { display: flex; flex-wrap: wrap; gap: .4rem 1.1rem; margin: 1rem 0 .6rem; font-size: 11.5px; color: var(--muted); }
+  .kw-scale-legend b { color: var(--ia-teal); font-family: 'JetBrains Mono', monospace; }
+  .kw-level-list { display: flex; flex-direction: column; }
+  .kw-level-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: .8rem; padding: .55rem 0; border-top: 1px solid var(--border); }
+  .kw-level-row:first-child { border-top: none; }
+  .kw-level-name { font-size: 13.5px; color: var(--text); }
+  .kw-level-opts { display: flex; gap: 5px; }
+  .kw-level-opt { position: relative; }
+  .kw-level-opt input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+  .kw-level-opt span {
+    display: flex; align-items: center; justify-content: center; width: 38px; min-height: 38px;
+    border: 1px solid var(--border-md); border-radius: var(--r-md);
+    font-size: 14px; font-weight: 600; color: var(--muted); background: var(--bg);
+    transition: background .12s, border-color .12s, color .12s;
+  }
+  .kw-level-opt input:hover + span { border-color: rgba(0,169,224,0.5); color: var(--text); }
+  .kw-level-opt input:checked + span { background: var(--ia-teal); border-color: var(--ia-teal); color: #04121a; }
+  .kw-level-opt input:focus-visible + span { outline: 2px solid var(--ia-teal); outline-offset: 2px; }
+
   /* ── Publications per year ── */
   .pubs { margin: .3rem 0 1rem; border: 1px solid var(--border); border-radius: var(--r-md); overflow: hidden; }
   .pubs-toggle, .pub-head {
@@ -187,7 +207,7 @@
 <section class="intro-block">
   <span class="eyebrow">Cuestionario · Personal Docente e Investigador</span>
   <h1>Evaluación de su perfil y de las recomendaciones</h1>
-  <p class="lead">Revise el perfil generado a partir de su actividad pública y valore en qué medida lo representa. Sus respuestas se guardan de forma agregada, sin datos personales.</p>
+  <p class="lead">Revise el perfil generado a partir de su actividad pública y valore en qué medida lo representa. Sus respuestas se utilizarán con fines de evaluación y mejora del sistema, y los resultados se comunicarán únicamente de forma agregada.</p>
 </section>
 
 <form method="post" action="{{ url_for('eval.eval_pdi_submit') }}" id="eval-form">
@@ -210,31 +230,55 @@
     </a>
   </div>
 
-  <!-- Section 2: current summary validation -->
+  <!-- Section 1: current summary validation (quality + errors) -->
   <div class="card">
     <div class="card-head"><span class="card-num">1</span><h2>Validación del resumen actual</h2></div>
-    <p class="card-sub">Valore las siguientes afirmaciones sobre el resumen mostrado arriba.</p>
+    <p class="card-sub">Valore el resumen mostrado arriba en dos bloques.</p>
+
+    <div class="subhead" style="margin-top:1.2rem">Calidad del perfil generado</div>
     <div class="likert-scale-legend">
       <span>1 · Totalmente en desacuerdo</span><span>5 · Totalmente de acuerdo</span>
     </div>
-    {% for qid, text, pol in q.section2_likert %}{{ likert(qid, text) }}{% endfor %}
+    {% for qid, text, pol in q.section2_quality_likert %}{{ likert(qid, text) }}{% endfor %}
+
+    <div class="subhead">Posibles errores del perfil generado</div>
+    <p class="card-sub" style="margin:-.1rem 0 .2rem">Indique en qué medida ocurre cada situación.</p>
+    <div class="likert-scale-legend">
+      <span>1 · No ocurre</span><span>5 · Ocurre claramente</span>
+    </div>
+    {% for qid, text, pol in q.section2_errors_likert %}{{ likert(qid, text) }}{% endfor %}
 
     <div class="subhead">Comentarios</div>
     {% for qid, text in q.section2_open %}{{ openq(qid, text) }}{% endfor %}
   </div>
 
-  <!-- Keywords validation -->
+  <!-- Section 2: keyword importance levels -->
   <div class="card">
-    <div class="card-head"><span class="card-num">2</span><h2>Validación de las palabras clave</h2></div>
-    <p class="card-sub">Estos son los dominios de expertise generados para su perfil. Están todos marcados: <strong>desmarque los que no reflejan su actividad investigadora</strong>.</p>
+    <div class="card-head"><span class="card-num">2</span><h2>Relevancia de las palabras clave</h2></div>
+    <p class="card-sub">Estos son los dominios de expertise generados para su perfil. Indique el grado de relación de cada uno con su actividad investigadora (nos ayuda a priorizar las recomendaciones).</p>
+
+    <div class="kw-scale-legend">
+      <span><b>0</b> No relacionada</span>
+      <span><b>1</b> Puntual o secundaria</span>
+      <span><b>2</b> Línea relevante</span>
+      <span><b>3</b> Línea principal (TFG/TFM)</span>
+    </div>
 
     {% if profile.keywords %}
-    <div class="kw-toggle-grid" id="kw-generated">
+    <div class="kw-level-list">
       {% for k in profile.keywords %}
-      <label class="kw-toggle">
-        <input type="checkbox" name="kw_keep" value="{{ k }}" checked/>
-        <span>{{ k }}</span>
-      </label>
+      {% set kw_idx = loop.index0 %}
+      <div class="kw-level-row">
+        <div class="kw-level-name">{{ k }}</div>
+        <div class="kw-level-opts">
+          {% for lvl, lbl in q.keyword_levels %}
+          <label class="kw-level-opt" title="{{ lbl }}">
+            <input type="radio" name="kw_{{ kw_idx }}" value="{{ lvl }}" {{ 'checked' if lvl == q.keyword_default_level else '' }}/>
+            <span>{{ lvl }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
       {% endfor %}
     </div>
     {% else %}
@@ -298,19 +342,10 @@
     {% endif %}
   </div>
 
-  <!-- Section 4: ideal description -->
-  <div class="card">
-    <div class="card-head"><span class="card-num">4</span><h2>Descripción ideal para ser recomendado</h2></div>
-    <p class="card-sub">Imagine que un estudiante busca tutor para un TFG o TFM. ¿Qué debería plantear para que usted fuera una recomendación adecuada?</p>
-    {{ openq(q.section4_open[0][0], q.section4_open[0][1], 4, required=True) }}
-    {{ openq(q.section4_open[1][0], q.section4_open[1][1], 2) }}
-    {{ openq(q.section4_open[2][0], q.section4_open[2][1], 2) }}
-  </div>
-
-  <!-- Section 5: recommendation evaluation -->
+  <!-- Section 4: evaluation of nearby PDIs -->
   <div class="card" id="sec5">
-    <div class="card-head"><span class="card-num">5</span><h2>Evaluación directa de recomendaciones</h2></div>
-    <p class="card-sub">Generamos una consulta plausible de estudiante a partir de perfiles cercanos al suyo y le mostramos a quién recomendaría el sistema. Valore uno o varios casos; es opcional.</p>
+    <div class="card-head"><span class="card-num">4</span><h2>Evaluación de PDI cercanos</h2></div>
+    <p class="card-sub">A partir de su perfil investigador, el sistema identifica otros PDI cercanos y genera consultas plausibles de estudiantes. Revise si las recomendaciones mostradas tienen sentido y si su posición relativa es adecuada. Es opcional; puede evaluar tantos casos como quiera.</p>
 
     <div id="s5-cases"></div>
     <div class="alert" id="s5-error" style="display:none; margin-top:1rem"></div>
@@ -320,9 +355,9 @@
     </button>
   </div>
 
-  <!-- Section 6: system utility -->
+  <!-- Section 5: system utility -->
   <div class="card">
-    <div class="card-head"><span class="card-num">6</span><h2>Utilidad del sistema</h2></div>
+    <div class="card-head"><span class="card-num">5</span><h2>Utilidad del sistema</h2></div>
     <p class="card-sub">Valore el sistema en términos generales.</p>
     <div class="likert-scale-legend">
       <span>1 · Totalmente en desacuerdo</span><span>5 · Totalmente de acuerdo</span>
@@ -336,7 +371,7 @@
   <!-- Submit -->
   <div class="card submit-card">
     <button type="submit" class="btn btn-primary btn-lg btn-block" id="submit-btn">Enviar respuestas</button>
-    <p class="submit-hint">Al enviar, sus valoraciones se guardan de forma anónima y agregada.</p>
+    <p class="submit-hint">Al enviar el cuestionario, sus respuestas se registrarán asociadas al perfil evaluado para fines de validación del sistema. Los resultados se analizarán y comunicarán únicamente de forma agregada.</p>
   </div>
 
 </form>
@@ -448,17 +483,11 @@
     (data.recommendations || []).forEach((r) => {
       const row = document.createElement("div");
       row.className = "s5-rec" + (r.is_seed ? " seed" : "");
-      const chips = (r.matched && r.matched.length)
-        ? r.matched.map((m) => `<span class="tagchip">${esc(m)}</span>`).join("")
-        : '<span class="s5-nomatch">Relevante por afinidad semántica</span>';
       const portal = r.portal_url
         ? ` <a class="s5-portal" href="${esc(r.portal_url)}" target="_blank" rel="noopener" aria-label="Portal Científico">↗</a>` : "";
       const you = r.is_seed ? ' <span class="s5-you">Usted</span>' : "";
       row.innerHTML = `<span class="s5-rank">${r.rank}</span>
-        <div>
-          <div class="s5-rec-name">${esc(r.name)}${you}${portal}</div>
-          <div class="s5-chips">${chips}</div>
-        </div>`;
+        <div><div class="s5-rec-name">${esc(r.name)}${you}${portal}</div></div>`;
       list.appendChild(row);
     });
     box.appendChild(list);

@@ -582,9 +582,6 @@
       <a href="{{ url_for('main.match') }}"
          class="nav-link {{ 'active' if active_page == 'match' else '' }}"
          data-i18n="nav.search">Buscador</a>
-      <a href="{{ url_for('main.about') }}"
-         class="nav-link {{ 'active' if active_page == 'about' else '' }}"
-         data-i18n="nav.about">Sobre el proyecto</a>
       <a href="{{ url_for('eval.eval_home') }}"
          class="nav-link {{ 'active' if active_page == 'eval' else '' }}"
          data-i18n="nav.evaluate">Evaluación</a>
@@ -636,10 +633,6 @@
           UPM Match: Sistema de Recomendación de Tutores y Colaboraciones
         </a>
       </p>
-      <p class="footer-pie-meta" data-i18n-html="footer.pie_meta">
-        Línea E1 · Integración de la IA en la actividad docente<br>
-        Coordinado por Carlos Badenes Olmedo y Andrea Jesús Cimmino Arriaga · ETSISI, UPM
-      </p>
     </div>
     <div class="footer-logos">
       <a href="https://www.etsisi.upm.es" target="_blank" rel="noopener" aria-label="ETSISI">
@@ -679,10 +672,6 @@
       es: "UPM Match: Sistema de Recomendación de Tutores y Colaboraciones",
       en: "UPM Match: Tutor and Collaboration Recommendation System"
     },
-    "footer.pie_meta": {
-      es: "Línea E1 · Integración de la IA en la actividad docente<br>Coordinado por Carlos Badenes Olmedo y Andrea Jesús Cimmino Arriaga · ETSISI, UPM",
-      en: "Line E1 · Integration of AI into teaching<br>Coordinated by Carlos Badenes Olmedo and Andrea Jesús Cimmino Arriaga · ETSISI, UPM"
-    },
     "footer.copyright": {
       es: "© 2026 · Universidad Politécnica de Madrid",
       en: "© 2026 · Universidad Politécnica de Madrid"
@@ -698,7 +687,6 @@
       en: "Describe your research idea and we connect you with the UPM researchers whose work is most aligned with yours."
     },
     "landing.cta_search":  { es: "Buscar director / tutor", en: "Find a supervisor" },
-    "landing.cta_more":    { es: "Saber más", en: "Learn more" },
     "landing.stat_pdis":   { es: "PDIs indexados", en: "Indexed researchers" },
     "landing.stat_phases": { es: "Fases del pipeline", en: "Pipeline phases" },
     "landing.stat_modes":  { es: "Modos de búsqueda", en: "Search modes" },
@@ -723,8 +711,8 @@
     "landing.how_cta":     { es: "Probar el buscador", en: "Try the search" },
     "landing.teaser_title": { es: "Un proyecto de innovación educativa", en: "An educational innovation project" },
     "landing.teaser_text": {
-      es: "UPM Match es parte del Proyecto de Innovación Educativa IE26.6102 de la UPM, coordinado por el grupo de investigación de <abbr title=\"Escuela Técnica Superior de Ingeniería de Sistemas Informáticos\">ETSISI</abbr>. Integra técnicas avanzadas de recuperación de información (BM42, búsqueda híbrida, fusión RRF) sobre los perfiles públicos del Portal Científico de la UPM.",
-      en: "UPM Match is part of the UPM Educational Innovation Project IE26.6102, coordinated by the research group at <abbr title=\"Escuela Técnica Superior de Ingeniería de Sistemas Informáticos\">ETSISI</abbr>. It integrates advanced information retrieval techniques (BM42, hybrid search, RRF fusion) over the public profiles of the UPM Research Portal."
+      es: "UPM Match forma parte del Proyecto de Innovación Educativa IE26.6102 de la Universidad Politécnica de Madrid. Integra técnicas avanzadas de recuperación de información (BM42, búsqueda híbrida, fusión RRF) sobre los perfiles públicos del Portal Científico de la UPM.",
+      en: "UPM Match is part of the Educational Innovation Project IE26.6102 of Universidad Politécnica de Madrid. It integrates advanced information retrieval techniques (BM42, hybrid search, RRF fusion) over the public profiles of the UPM Research Portal."
     },
     "landing.teaser_cta":  { es: "Conocer el proyecto ↗", en: "Discover the project ↗" },
 
@@ -858,8 +846,8 @@
     "about.tech_infra":     { es: "Infraestructura", en: "Infrastructure" },
     "about.pie_heading":  { es: "Proyecto de Innovación Educativa", en: "Educational Innovation Project" },
     "about.pie_p1": {
-      es: "UPM Match se desarrolla en el marco del Proyecto de Innovación Educativa <strong>IE26.6102</strong> de la Universidad Politécnica de Madrid, financiado en la convocatoria 2025-2026 dentro de la Línea E1 «Integración de la IA en la actividad docente».",
-      en: "UPM Match is developed within the Educational Innovation Project <strong>IE26.6102</strong> of Universidad Politécnica de Madrid, funded in the 2025-2026 call under Line E1 «Integration of AI into teaching»."
+      es: "UPM Match se desarrolla en el marco del Proyecto de Innovación Educativa <strong>IE26.6102</strong> de la Universidad Politécnica de Madrid, financiado en la convocatoria 2025-2026.",
+      en: "UPM Match is developed within the Educational Innovation Project <strong>IE26.6102</strong> of Universidad Politécnica de Madrid, funded in the 2025-2026 call."
     },
     "about.pie_p2": {
       es: "El prototipo ha sido desarrollado por <strong style=\"color:var(--text)\">Yago Boleas Francisco</strong> y <strong style=\"color:var(--text)\">Carlos Badenes-Olmedo</strong>, e integra en un sistema real técnicas de recuperación de información densa y sparse, procesamiento de lenguaje natural con LLMs y diseño de pipelines de datos.",
@@ -869,10 +857,6 @@
     "about.pie_title": {
       es: "UPM Match: Sistema de Recomendación de Tutores y Colaboraciones ↗",
       en: "UPM Match: Tutor and Collaboration Recommendation System ↗"
-    },
-    "about.pie_meta": {
-      es: "Línea E1 · Integración de la IA en la actividad docente<br>Coordinado por <strong style=\"color:var(--text)\">Carlos Badenes Olmedo</strong> y <strong style=\"color:var(--text)\">Andrea Jesús Cimmino Arriaga</strong>",
-      en: "Line E1 · Integration of AI into teaching<br>Coordinated by <strong style=\"color:var(--text)\">Carlos Badenes Olmedo</strong> and <strong style=\"color:var(--text)\">Andrea Jesús Cimmino Arriaga</strong>"
     }
   };
 

@@ -54,7 +54,7 @@ EVOLUTION_YEARS = (2023, 2024, 2025, 2026)
 # MinIO bucket that receives the survey responses. Auto-created on first upload.
 EVAL_BUCKET = os.environ.get("MINIO_EVAL_BUCKET", "upm-match-evaluations")
 
-FORM_VERSION = "pdi-v1"
+FORM_VERSION = "pdi-v2"
 # Bumped when the shape of the stored record (metadata/answers layout) changes,
 # so later analysis can branch on it independently of the questionnaire version.
 RECORD_SCHEMA = "1"
@@ -72,36 +72,66 @@ _pdi_cache: list[dict] | None = None
 # Each Likert item carries a polarity so the analysis can reverse-code the negatively worded statements.
 # Open questions are stored verbatim.
 
-SECTION2_LIKERT = [
+# Section 2, block A — profile quality (all positive, 1=disagree ... 5=agree).
+SECTION2_QUALITY_LIKERT = [
     (
-        "s2_repr_actual",
+        "s2q_repr_actual",
         "El resumen representa correctamente mi actividad investigadora actual.",
         "positive",
     ),
     (
-        "s2_lineas_principales",
+        "s2q_lineas_principales",
         "El resumen identifica adecuadamente mis principales líneas de investigación.",
         "positive",
     ),
     (
-        "s2_omite_lineas",
-        "El resumen omite líneas relevantes de mi actividad investigadora.",
-        "negative",
+        "s2q_cubre",
+        "El resumen cubre suficientemente las líneas relevantes de mi actividad investigadora.",
+        "positive",
     ),
     (
-        "s2_sobrepeso_antiguas",
-        "El resumen da demasiada importancia a líneas secundarias o antiguas.",
-        "negative",
+        "s2q_pondera",
+        "El resumen pondera adecuadamente mis líneas principales frente a líneas secundarias o antiguas.",
+        "positive",
     ),
     (
-        "s2_util_estudiante",
+        "s2q_util_estudiante",
         "El resumen sería útil para que un estudiante valore si puedo tutorizar su TFG/TFM.",
         "positive",
     ),
     (
-        "s2_claridad",
+        "s2q_claridad",
         "El resumen está redactado de forma clara y comprensible.",
         "positive",
+    ),
+]
+# Section 2, block B — profile errors (occurrence scale, 1=does not happen ... 5=clearly happens).
+# Higher = worse, so polarity is negative for reverse-coding at analysis time.
+SECTION2_ERRORS_LIKERT = [
+    (
+        "s2e_omite",
+        "El resumen omite líneas de investigación relevantes de mi actividad actual.",
+        "negative",
+    ),
+    (
+        "s2e_sobrepeso",
+        "El resumen da demasiada importancia a líneas secundarias, antiguas o puntuales.",
+        "negative",
+    ),
+    (
+        "s2e_atribuye",
+        "El resumen atribuye a mi perfil temas que no reflejan realmente mi actividad investigadora.",
+        "negative",
+    ),
+    (
+        "s2e_mezcla",
+        "El resumen mezcla líneas de investigación distintas sin explicar bien su relación.",
+        "negative",
+    ),
+    (
+        "s2e_puntuales",
+        "El resumen prioriza publicaciones puntuales frente a líneas sostenidas en el tiempo.",
+        "negative",
     ),
 ]
 SECTION2_OPEN = [
@@ -120,6 +150,15 @@ SECTION2_OPEN = [
     ("s2o_reformular", "Si tuviera que corregir este resumen, ¿cómo lo reformularía?"),
 ]
 
+# Keyword validation: importance level per generated domain (0-3), preselected at 2.
+KEYWORD_LEVELS = [
+    (0, "No relacionada"),
+    (1, "Relación puntual o secundaria"),
+    (2, "Línea relevante"),
+    (3, "Línea principal para recomendación de TFG/TFM"),
+]
+KEYWORD_DEFAULT_LEVEL = 2
+
 SECTION3_LIKERT = [
     (
         "refleja",
@@ -127,32 +166,22 @@ SECTION3_LIKERT = [
         "positive",
     ),
     (
-        "evolucion",
-        "El resumen capta la evolución de mis líneas respecto a años anteriores.",
+        "lineas_principales",
+        "El resumen identifica correctamente las líneas principales de ese periodo.",
         "positive",
     ),
     (
-        "no_centrales",
-        "El resumen incluye líneas que no fueron realmente centrales en ese año.",
-        "negative",
+        "distingue",
+        "El resumen distingue adecuadamente entre líneas centrales y publicaciones puntuales.",
+        "positive",
+    ),
+    (
+        "evolucion",
+        "El resumen ayuda a entender cómo evolucionó mi actividad investigadora respecto a años anteriores.",
+        "positive",
     ),
 ]
 SECTION3_OPEN = ("cambios", "¿Qué cambiaría en la descripción de este año concreto?")
-
-SECTION4_OPEN = [
-    (
-        "s4_descripcion_libre",
-        "Escriba una descripción de proyecto, interés o tema de TFG/TFM para la que considere que debería aparecer entre los primeros candidatos recomendados.",
-    ),
-    (
-        "s4_palabras_clave",
-        "Indique entre 5 y 10 palabras clave que deberían activar su recomendación como tutor.",
-    ),
-    (
-        "s4_temas_no_adecuados",
-        "Indique temas que podrían aparecer asociados a su perfil, pero para los que no considera que debería ser recomendado como tutor principal.",
-    ),
-]
 
 SECTION6_LIKERT = [
     (
@@ -192,27 +221,38 @@ SECTION6_OPEN = [
 
 # Bundle passed to the template so render and storage never drift.
 QUESTIONS = {
-    "section2_likert": SECTION2_LIKERT,
+    "section2_quality_likert": SECTION2_QUALITY_LIKERT,
+    "section2_errors_likert": SECTION2_ERRORS_LIKERT,
     "section2_open": SECTION2_OPEN,
+    "keyword_levels": KEYWORD_LEVELS,
+    "keyword_default_level": KEYWORD_DEFAULT_LEVEL,
     "section3_likert": SECTION3_LIKERT,
     "section3_open": SECTION3_OPEN,
-    "section4_open": SECTION4_OPEN,
     "section6_likert": SECTION6_LIKERT,
     "section6_open": SECTION6_OPEN,
 }
 
-# Section 5 — direct recommendation evaluation. Each generated case is rated with
-# these Likert items (optional; the PDI may add as many cases as they want).
+# Section 5 — "Evaluación de PDI cercanos". Each generated case is rated with these
+# Likert items (all positive; optional; the PDI may add as many cases as they want).
 SECTION5_LIKERT = [
-    ("tutor_adecuado", "Yo sería un tutor adecuado para esta consulta.", "positive"),
     (
-        "primeros",
-        "Debería aparecer entre los primeros resultados para esta consulta.",
+        "plausible",
+        "La consulta generada representa un caso plausible de búsqueda de tutor/a de TFG/TFM.",
         "positive",
     ),
     (
-        "justificacion",
-        "La recomendación de estos perfiles está justificada para esta consulta.",
+        "razonable",
+        "El conjunto de PDI recomendados es razonable para esta consulta.",
+        "positive",
+    ),
+    (
+        "posicion",
+        "Mi posición relativa en el ranking es adecuada.",
+        "positive",
+    ),
+    (
+        "no_omite",
+        "El ranking no parece omitir PDI claramente relevantes para esta consulta.",
         "positive",
     ),
 ]
@@ -226,7 +266,7 @@ SECTION5_OPINION = (
 # Feedback about the app itself, not a student profile. Single page, incremental
 # intake shown/hidden client-side. No identifying data stored.
 
-STUDENT_FORM_VERSION = "student-v1"
+STUDENT_FORM_VERSION = "student-v2"
 
 SCHOOLS = ["ETSIST", "ETSISI", "ETSIT", "ETSII"]
 LEVELS = [
@@ -253,7 +293,11 @@ STUDENT_S1_LIKERT = [
         "positive",
     ),
     ("st1_entendi", "Entendí por qué se me recomendaba a cada profesor.", "positive"),
-    ("st1_costo_decidir", "Me costó decidir a partir de los resultados.", "negative"),
+    (
+        "st1_decidir",
+        "Me resultó sencillo decidir a partir de los resultados.",
+        "positive",
+    ),
     (
         "st1_encontre",
         "Encontré al menos un tutor que encajaba con lo que buscaba.",
@@ -573,17 +617,16 @@ def build_recommendation_case(seed_id: int) -> dict | None:
     for rank, m in enumerate(members, 1):
         is_seed = m["id"] == seed_id
         numeric = _numeric_id(m["id"]) or m["id"]
+        # Display omits domains/keywords on purpose, to avoid biasing the answer.
         display.append(
             {
                 "rank": rank,
                 "name": m["name"],
                 "portal_url": PORTAL_URL_TEMPLATE.format(id=numeric),
-                "matched": m["matched"],
-                "domains": m["domains"][:8],
                 "is_seed": is_seed,
             }
         )
-        # Stored form carries NO names/ids (keeps the respondent anonymous).
+        # Stored form keeps the matched domains (not shown) for later analysis.
         store_recs.append({"rank": rank, "is_seed": is_seed, "matched": m["matched"]})
 
     return {
@@ -602,6 +645,15 @@ def _int_answer(raw: str | None) -> int | None:
     if raw and raw.isdigit():
         value = int(raw)
         if SCALE_MIN <= value <= SCALE_MAX:
+            return value
+    return None
+
+
+def _level_answer(raw: str | None) -> int | None:
+    """Parse a keyword importance level (0-3)."""
+    if raw is not None and str(raw).isdigit():
+        value = int(raw)
+        if 0 <= value <= 3:
             return value
     return None
 
@@ -724,11 +776,13 @@ def _response_stats(answers: dict) -> dict:
             if (it.get("value") or "").strip():
                 open_answered += 1
 
-    for sec in ("section2", "section6"):
-        block = answers.get(sec) or {}
-        tally_likert(block.get("likert"))
-        tally_open(block.get("open"))
-    tally_open((answers.get("section4") or {}).get("open"))
+    section2 = answers.get("section2") or {}
+    tally_likert(section2.get("quality"))
+    tally_likert(section2.get("errors"))
+    tally_open(section2.get("open"))
+    section6 = answers.get("section6") or {}
+    tally_likert(section6.get("likert"))
+    tally_open(section6.get("open"))
     for year in answers.get("section3") or []:
         tally_likert(year.get("likert"))
         if year.get("open"):
@@ -743,12 +797,18 @@ def _response_stats(answers: dict) -> dict:
 
 
 def _collect_keywords(profile: dict, form) -> dict:
-    """PDI validation of the generated keywords: which generated domains were kept
-    (checkbox left ticked) vs removed, plus any domains the PDI added themselves."""
-    kept = set(form.getlist("kw_keep"))
-    generated = [
-        {"keyword": k, "kept": k in kept} for k in (profile.get("keywords") or [])
-    ]
+    """PDI validation of the generated keywords: importance level (0-3) per generated
+    domain, plus any domains the PDI added themselves.
+
+    Levels: 0 no relacionada, 1 puntual/secundaria, 2 línea relevante,
+    3 línea principal para recomendación. Missing values fall back to the default.
+    """
+    generated = []
+    for i, keyword in enumerate(profile.get("keywords") or []):
+        level = _level_answer(form.get(f"kw_{i}"))
+        generated.append(
+            {"keyword": keyword, "level": KEYWORD_DEFAULT_LEVEL if level is None else level}
+        )
     added: list[str] = []
     seen: set[str] = set()
     for raw in form.getlist("kw_added"):
@@ -832,12 +892,12 @@ def _build_record(
 
     answers = {
         "section2": {
-            "likert": _collect_likert(SECTION2_LIKERT, form),
+            "quality": _collect_likert(SECTION2_QUALITY_LIKERT, form),
+            "errors": _collect_likert(SECTION2_ERRORS_LIKERT, form),
             "open": _collect_open(SECTION2_OPEN, form),
         },
         "keywords": _collect_keywords(profile, form),
         "section3": section3,
-        "section4": {"open": _collect_open(SECTION4_OPEN, form)},
         "section5": _collect_section5(form),
         "section6": {
             "likert": _collect_likert(SECTION6_LIKERT, form),
@@ -850,12 +910,14 @@ def _build_record(
 
     return {
         "metadata": metadata,
+        # Responses ARE linked to the evaluated profile (no longer anonymous):
+        # the portal id is stored so results can be validated against the profile.
+        "researcher_id": profile.get("researcher_id"),
         "consent": {
             "academic_aggregated_use": True,
             "privacy_terms": True,
         },
-        # Stimulus the respondent evaluated. Derived from public portal data;
-        # kept WITHOUT any identifier so responses remain interpretable.
+        # Generated profile the respondent evaluated (the stimulus).
         "stimulus": {
             "profile_summary": profile.get("summary"),
             "keywords": profile.get("keywords"),

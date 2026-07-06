@@ -89,8 +89,7 @@
   <div class="card-head"><span class="card-num">❇️</span><h2>Antes de empezar</h2></div>
   <div class="info-list">
     <div class="info-item"><span class="dot">•</span><p><strong>No se le evalúa a usted.</strong> El objetivo es validar si el perfil generado representa adecuadamente su actividad investigadora y si permitiría recomendarle como tutor de TFG o TFM.</p></div>
-    <div class="info-item"><span class="dot">•</span><p><strong>Uso académico y agregado.</strong> Sus respuestas se analizarán de forma agregada, con fines exclusivamente académicos y de mejora del sistema.</p></div>
-    <div class="info-item"><span class="dot">•</span><p><strong>Sin datos personales.</strong> No se almacena su nombre, correo ni identificador junto a las respuestas. Solo se guardan las valoraciones y el contenido generado que usted revisa. El identificador seleccionado se emplea únicamente durante la sesión para mostrarle su perfil.</p></div>
+    <div class="info-item"><span class="dot">•</span><p><strong>Uso de sus respuestas.</strong> Sus respuestas se utilizarán únicamente con fines de evaluación y mejora del sistema. En los análisis y resultados que se publiquen, la información se tratará de forma agregada y no se identificarán respuestas individuales.</p></div>
     <div class="info-item"><span class="dot">•</span><p><strong>Ámbito provisional.</strong> De forma inicial el cuestionario se dirige a las escuelas de ingeniería de telecomunicación e informática (ETSIST, ETSISI, ETSIT y ETSII). Más adelante se extenderá al conjunto de la universidad.</p></div>
   </div>
 </div>
@@ -120,7 +119,7 @@
 <form method="post" action="{{ url_for('eval.eval_pdi_start') }}" id="consent-form">
   <div class="card">
     <div class="card-head"><span class="card-num">1️⃣</span><h2>Identifíquese</h2></div>
-    <p class="card-sub">Seleccione su nombre para poder mostrarle su perfil generado. No se guardará junto a sus respuestas.</p>
+    <p class="card-sub">Seleccione su nombre para mostrarle su perfil generado; sus respuestas quedarán asociadas a este perfil para la validación del sistema.</p>
 
     {% if not_found %}
     <div class="alert" style="margin-top:1rem">
@@ -176,7 +175,7 @@
       </label>
       <label class="check">
         <input type="checkbox" name="privacy_terms" id="c2"/>
-        <span>He leído la información anterior y entiendo que <strong>no se almacenan datos personales identificativos</strong> junto a mis respuestas.</span>
+        <span>He leído la información anterior y acepto que mis respuestas se <strong>registren asociadas al perfil evaluado</strong> para la validación del sistema.</span>
       </label>
     </div>
 
