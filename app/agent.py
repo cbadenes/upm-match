@@ -148,13 +148,14 @@ _CASE_DESCRIPTION = (
     "You are given several researcher profiles that are ALL suitable supervisors for the same hypothetical thesis project."
 )
 _CASE_INSTRUCTIONS = [
-    "Write ONE plausible research idea that a university student (TFG/TFM) might submit when looking for a thesis supervisor, such that the given researchers would all be good matches.",
+    "Write ONE plausible research idea that a university student (TFG/TFM) might submit when looking for a thesis supervisor, matching the shared expertise of the given researchers.",
     "RULES:",
-    "  1. Write the `query` in SPANISH, 2 to 4 sentences, in natural language as a student would phrase it.",
-    "  2. Make it realistic and concrete, but broad enough to fit the shared expertise of the group.",
-    "  3. Do NOT mention researcher names, institutions, or that this text was generated.",
-    "  4. Also return `keywords`: 5 to 10 lowercase ENGLISH keywords (1-3 words each) capturing the core topics.",
-    "  5. Base the idea ONLY on the expertise shown; do not invent unrelated fields.",
+    "  1. Write the `query` in SPANISH, 2 to 3 sentences, in natural language as a student would phrase it.",
+    "  2. Focus the idea on ONE or TWO concrete, closely related topics (not a broad mix of many lines). Pick the strongest shared theme of the group and stay narrow.",
+    "  3. Make it realistic and specific.",
+    "  4. Do NOT mention researcher names, institutions, or that this text was generated.",
+    "  5. Also return `keywords`: 3 to 6 lowercase ENGLISH keywords (1-3 words each) covering ONLY those 1-2 topics.",
+    "  6. Base the idea ONLY on the expertise shown; do not invent unrelated fields.",
 ]
 
 
@@ -203,5 +204,51 @@ def generate_student_case(profiles: list[dict]) -> StudentCase:
         return response.content
     if isinstance(response.content, dict):
         return StudentCase.model_validate(response.content)
+
+    raise RuntimeError(f"Agent returned unexpected type: {type(response.content)}")
+
+
+# Summary translation agent (English researcher summary -> Spanish, for display)
+_TRANSLATE_DESCRIPTION = (
+    "You are a professional English-to-Spanish translator for academic texts."
+)
+_TRANSLATE_INSTRUCTIONS = [
+    "Translate the given English researcher-profile summary into natural, fluent Spanish (Spain).",
+    "RULES:",
+    "  1. Return ONLY the Spanish translation in `text`, nothing else.",
+    "  2. Be faithful: do not add, remove or reinterpret any content.",
+    "  3. Keep it fluent and readable; use standard academic Spanish.",
+    "  4. Keep widely-used technical terms/acronyms as they are when there is no common Spanish term.",
+]
+
+
+class TranslatedText(BaseModel):
+    """Structured output for the translation agent."""
+
+    text: str = Field(description="The Spanish translation.")
+
+
+def translate_to_spanish(text: str) -> str:
+    """Translate an English text to Spanish with the local model.
+
+    :param text: English text to translate.
+    :return: The Spanish translation.
+    :raises RuntimeError: If the agent fails to produce a valid structured response.
+    """
+    agent = Agent(
+        model=Ollama(id=_OLLAMA_MODEL, host=_OLLAMA_HOST, options=_OLLAMA_OPTIONS),
+        description=_TRANSLATE_DESCRIPTION,
+        instructions=_TRANSLATE_INSTRUCTIONS,
+        output_schema=TranslatedText,
+        markdown=False,
+    )
+    response = agent.run(text)
+
+    if isinstance(response.content, str):
+        raise RuntimeError(f"Ollama error: {response.content}")
+    if isinstance(response.content, TranslatedText):
+        return response.content.text
+    if isinstance(response.content, dict):
+        return TranslatedText.model_validate(response.content).text
 
     raise RuntimeError(f"Agent returned unexpected type: {type(response.content)}")

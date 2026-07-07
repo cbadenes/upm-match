@@ -54,7 +54,7 @@ EVOLUTION_YEARS = (2023, 2024, 2025, 2026)
 # MinIO bucket that receives the survey responses. Auto-created on first upload.
 EVAL_BUCKET = os.environ.get("MINIO_EVAL_BUCKET", "upm-match-evaluations")
 
-FORM_VERSION = "pdi-v2"
+FORM_VERSION = "pdi-v3"
 # Bumped when the shape of the stored record (metadata/answers layout) changes,
 # so later analysis can branch on it independently of the questionnaire version.
 RECORD_SCHEMA = "1"
@@ -72,85 +72,44 @@ _pdi_cache: list[dict] | None = None
 # Each Likert item carries a polarity so the analysis can reverse-code the negatively worded statements.
 # Open questions are stored verbatim.
 
-# Section 2, block A — profile quality (all positive, 1=disagree ... 5=agree).
-SECTION2_QUALITY_LIKERT = [
+# Block 1 — profile validation (all positive, 1=disagree ... 5=agree).
+SECTION2_LIKERT = [
     (
-        "s2q_repr_actual",
-        "El resumen representa correctamente mi actividad investigadora actual.",
+        "s2_repr_actual",
+        "El perfil generado representa adecuadamente mi actividad investigadora actual.",
         "positive",
     ),
     (
-        "s2q_lineas_principales",
-        "El resumen identifica adecuadamente mis principales líneas de investigación.",
+        "s2_cubre",
+        "El perfil cubre correctamente mis principales líneas de investigación.",
         "positive",
     ),
     (
-        "s2q_cubre",
-        "El resumen cubre suficientemente las líneas relevantes de mi actividad investigadora.",
+        "s2_temas",
+        "Los temas atribuidos en el perfil reflejan realmente mi actividad investigadora.",
         "positive",
     ),
     (
-        "s2q_pondera",
-        "El resumen pondera adecuadamente mis líneas principales frente a líneas secundarias o antiguas.",
+        "s2_distingue",
+        "El perfil distingue adecuadamente entre líneas principales y líneas secundarias o puntuales.",
         "positive",
     ),
     (
-        "s2q_util_estudiante",
-        "El resumen sería útil para que un estudiante valore si puedo tutorizar su TFG/TFM.",
+        "s2_util_estudiante",
+        "El perfil sería útil para que un estudiante valore si puedo tutorizar un TFG/TFM sobre sus intereses.",
         "positive",
     ),
     (
-        "s2q_claridad",
-        "El resumen está redactado de forma clara y comprensible.",
+        "s2_claridad",
+        "El perfil está redactado de forma clara y comprensible.",
         "positive",
-    ),
-]
-# Section 2, block B — profile errors (occurrence scale, 1=does not happen ... 5=clearly happens).
-# Higher = worse, so polarity is negative for reverse-coding at analysis time.
-SECTION2_ERRORS_LIKERT = [
-    (
-        "s2e_omite",
-        "El resumen omite líneas de investigación relevantes de mi actividad actual.",
-        "negative",
-    ),
-    (
-        "s2e_sobrepeso",
-        "El resumen da demasiada importancia a líneas secundarias, antiguas o puntuales.",
-        "negative",
-    ),
-    (
-        "s2e_atribuye",
-        "El resumen atribuye a mi perfil temas que no reflejan realmente mi actividad investigadora.",
-        "negative",
-    ),
-    (
-        "s2e_mezcla",
-        "El resumen mezcla líneas de investigación distintas sin explicar bien su relación.",
-        "negative",
-    ),
-    (
-        "s2e_puntuales",
-        "El resumen prioriza publicaciones puntuales frente a líneas sostenidas en el tiempo.",
-        "negative",
     ),
 ]
 SECTION2_OPEN = [
-    (
-        "s2o_correctos",
-        "¿Qué aspectos del resumen considera correctos o bien representados?",
-    ),
-    (
-        "s2o_faltan",
-        "¿Qué líneas de investigación relevantes faltan o están poco representadas?",
-    ),
-    (
-        "s2o_sobre",
-        "¿Qué líneas aparecen sobrerrepresentadas o no reflejan bien su actividad actual?",
-    ),
-    ("s2o_reformular", "Si tuviera que corregir este resumen, ¿cómo lo reformularía?"),
+    ("s2o_correcciones", "¿Qué corregiría o añadiría en el perfil generado?"),
 ]
 
-# Keyword validation: importance level per generated domain (0-3), preselected at 2.
+# Block 2 — knowledge-domain relevance: importance level per domain (0-3), preselected at 2.
 KEYWORD_LEVELS = [
     (0, "No relacionada"),
     (1, "Relación puntual o secundaria"),
@@ -159,55 +118,22 @@ KEYWORD_LEVELS = [
 ]
 KEYWORD_DEFAULT_LEVEL = 2
 
-SECTION3_LIKERT = [
-    (
-        "refleja",
-        "El resumen refleja adecuadamente mi actividad investigadora en ese año.",
-        "positive",
-    ),
-    (
-        "lineas_principales",
-        "El resumen identifica correctamente las líneas principales de ese periodo.",
-        "positive",
-    ),
-    (
-        "distingue",
-        "El resumen distingue adecuadamente entre líneas centrales y publicaciones puntuales.",
-        "positive",
-    ),
-    (
-        "evolucion",
-        "El resumen ayuda a entender cómo evolucionó mi actividad investigadora respecto a años anteriores.",
-        "positive",
-    ),
-]
-SECTION3_OPEN = ("cambios", "¿Qué cambiaría en la descripción de este año concreto?")
-
+# Block 4 — system utility (kept short).
 SECTION6_LIKERT = [
     (
         "s6_ayuda_identificar",
-        "El sistema podría ayudar a estudiantes a identificar posibles tutores.",
+        "El sistema podría ayudar a estudiantes a identificar posibles tutores de TFG/TFM.",
         "positive",
     ),
     (
         "s6_descubrir_menos_visibles",
-        "El sistema podría ayudar a descubrir PDIs menos visibles pero adecuados.",
+        "El sistema podría ayudar a descubrir PDI adecuados pero menos visibles para los estudiantes.",
         "positive",
     ),
     (
         "s6_solo_apoyo",
-        "El sistema debería usarse solo como apoyo y no como decisión automática.",
+        "El sistema debería usarse solo como apoyo a la decisión, no como mecanismo automático de asignación.",
         "neutral",
-    ),
-    (
-        "s6_explicaciones_necesarias",
-        "Las explicaciones del sistema son necesarias para confiar en la recomendación.",
-        "neutral",
-    ),
-    (
-        "s6_integracion_portal",
-        "Me parecería útil que el sistema estuviera integrado en un portal institucional.",
-        "positive",
     ),
 ]
 SECTION6_OPEN = [
@@ -221,19 +147,17 @@ SECTION6_OPEN = [
 
 # Bundle passed to the template so render and storage never drift.
 QUESTIONS = {
-    "section2_quality_likert": SECTION2_QUALITY_LIKERT,
-    "section2_errors_likert": SECTION2_ERRORS_LIKERT,
+    "section2_likert": SECTION2_LIKERT,
     "section2_open": SECTION2_OPEN,
     "keyword_levels": KEYWORD_LEVELS,
     "keyword_default_level": KEYWORD_DEFAULT_LEVEL,
-    "section3_likert": SECTION3_LIKERT,
-    "section3_open": SECTION3_OPEN,
     "section6_likert": SECTION6_LIKERT,
     "section6_open": SECTION6_OPEN,
 }
 
-# Section 5 — "Evaluación de PDI cercanos". Each generated case is rated with these
-# Likert items (all positive; optional; the PDI may add as many cases as they want).
+# Block 3 — "Evaluación de un caso de recomendación". One case auto-generated on load.
+# Number of recommended PDIs shown (top-N).
+CASE_TOP_N = 5
 SECTION5_LIKERT = [
     (
         "plausible",
@@ -241,21 +165,27 @@ SECTION5_LIKERT = [
         "positive",
     ),
     (
-        "razonable",
+        "conjunto",
         "El conjunto de PDI recomendados es razonable para esta consulta.",
         "positive",
     ),
     (
-        "posicion",
-        "Mi posición relativa en el ranking es adecuada.",
+        "orden",
+        "El orden relativo de los PDI recomendados es razonable.",
         "positive",
     ),
     (
         "no_omite",
-        "El ranking no parece omitir PDI claramente relevantes para esta consulta.",
+        "No echo en falta ningún PDI claramente relevante entre las primeras recomendaciones.",
         "positive",
     ),
 ]
+# Fifth item: text depends on whether the evaluated PDI appears in the shown ranking.
+SECTION5_POSITION = {
+    "id": "posicion",
+    "in_top": "Mi posición en el ranking es razonable para esta consulta.",
+    "not_in_top": "Considero que yo debería aparecer entre las primeras recomendaciones para esta consulta.",
+}
 SECTION5_OPINION = (
     "opinion",
     "¿Algún comentario sobre esta consulta o sus recomendaciones?",
@@ -266,7 +196,7 @@ SECTION5_OPINION = (
 # Feedback about the app itself, not a student profile. Single page, incremental
 # intake shown/hidden client-side. No identifying data stored.
 
-STUDENT_FORM_VERSION = "student-v2"
+STUDENT_FORM_VERSION = "student-v3"
 
 SCHOOLS = ["ETSIST", "ETSISI", "ETSIT", "ETSII"]
 LEVELS = [
@@ -284,28 +214,23 @@ STUDENT_S1_LIKERT = [
     ("st1_facil", "La aplicación fue fácil de usar.", "positive"),
     (
         "st1_relevantes",
-        "Las recomendaciones fueron relevantes para mi interés.",
+        "Las recomendaciones fueron relevantes para mi tema de interés.",
         "positive",
     ),
     (
         "st1_clara",
-        "La información mostrada de cada profesor (resumen, temas, puntuación) fue clara.",
+        "La información mostrada de cada profesor/a fue clara.",
         "positive",
     ),
-    ("st1_entendi", "Entendí por qué se me recomendaba a cada profesor.", "positive"),
-    (
-        "st1_decidir",
-        "Me resultó sencillo decidir a partir de los resultados.",
-        "positive",
-    ),
+    ("st1_entendi", "Entendí por qué se me recomendaba a cada profesor/a.", "positive"),
     (
         "st1_encontre",
-        "Encontré al menos un tutor que encajaba con lo que buscaba.",
+        "Encontré al menos un posible tutor/a que encajaba con lo que buscaba.",
         "positive",
     ),
 ]
 STUDENT_S1_OPEN = [
-    ("st1o_experiencia", "¿Qué te gustó y qué te frustró al usarla?"),
+    ("st1o_experiencia", "¿Qué mejorarías de la experiencia de uso?"),
 ]
 
 STUDENT_S2_MULTI = (
@@ -317,6 +242,8 @@ STUDENT_S2_MULTI = (
         ("afinidad", "Puntuación de afinidad"),
         ("publicaciones", "Publicaciones recientes"),
         ("proyectos", "Proyectos"),
+        ("tfg_dirigidos", "Trabajos TFG/TFM dirigidos anteriormente"),
+        ("contacto", "Forma de contacto o disponibilidad para tutorizar"),
         ("portal", "Enlace al Portal Científico"),
     ],
 )
@@ -328,8 +255,8 @@ STUDENT_S2_LIKERT = [
         "positive",
     ),
     (
-        "st2_poca_trayectoria",
-        "Me resultaría útil que me recomendara profesores con poca trayectoria investigadora (p. ej. doctorandos) si encajan con mi tema.",
+        "st2_jovenes",
+        "Me resultaría útil que el sistema incluyera investigadores jóvenes o perfiles emergentes si encajan bien con mi tema.",
         "positive",
     ),
     (
@@ -339,7 +266,7 @@ STUDENT_S2_LIKERT = [
     ),
     (
         "st2_explicacion",
-        "Necesitaría ver la explicación de por qué se me recomienda a alguien para fiarme.",
+        "Necesitaría ver por qué se recomienda cada profesor/a para confiar en el sistema.",
         "neutral",
     ),
 ]
@@ -348,38 +275,31 @@ STUDENT_S2_SINGLE = (
     "¿Qué preferirías que priorice el sistema?",
     [
         ("afinidad", "Afinidad temática pura"),
-        ("cercania", "Cercanía (misma escuela o titulación)"),
+        ("cercania", "Cercanía académica: misma escuela, titulación o profesores conocidos"),
         ("equilibrio", "Un equilibrio de ambas"),
         ("no_claro", "No lo tengo claro"),
     ],
 )
 
 STUDENT_S3_LIKERT = [
-    ("st3_tiempo", "Un sistema así me ahorraría tiempo al buscar tutor.", "positive"),
-    ("st3_descubrir", "Me ayudaría a descubrir tutores que no conocía.", "positive"),
-    (
-        "st3_confianza",
-        "Me daría más confianza para contactar con un profesor.",
-        "positive",
-    ),
+    ("st3_tiempo", "Un sistema así me ahorraría tiempo al buscar tutor/a.", "positive"),
+    ("st3_descubrir", "Me ayudaría a descubrir tutores/as que no conocía.", "positive"),
     (
         "st3_usaria",
         "Lo usaría si estuviera disponible para mi TFG/TFM/Tesis.",
         "positive",
     ),
     (
-        "st3_portal",
-        "Me parecería útil que estuviera integrado en un portal institucional de la UPM y se le diera difusión.",
+        "st3_confianza",
+        "Me daría más confianza para contactar con un profesor/a.",
         "positive",
     ),
 ]
 STUDENT_S4_OPEN = [
     (
-        "st4_info_adicional",
-        "¿Qué información adicional te gustaría que mostrara el sistema al hacer una recomendación?",
+        "st4_mejoras",
+        "¿Qué mejorarías o qué información adicional te gustaría ver en UPM Match?",
     ),
-    ("st4_falta", "¿Qué has echado en falta o qué añadirías?"),
-    ("st4_comentarios", "Cualquier otro comentario o sugerencia."),
 ]
 
 STUDENT_QUESTIONS = {
@@ -439,20 +359,51 @@ def list_pdis() -> list[dict]:
     return pdis
 
 
-def load_profile(researcher_id: int) -> dict | None:
+# In-memory cache of Spanish translations, keyed by the (English) summary text.
+# Per-process / per-worker; cleared on restart (acceptable for the survey window).
+_summary_es_cache: dict[str, str] = {}
+
+
+def _translate_summary(summary: str) -> str | None:
+    """Translate the English summary to Spanish with the local LLM (cached).
+
+    Returns None if translation fails, so the UI can fall back to the original.
+    """
+    summary = (summary or "").strip()
+    if not summary:
+        return None
+    if summary in _summary_es_cache:
+        return _summary_es_cache[summary]
+    try:
+        from app.agent import translate_to_spanish  # lazy: pulls in agno/ollama
+
+        translated = translate_to_spanish(summary)
+    except Exception:  # noqa: BLE001 — degrade gracefully to the English original
+        logger.warning("Summary translation to Spanish failed; using original only")
+        translated = None
+    if translated:
+        _summary_es_cache[summary] = translated
+    return translated
+
+
+def load_profile(researcher_id: int, translate: bool = False) -> dict | None:
     """Load the consolidated generated profile shown to the respondent.
 
-    :return: dict with name, portal_url, summary, keywords, topics, year; or None
-        when the researcher is not present in the current index.
+    :param translate: when True, also add `summary_es` (Spanish translation of the
+        summary). Left False for cheap existence checks.
+    :return: dict with name, portal_url, summary, summary_es, keywords, topics, year;
+        or None when the researcher is not present in the current index.
     """
     payload = _db.get_payload(_summaries_collection(), researcher_id)
     if not payload:
         return None
+    summary = (payload.get("summary") or "").strip()
     return {
         "researcher_id": researcher_id,
         "name": (payload.get("name") or "").strip() or f"PDI {researcher_id}",
         "portal_url": PORTAL_URL_TEMPLATE.format(id=researcher_id),
-        "summary": (payload.get("summary") or "").strip(),
+        "summary": summary,
+        "summary_es": _translate_summary(summary) if translate else None,
         "keywords": payload.get("domains") or [],
         "topics": payload.get("topics") or [],
         "year": payload.get("year"),
@@ -612,30 +563,49 @@ def build_recommendation_case(seed_id: int) -> dict | None:
     members.sort(key=lambda m: (len(m["matched"]), m["central"]), reverse=True)
 
     case_id = uuid.uuid4().hex[:12]
+    # Where the evaluated PDI lands, and whether it is within the shown top-N.
+    seed_rank = next((r for r, m in enumerate(members, 1) if m["id"] == seed_id), None)
+    seed_in_top = seed_rank is not None and seed_rank <= CASE_TOP_N
+
     display: list[dict] = []
     store_recs: list[dict] = []
     for rank, m in enumerate(members, 1):
         is_seed = m["id"] == seed_id
-        numeric = _numeric_id(m["id"]) or m["id"]
-        # Display omits domains/keywords on purpose, to avoid biasing the answer.
-        display.append(
-            {
-                "rank": rank,
-                "name": m["name"],
-                "portal_url": PORTAL_URL_TEMPLATE.format(id=numeric),
-                "is_seed": is_seed,
-            }
-        )
-        # Stored form keeps the matched domains (not shown) for later analysis.
+        # Display: only the top-N, with names but NO domains/keywords (avoid bias).
+        if rank <= CASE_TOP_N:
+            numeric = _numeric_id(m["id"]) or m["id"]
+            display.append(
+                {
+                    "rank": rank,
+                    "name": m["name"],
+                    "portal_url": PORTAL_URL_TEMPLATE.format(id=numeric),
+                    "is_seed": is_seed,
+                }
+            )
+        # Store: full ranking (anonymous); matched domains kept for later analysis.
         store_recs.append({"rank": rank, "is_seed": is_seed, "matched": m["matched"]})
+
+    variant = "in_top" if seed_in_top else "not_in_top"
+    position_text = SECTION5_POSITION[variant]
 
     return {
         "case_id": case_id,
         "query": case.query,
         "recommendations": display,
+        "seed_rank": seed_rank,
+        "seed_in_top": seed_in_top,
+        "position_question": {
+            "id": SECTION5_POSITION["id"],
+            "text": position_text,
+            "variant": variant,
+        },
         "store": {
             "query": case.query,
             "keywords": keywords,
+            "seed_rank": seed_rank,
+            "seed_in_top": seed_in_top,
+            "position_variant": variant,
+            "position_text": position_text,
             "recommendations": store_recs,
         },
     }
@@ -777,16 +747,11 @@ def _response_stats(answers: dict) -> dict:
                 open_answered += 1
 
     section2 = answers.get("section2") or {}
-    tally_likert(section2.get("quality"))
-    tally_likert(section2.get("errors"))
+    tally_likert(section2.get("likert"))
     tally_open(section2.get("open"))
     section6 = answers.get("section6") or {}
     tally_likert(section6.get("likert"))
     tally_open(section6.get("open"))
-    for year in answers.get("section3") or []:
-        tally_likert(year.get("likert"))
-        if year.get("open"):
-            tally_open([year["open"]])
 
     return {
         "likert_total": likert_total,
@@ -845,11 +810,25 @@ def _collect_section5(form) -> list[dict]:
             }
             for (qkey, text, polarity) in SECTION5_LIKERT
         ]
+        # Fifth item: text/variant depend on whether the PDI was shown in the top-N.
+        pos_id = SECTION5_POSITION["id"]
+        likert.append(
+            {
+                "id": f"s5_{case_id}_{pos_id}",
+                "text": stored.get("position_text"),
+                "polarity": "positive",
+                "variant": stored.get("position_variant"),
+                "scale": SCALE,
+                "value": _int_answer(form.get(f"s5_{case_id}_{pos_id}")),
+            }
+        )
         cases.append(
             {
                 "case_id": case_id,
                 "query": stored.get("query"),
                 "keywords": stored.get("keywords") or [],
+                "seed_rank": stored.get("seed_rank"),
+                "seed_in_top": stored.get("seed_in_top"),
                 "recommendations": stored.get("recommendations") or [],
                 "likert": likert,
                 "opinion": (
@@ -860,44 +839,14 @@ def _collect_section5(form) -> list[dict]:
     return cases
 
 
-def _build_record(
-    profile: dict, yearly: list[dict], form, started_at: str | None = None
-) -> dict:
-    """Assemble the anonymised submission document (no identifying fields)."""
-    section3: list[dict] = []
-    for year in yearly:
-        prefix = f"s3_{year['year']}"
-        likert = [
-            {
-                "id": f"{prefix}_{key}",
-                "text": text,
-                "polarity": polarity,
-                "scale": SCALE,
-                "value": _int_answer(form.get(f"{prefix}_{key}")),
-            }
-            for (key, text, polarity) in SECTION3_LIKERT
-        ]
-        open_key = f"{prefix}_{SECTION3_OPEN[0]}"
-        section3.append(
-            {
-                "year": year["year"],
-                "likert": likert,
-                "open": {
-                    "id": open_key,
-                    "text": SECTION3_OPEN[1],
-                    "value": (form.get(open_key) or "").strip(),
-                },
-            }
-        )
-
+def _build_record(profile: dict, form, started_at: str | None = None) -> dict:
+    """Assemble the PDI submission document (linked to the evaluated profile)."""
     answers = {
         "section2": {
-            "quality": _collect_likert(SECTION2_QUALITY_LIKERT, form),
-            "errors": _collect_likert(SECTION2_ERRORS_LIKERT, form),
+            "likert": _collect_likert(SECTION2_LIKERT, form),
             "open": _collect_open(SECTION2_OPEN, form),
         },
         "keywords": _collect_keywords(profile, form),
-        "section3": section3,
         "section5": _collect_section5(form),
         "section6": {
             "likert": _collect_likert(SECTION6_LIKERT, form),
@@ -920,21 +869,10 @@ def _build_record(
         # Generated profile the respondent evaluated (the stimulus).
         "stimulus": {
             "profile_summary": profile.get("summary"),
+            "profile_summary_es": profile.get("summary_es"),
             "keywords": profile.get("keywords"),
             "topics": profile.get("topics"),
             "last_active_year": profile.get("year"),
-            "yearly": [
-                {
-                    "year": y["year"],
-                    "profile": y["profile"],
-                    "domains": y["domains"],
-                    "publications": [
-                        {"title": p["title"], "item_id": p.get("item_id")}
-                        for p in y.get("publications", [])
-                    ],
-                }
-                for y in yearly
-            ],
         },
         "answers": answers,
     }
@@ -1129,7 +1067,7 @@ def eval_pdi_form():
     if researcher_id is None:
         return redirect(url_for("eval.eval_pdi_consent"))
 
-    profile = load_profile(researcher_id)
+    profile = load_profile(researcher_id, translate=True)
     if profile is None:
         session.pop("eval", None)
         return redirect(url_for("eval.eval_pdi_consent", notfound=1))
@@ -1137,7 +1075,6 @@ def eval_pdi_form():
     return render_template(
         "evaluation/questionnaire.html",
         profile=profile,
-        yearly=load_yearly(researcher_id),
         q=QUESTIONS,
         s5_likert=[{"key": k, "text": t} for k, t, _ in SECTION5_LIKERT],
         s5_opinion=SECTION5_OPINION[1],
@@ -1166,15 +1103,13 @@ def eval_pdi_submit():
     if researcher_id is None:
         return redirect(url_for("eval.eval_pdi_consent"))
 
-    profile = load_profile(researcher_id)
+    profile = load_profile(researcher_id, translate=True)
     if profile is None:
         session.pop("eval", None)
         return redirect(url_for("eval.eval_pdi_consent", notfound=1))
 
     started_at = (session.get("eval") or {}).get("started_at")
-    record = _build_record(
-        profile, load_yearly(researcher_id), request.form, started_at=started_at
-    )
+    record = _build_record(profile, request.form, started_at=started_at)
     submission_id = record["metadata"]["submission_id"]
     ok = _persist(record)
     if not ok:
@@ -1182,7 +1117,6 @@ def eval_pdi_submit():
         return render_template(
             "evaluation/questionnaire.html",
             profile=profile,
-            yearly=load_yearly(researcher_id),
             q=QUESTIONS,
             save_error=True,
         ), 500

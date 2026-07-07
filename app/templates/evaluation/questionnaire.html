@@ -199,7 +199,15 @@
   .tagchip { background: rgba(0,169,224,0.14); color: #7fd8ef; font-size: 11px; border-radius: var(--r-full); padding: 2px 9px; }
   .s5-nomatch { font-size: 12px; color: var(--muted); font-style: italic; }
   .s5-opinion { margin-top: 1rem; }
-  #s5-add[disabled] { opacity: .6; cursor: progress; }
+  .s5-loading { color: var(--muted); font-size: 14px; padding: .8rem 0; }
+
+  /* Spanish summary + collapsible English original */
+  .summary-orig { margin-top: .5rem; }
+  .summary-orig summary { cursor: pointer; font-size: 12.5px; color: var(--ia-teal); font-weight: 600; list-style: none; }
+  .summary-orig summary::-webkit-details-marker { display: none; }
+  .summary-orig summary::before { content: "＋ "; }
+  .summary-orig[open] summary::before { content: "－ "; }
+  .summary-en { color: var(--muted); margin-top: .5rem; }
 {% endblock %}
 
 {% block content %}
@@ -220,7 +228,15 @@
   <div class="card">
     <div class="profile-name">{{ profile.name }}</div>
     <div class="profile-meta">Perfil generado · Portal Científico #{{ profile.researcher_id }}</div>
+    {% if profile.summary_es %}
+    <p class="profile-summary">{{ profile.summary_es }}</p>
     {% if profile.summary %}
+    <details class="summary-orig">
+      <summary>Ver original en inglés</summary>
+      <p class="profile-summary summary-en">{{ profile.summary }}</p>
+    </details>
+    {% endif %}
+    {% elif profile.summary %}
     <p class="profile-summary">{{ profile.summary }}</p>
     {% else %}
     <p class="profile-summary" style="color:var(--muted)">No hay un resumen consolidado disponible para este perfil.</p>
@@ -230,32 +246,23 @@
     </a>
   </div>
 
-  <!-- Section 1: current summary validation (quality + errors) -->
+  <!-- Block 1: profile validation -->
   <div class="card">
     <div class="card-head"><span class="card-num">1</span><h2>Validación del resumen actual</h2></div>
-    <p class="card-sub">Valore el resumen mostrado arriba en dos bloques.</p>
-
-    <div class="subhead" style="margin-top:1.2rem">Calidad del perfil generado</div>
+    <p class="card-sub">Valore el perfil generado mostrado arriba.</p>
     <div class="likert-scale-legend">
       <span>1 · Totalmente en desacuerdo</span><span>5 · Totalmente de acuerdo</span>
     </div>
-    {% for qid, text, pol in q.section2_quality_likert %}{{ likert(qid, text) }}{% endfor %}
-
-    <div class="subhead">Posibles errores del perfil generado</div>
-    <p class="card-sub" style="margin:-.1rem 0 .2rem">Indique en qué medida ocurre cada situación.</p>
-    <div class="likert-scale-legend">
-      <span>1 · No ocurre</span><span>5 · Ocurre claramente</span>
-    </div>
-    {% for qid, text, pol in q.section2_errors_likert %}{{ likert(qid, text) }}{% endfor %}
+    {% for qid, text, pol in q.section2_likert %}{{ likert(qid, text) }}{% endfor %}
 
     <div class="subhead">Comentarios</div>
     {% for qid, text in q.section2_open %}{{ openq(qid, text) }}{% endfor %}
   </div>
 
-  <!-- Section 2: keyword importance levels -->
+  <!-- Block 2: knowledge-domain relevance -->
   <div class="card">
-    <div class="card-head"><span class="card-num">2</span><h2>Relevancia de las palabras clave</h2></div>
-    <p class="card-sub">Estos son los dominios de expertise generados para su perfil. Indique el grado de relación de cada uno con su actividad investigadora (nos ayuda a priorizar las recomendaciones).</p>
+    <div class="card-head"><span class="card-num">2</span><h2>Relevancia de los dominios de conocimiento</h2></div>
+    <p class="card-sub">Estos son los dominios de conocimiento generados automáticamente para su perfil a partir de su actividad pública. Valore en qué medida cada dominio refleja su actividad investigadora y debería utilizarse para recomendarle como posible tutor de TFG/TFM.</p>
 
     <div class="kw-scale-legend">
       <span><b>0</b> No relacionada</span>
@@ -296,68 +303,20 @@
     </div>
   </div>
 
-  <!-- Section 3: temporal evolution -->
-  <div class="card">
-    <div class="card-head"><span class="card-num">3</span><h2>Evolución temporal</h2></div>
-    {% if yearly %}
-    <p class="card-sub">Para cada año se muestra el resumen generado a partir de las publicaciones de ese periodo.</p>
-    <div class="likert-scale-legend">
-      <span>1 · Totalmente en desacuerdo</span><span>5 · Totalmente de acuerdo</span>
-    </div>
-    {% for y in yearly %}
-    <div class="year-item">
-      <div class="year-head"><span class="year-num">{{ y.year }}</span></div>
-      <p class="year-summary">{{ y.profile }}</p>
-
-      {% if y.publications %}
-      <div class="pubs">
-        <button type="button" class="pubs-toggle" data-pubs-toggle>
-          <span>Publicaciones utilizadas ({{ y.publications|length }})</span>
-          <span class="caret" aria-hidden="true">▾</span>
-        </button>
-        <div class="pubs-list hidden">
-          {% for p in y.publications %}
-          <div class="pub">
-            <button type="button" class="pub-head" data-pub-toggle>
-              <span class="pub-title">{{ p.title }}</span>
-              <span class="caret" aria-hidden="true">▾</span>
-            </button>
-            <div class="pub-body hidden">
-              {% if p.abstract %}<p class="pub-abstract">{{ p.abstract }}</p>
-              {% else %}<p class="pub-none">Abstract no disponible en el Portal Científico.</p>{% endif %}
-              {% if p.url %}<a class="inline-link pub-link" href="{{ p.url }}" target="_blank" rel="noopener">Ver en el Portal Científico ↗</a>{% endif %}
-            </div>
-          </div>
-          {% endfor %}
-        </div>
-      </div>
-      {% endif %}
-
-      {% for key, text, pol in q.section3_likert %}{{ likert("s3_%s_%s"|format(y.year, key), text) }}{% endfor %}
-      {{ openq("s3_%s_%s"|format(y.year, q.section3_open[0]), q.section3_open[1], 2) }}
-    </div>
-    {% endfor %}
-    {% else %}
-    <p class="card-sub">No hay resúmenes anuales disponibles para el periodo {{ 2023 }}–{{ 2026 }} en este perfil, por lo que esta sección se omite.</p>
-    {% endif %}
-  </div>
-
-  <!-- Section 4: evaluation of nearby PDIs -->
+  <!-- Block 3: evaluation of a recommendation case -->
   <div class="card" id="sec5">
-    <div class="card-head"><span class="card-num">4</span><h2>Evaluación de PDI cercanos</h2></div>
-    <p class="card-sub">A partir de su perfil investigador, el sistema identifica otros PDI cercanos y genera consultas plausibles de estudiantes. Revise si las recomendaciones mostradas tienen sentido y si su posición relativa es adecuada. Es opcional; puede evaluar tantos casos como quiera.</p>
+    <div class="card-head"><span class="card-num">3</span><h2>Evaluación de un caso de recomendación</h2></div>
+    <p class="card-sub">A continuación se muestra una consulta simulada de estudiante y el ranking de PDI recomendado por UPM Match. Revise si la consulta es plausible, si las recomendaciones son adecuadas y si su posición en el ranking resulta razonable.</p>
 
+    <div id="s5-loading" class="s5-loading">Generando un caso de evaluación…</div>
     <div id="s5-cases"></div>
     <div class="alert" id="s5-error" style="display:none; margin-top:1rem"></div>
-
-    <button type="button" class="btn btn-ghost" id="s5-add" style="margin-top:1.25rem">
-      Generar un caso de evaluación
-    </button>
+    <button type="button" class="btn btn-ghost" id="s5-retry" style="display:none; margin-top:1rem">Reintentar</button>
   </div>
 
-  <!-- Section 5: system utility -->
+  <!-- Block 4: system utility -->
   <div class="card">
-    <div class="card-head"><span class="card-num">5</span><h2>Utilidad del sistema</h2></div>
+    <div class="card-head"><span class="card-num">4</span><h2>Utilidad del sistema</h2></div>
     <p class="card-sub">Valore el sistema en términos generales.</p>
     <div class="likert-scale-legend">
       <span>1 · Totalmente en desacuerdo</span><span>5 · Totalmente de acuerdo</span>
@@ -430,14 +389,15 @@
     });
   });
 
-  // ── Section 5: generate & rate recommendation cases ──
+  // ── Block 3: auto-generate ONE recommendation case on load ──
   const S5_URL = "{{ url_for('eval.eval_pdi_case') }}";
   const S5_LIKERT = {{ s5_likert|tojson }};
   const S5_OPINION = {{ s5_opinion|tojson }};
-  const s5Add = document.getElementById("s5-add");
+  const s5Loading = document.getElementById("s5-loading");
   const s5Cases = document.getElementById("s5-cases");
   const s5Error = document.getElementById("s5-error");
-  let s5Count = 0;
+  const s5Retry = document.getElementById("s5-retry");
+  let s5Done = false;
 
   const esc = (s) => { const d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; };
 
@@ -457,7 +417,6 @@
   }
 
   function renderCase(data) {
-    s5Count++;
     const box = document.createElement("div");
     box.className = "s5-case";
 
@@ -466,17 +425,13 @@
     hidden.value = JSON.stringify(data.store);
     box.appendChild(hidden);
 
-    const head = document.createElement("div");
-    head.innerHTML = `<span class="s5-case-num">Caso ${s5Count}</span>`;
-    box.appendChild(head);
-
     const q = document.createElement("div"); q.className = "s5-query";
     q.innerHTML = `<div class="s5-query-label">Consulta de estudiante generada</div><p>${esc(data.query)}</p>`;
     box.appendChild(q);
 
     const recsLabel = document.createElement("div");
     recsLabel.className = "s5-recs-label";
-    recsLabel.textContent = "Recomendaciones del sistema para esta consulta";
+    recsLabel.textContent = "Ranking de PDI recomendado por UPM Match";
     box.appendChild(recsLabel);
 
     const list = document.createElement("div"); list.className = "s5-rec-list";
@@ -496,6 +451,10 @@
     legend.innerHTML = "<span>1 · Totalmente en desacuerdo</span><span>5 · Totalmente de acuerdo</span>";
     box.appendChild(legend);
     S5_LIKERT.forEach((item) => box.appendChild(s5LikertRow("s5_" + data.case_id + "_" + item.key, item.text)));
+    // Fifth item: text depends on whether the PDI appears in the shown ranking.
+    if (data.position_question) {
+      box.appendChild(s5LikertRow("s5_" + data.case_id + "_" + data.position_question.id, data.position_question.text));
+    }
 
     const field = document.createElement("div"); field.className = "field s5-opinion";
     field.innerHTML = `<label class="field-q" for="s5_${data.case_id}_opinion">${esc(S5_OPINION)} <span class="opt">(opcional)</span></label>`;
@@ -506,28 +465,29 @@
     box.appendChild(field);
 
     s5Cases.appendChild(box);
-    s5Add.textContent = "Añadir otra evaluación";
-    box.scrollIntoView({ block: "center", behavior: "smooth" });
   }
 
-  if (s5Add) s5Add.addEventListener("click", async () => {
+  async function loadCase() {
+    if (s5Done) return;
     s5Error.style.display = "none";
-    s5Add.disabled = true;
-    const restore = s5Count > 0 ? "Añadir otra evaluación" : "Generar un caso de evaluación";
-    s5Add.textContent = "Generando…";
+    s5Retry.style.display = "none";
+    s5Loading.style.display = "block";
     try {
       const resp = await fetch(S5_URL, { method: "POST", headers: { "X-Requested-With": "fetch" } });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error || ("Error " + resp.status));
       renderCase(data);
+      s5Done = true;
     } catch (err) {
       s5Error.textContent = err.message || "No se pudo generar el caso.";
       s5Error.style.display = "block";
+      s5Retry.style.display = "inline-flex";
     } finally {
-      s5Add.disabled = false;
-      s5Add.textContent = s5Count > 0 ? "Añadir otra evaluación" : restore;
+      s5Loading.style.display = "none";
     }
-  });
+  }
+  if (s5Retry) s5Retry.addEventListener("click", loadCase);
+  loadCase();
 
   // ── Warn before leaving with unsaved answers; release on real submit ──
   let submitted = false;
