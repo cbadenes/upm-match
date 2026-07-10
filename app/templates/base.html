@@ -151,8 +151,50 @@
 
     /* Mobile nav toggle */
     .mobile-menu-btn {
-      display: none; background: none; border: none;
-      color: var(--muted); padding: 6px;
+      display: none; align-items: center; justify-content: center;
+      background: none; border: none; color: var(--text); padding: 6px;
+    }
+    .mobile-menu-btn:hover { color: var(--ia-teal); }
+
+    /* Mobile drawer */
+    .drawer-backdrop {
+      position: fixed; inset: 0; z-index: 60;
+      background: rgba(4,7,12,0.6);
+      -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+      opacity: 0; pointer-events: none; transition: opacity .2s;
+    }
+    .drawer-backdrop.open { opacity: 1; pointer-events: auto; }
+    .mobile-drawer {
+      position: fixed; top: 0; right: 0; bottom: 0; z-index: 61;
+      width: min(82vw, 300px);
+      background: var(--surface); border-left: 1px solid var(--border-md);
+      box-shadow: var(--shadow-lg);
+      transform: translateX(100%); transition: transform .25s ease;
+      display: flex; flex-direction: column; padding: 1.1rem 1.1rem 1.5rem;
+      overflow-y: auto;
+    }
+    .mobile-drawer.open { transform: translateX(0); }
+    .drawer-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+    .drawer-title {
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.18em; color: var(--muted);
+    }
+    .drawer-close { background: none; border: none; color: var(--muted); padding: 4px; }
+    .drawer-close:hover { color: var(--text); }
+    .drawer-nav { display: flex; flex-direction: column; gap: 2px; }
+    .drawer-link {
+      font-size: 15px; color: var(--text); padding: 12px 12px;
+      border-radius: var(--r-md); transition: background .15s, color .15s;
+    }
+    .drawer-link:hover { background: var(--surface-2); }
+    .drawer-link.active { color: var(--ia-teal); background: var(--ia-teal-soft); }
+    .drawer-portal {
+      margin-top: 1.1rem; padding-top: 1.1rem; border-top: 1px solid var(--border);
+      font-size: 13px; color: var(--muted); transition: color .15s;
+    }
+    .drawer-portal:hover { color: var(--ia-teal); }
+    @media (min-width: 768px) {
+      .mobile-drawer, .drawer-backdrop { display: none; }
     }
 
     /* ── Hero backdrop (dot-grid + glow orbs) ── */
@@ -582,6 +624,9 @@
       <a href="{{ url_for('main.match') }}"
          class="nav-link {{ 'active' if active_page == 'match' else '' }}"
          data-i18n="nav.search">Buscador</a>
+      <a href="{{ url_for('main.pdi_search') }}"
+         class="nav-link {{ 'active' if active_page == 'search' else '' }}"
+         data-i18n="nav.explore">Consultar PDI</a>
       <a href="{{ url_for('eval.eval_home') }}"
          class="nav-link {{ 'active' if active_page == 'eval' else '' }}"
          data-i18n="nav.evaluate">Evaluación</a>
@@ -594,10 +639,45 @@
       </div>
       <a href="https://portalcientifico.upm.es" target="_blank" rel="noopener"
          class="portal-link" data-i18n="nav.portal">Portal Científico UPM ↗</a>
+
+      <button class="mobile-menu-btn" id="mobile-menu-btn" type="button"
+              aria-label="Abrir menú" aria-controls="mobile-drawer" aria-expanded="false">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <path d="M3 6h18M3 12h18M3 18h18"/>
+        </svg>
+      </button>
     </div>
 
   </div>
 </header>
+
+<!-- ── Mobile drawer ── -->
+<div class="drawer-backdrop" id="drawer-backdrop" hidden></div>
+<aside class="mobile-drawer" id="mobile-drawer" aria-hidden="true" aria-label="Menú de navegación">
+  <div class="drawer-head">
+    <span class="drawer-title" data-i18n="nav.menu">Menú</span>
+    <button class="drawer-close" id="drawer-close" type="button" aria-label="Cerrar menú">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <path d="M6 6l12 12M18 6L6 18"/>
+      </svg>
+    </button>
+  </div>
+  <nav class="drawer-nav" aria-label="Navegación principal (móvil)">
+    <a href="{{ url_for('main.match') }}"
+       class="drawer-link {{ 'active' if active_page == 'match' else '' }}"
+       data-i18n="nav.search">Buscador</a>
+    <a href="{{ url_for('main.pdi_search') }}"
+       class="drawer-link {{ 'active' if active_page == 'search' else '' }}"
+       data-i18n="nav.explore">Consultar PDI</a>
+    <a href="{{ url_for('eval.eval_home') }}"
+       class="drawer-link {{ 'active' if active_page == 'eval' else '' }}"
+       data-i18n="nav.evaluate">Evaluación</a>
+  </nav>
+  <a href="https://portalcientifico.upm.es" target="_blank" rel="noopener"
+     class="drawer-portal" data-i18n="nav.portal">Portal Científico UPM ↗</a>
+</aside>
 
 <!-- ── Page content ── -->
 <main class="flex-1">
@@ -657,9 +737,11 @@
     /* ── Common: header / footer ── */
     "nav.logo_aria":   { es: "UPM Match · inicio", en: "UPM Match · home" },
     "nav.search":      { es: "Buscador", en: "Search" },
+    "nav.explore":     { es: "Consultar PDI", en: "Browse researchers" },
     "nav.about":       { es: "Sobre el proyecto", en: "About" },
     "nav.evaluate":    { es: "Evaluación", en: "Feedback" },
     "nav.portal":      { es: "Portal Científico UPM ↗", en: "UPM Research Portal ↗" },
+    "nav.menu":        { es: "Menú", en: "Menu" },
     "footer.authorship": {
       es: "Desarrollado por Yago Boleas Francisco y Carlos Badenes-Olmedo en el marco del Proyecto de Innovación Educativa IE26.6102 de la Universidad Politécnica de Madrid.",
       en: "Developed by Yago Boleas Francisco and Carlos Badenes-Olmedo as part of the Educational Innovation Project IE26.6102 at Universidad Politécnica de Madrid."
@@ -677,6 +759,39 @@
       en: "© 2026 · Universidad Politécnica de Madrid"
     },
     "footer.evaluate": { es: "Evaluar la herramienta →", en: "Evaluate the tool →" },
+
+    /* ── Explore (Consultar PDI) ── */
+    "explore.title":       { es: "Consultar PDI · UPM Match", en: "Browse researchers · UPM Match" },
+    "explore.eyebrow":     { es: "Perfiles de investigadores", en: "Researcher profiles" },
+    "explore.hero_title":  { es: "Consulta el perfil de un PDI", en: "Browse a researcher's profile" },
+    "explore.hero_sub": {
+      es: "Selecciona a un investigador de la UPM y consulta toda la información que tenemos: su perfil generado y la evolución año a año de sus resúmenes, palabras clave y publicaciones.",
+      en: "Pick a UPM researcher and browse everything we have: their generated profile and the year-by-year evolution of their summaries, keywords and publications."
+    },
+    "explore.select_label": { es: "Busca por nombre o apellidos", en: "Search by name or surname" },
+    "explore.select_ph":   { es: "Empieza a escribir un nombre…", en: "Start typing a name…" },
+    "explore.change":      { es: "Cambiar", en: "Change" },
+    "explore.empty":       { es: "Selecciona un investigador arriba para ver su perfil.", en: "Select a researcher above to see their profile." },
+    "explore.loading":     { es: "Cargando el perfil…", en: "Loading the profile…" },
+    "explore.no_match":    { es: "Sin coincidencias.", en: "No matches." },
+    "explore.error":       { es: "No se pudo cargar el perfil.", en: "Could not load the profile." },
+    "explore.generated_profile": { es: "Perfil generado", en: "Generated profile" },
+    "explore.last_active": { es: "Activo hasta", en: "Active until" },
+    "explore.see_original": { es: "Ver original en inglés", en: "See English original" },
+    "explore.no_summary":  { es: "No hay un resumen consolidado disponible para este perfil.", en: "No consolidated summary is available for this profile." },
+    "explore.keywords":    { es: "Palabras clave / Dominios", en: "Keywords / Domains" },
+    "explore.topics":      { es: "Temas de investigación", en: "Research topics" },
+    "explore.portal_link": { es: "Ver perfil en el Portal Científico", en: "View profile on the Research Portal" },
+    "explore.evolution":   { es: "Evolución año a año", en: "Year-by-year evolution" },
+    "explore.evolution_sub": {
+      es: "Resumen generado, palabras clave y publicaciones utilizadas para cada año.",
+      en: "Generated summary, keywords and publications used for each year."
+    },
+    "explore.no_years":    { es: "No hay resúmenes anuales almacenados para este perfil.", en: "No yearly summaries are stored for this profile." },
+    "explore.pubs":        { es: "publicaciones", en: "publications" },
+    "explore.pubs_label":  { es: "Publicaciones del año", en: "Publications of the year" },
+    "explore.no_abstract": { es: "Sin abstract disponible.", en: "No abstract available." },
+    "explore.view_portal": { es: "Ver en el Portal", en: "View on the Portal" },
 
     /* ── Landing ── */
     "landing.title":       { es: "UPM Match · Encuentra tu director de TFG, TFM o Tesis", en: "UPM Match · Find your TFG, TFM or thesis supervisor" },
@@ -924,6 +1039,41 @@
     });
 
     applyLang();
+  })();
+</script>
+
+<!-- ── Mobile drawer toggle ── -->
+<script>
+  (function () {
+    const btn = document.getElementById("mobile-menu-btn");
+    const drawer = document.getElementById("mobile-drawer");
+    const backdrop = document.getElementById("drawer-backdrop");
+    const closeBtn = document.getElementById("drawer-close");
+    if (!btn || !drawer || !backdrop) return;
+
+    function setOpen(open) {
+      if (open) backdrop.hidden = false;
+      // Next frame so the backdrop can transition in from hidden.
+      requestAnimationFrame(() => {
+        drawer.classList.toggle("open", open);
+        backdrop.classList.toggle("open", open);
+      });
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+      drawer.setAttribute("aria-hidden", open ? "false" : "true");
+      document.body.style.overflow = open ? "hidden" : "";
+      if (!open) {
+        // Hide the backdrop from the a11y tree once the fade-out ends.
+        setTimeout(() => { if (!backdrop.classList.contains("open")) backdrop.hidden = true; }, 220);
+      }
+    }
+
+    btn.addEventListener("click", () => setOpen(!drawer.classList.contains("open")));
+    backdrop.addEventListener("click", () => setOpen(false));
+    if (closeBtn) closeBtn.addEventListener("click", () => setOpen(false));
+    drawer.querySelectorAll("a").forEach((a) => a.addEventListener("click", () => setOpen(false)));
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") setOpen(false); });
+    // If the viewport grows past the mobile breakpoint, make sure we reset.
+    window.matchMedia("(min-width: 768px)").addEventListener("change", (e) => { if (e.matches) setOpen(false); });
   })();
 </script>
 
