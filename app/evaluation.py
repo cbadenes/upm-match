@@ -410,13 +410,37 @@ def load_profile(researcher_id: int, translate: bool = False) -> dict | None:
     }
 
 
-def _publications_for_year(publications: list | None, year: int) -> list[dict]:
-    """Publications used to build a given year's summary: title, abstract (if any)
-    and a Portal Científico item link when the id is stored in the bucket.
+def _resolve_coauthors(
+    raw_ids: list | None, directory: dict[int, str]
+) -> list[dict]:
+    """Map the stored co-author PDI ids (e.g. 'pdi_307844') to linkable entries.
+
+    Only co-authors present in the indexed-PDI directory are returned, so every
+    entry can be navigated to (name + numeric portal id). Non-indexed co-authors
+    have no profile page to travel to and are dropped.
+    """
+    coauthors: list[dict] = []
+    seen: set[int] = set()
+    for cid in raw_ids or []:
+        num = _numeric_id(cid)
+        if not num or num in seen or num not in directory:
+            continue
+        seen.add(num)
+        coauthors.append({"id": num, "name": directory[num]})
+    return coauthors
+
+
+def _publications_for_year(
+    publications: list | None, year: int, directory: dict[int, str] | None = None
+) -> list[dict]:
+    """Publications used to build a given year's summary: title, abstract (if any),
+    a Portal Científico item link when the id is stored in the bucket, and the
+    co-authors that are themselves indexed PDIs (so they can be navigated to).
 
     Near-duplicate titles are collapsed keeping the longest abstract, mirroring the
     de-duplication phase 6 applies before summarising.
     """
+    directory = directory or {}
     seen: dict[str, dict] = {}
     for pub in publications or []:
         if pub.get("year") != year:
@@ -437,6 +461,7 @@ def _publications_for_year(publications: list | None, year: int) -> list[dict]:
             "url": PORTAL_ITEM_URL_TEMPLATE.format(id=item_id.removeprefix("pub_"))
             if item_id
             else None,
+            "coauthors": _resolve_coauthors(pub.get("coauthorship"), directory),
         }
     return list(seen.values())
 
@@ -456,6 +481,9 @@ def load_yearly(researcher_id: int) -> list[dict]:
 
     history = (data or {}).get("history") or {}
     publications = (data or {}).get("publications") or []
+    # Directory of indexed PDIs (numeric id -> name), so co-authors that we index
+    # can be shown as links. Cached; degrades to {} if Qdrant is unavailable.
+    directory = {p["id"]: p["name"] for p in list_pdis()}
     years: list[dict] = []
     for key, snap in history.items():
         try:
@@ -470,7 +498,7 @@ def load_yearly(researcher_id: int) -> list[dict]:
                 "year": year,
                 "profile": profile.strip(),
                 "domains": (snap or {}).get("domains") or [],
-                "publications": _publications_for_year(publications, year),
+                "publications": _publications_for_year(publications, year, directory),
             }
         )
     years.sort(key=lambda y: y["year"], reverse=True)

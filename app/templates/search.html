@@ -127,6 +127,22 @@
   .pub-none { font-size: 13px; color: var(--muted-2); font-style: italic; }
   .pub-link { display: inline-block; margin-top: .5rem; font-size: 12.5px; color: var(--ia-teal); }
 
+  /* Co-authors */
+  .pub-coauthor-badge {
+    display: inline-flex; align-items: center; gap: 3px; vertical-align: middle;
+    margin-left: .5rem; padding: 1px 7px; border-radius: var(--r-full);
+    background: var(--surface-2); color: var(--muted); font-size: 11px; font-weight: 600;
+  }
+  .pub-coauthors { margin-top: .7rem; }
+  .pub-coauthors-label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: .4rem; }
+  .coauthor-list { display: flex; flex-wrap: wrap; gap: 6px; }
+  .coauthor {
+    display: inline-block; font-size: 12px; padding: 3px 10px; cursor: pointer;
+    border-radius: var(--r-full); background: rgba(0,169,224,0.14); color: #7fd8ef;
+    border: 1px solid transparent; transition: border-color .12s, background .12s;
+  }
+  .coauthor:hover { border-color: rgba(0,169,224,0.5); background: rgba(0,169,224,0.22); }
+
   /* States */
   .explore-state {
     max-width: 760px; margin: 1.5rem auto 0; padding: 0 1.5rem;
@@ -223,6 +239,8 @@
   const norm = (s) => (s || "").toString().toLowerCase()
     .normalize("NFD").replace(/\p{Diacritic}/gu, "");
   const esc = (s) => { const d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; };
+  // Attribute-safe variant (also escapes double quotes).
+  const escAttr = (s) => esc(s).replace(/"/g, "&quot;");
 
   const searchEl  = document.getElementById("pdi-search");
   const panelEl   = document.getElementById("pdi-panel");
@@ -295,6 +313,17 @@
     return `<div class="kw-label">${esc(T(labelKey))}</div><div class="chips">${chips}</div>`;
   }
 
+  function coauthorsBlock(coauthors) {
+    if (!coauthors || coauthors.length === 0) return "";
+    const links = coauthors.map((c) =>
+      `<a class="coauthor" href="?pdi=${esc(c.id)}" data-id="${esc(c.id)}" data-name="${escAttr(c.name)}">${esc(c.name)}</a>`
+    ).join("");
+    return `<div class="pub-coauthors">
+      <span class="pub-coauthors-label">${esc(T("explore.coauthors_label"))}</span>
+      <span class="coauthor-list">${links}</span>
+    </div>`;
+  }
+
   function pubsBlock(pubs) {
     if (!pubs || pubs.length === 0) return "";
     const rows = pubs.map((p) => {
@@ -304,12 +333,18 @@
       const link = p.url
         ? `<a class="pub-link" href="${esc(p.url)}" target="_blank" rel="noopener">${esc(T("explore.view_portal"))} &nearr;</a>`
         : "";
+      const nco = (p.coauthors || []).length;
+      const coBadge = nco > 0
+        ? `<span class="pub-coauthor-badge" title="${escAttr(nco + " " + T("explore.coauthors"))}">
+             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>${nco}
+           </span>`
+        : "";
       return `<div class="pub">
         <button type="button" class="pub-head" data-pub-toggle>
-          <span class="pub-title">${esc(p.title)}</span>
+          <span class="pub-title">${esc(p.title)}${coBadge}</span>
           <svg class="caret" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
         </button>
-        <div class="pub-body hidden">${body}${link}</div>
+        <div class="pub-body hidden">${body}${coauthorsBlock(p.coauthors)}${link}</div>
       </div>`;
     }).join("");
     const label = `${esc(T("explore.pubs"))} (${pubs.length})`;
@@ -406,6 +441,15 @@
         body.classList.toggle("hidden", !willShow);
         const caret = btn.querySelector(".caret");
         if (caret) caret.classList.toggle("open", willShow);
+      });
+    });
+
+    // Co-author links: navigate to that PDI in place (no reload), then scroll up.
+    resultWrap.querySelectorAll(".coauthor").forEach((a) => {
+      a.addEventListener("click", (e) => {
+        e.preventDefault();
+        selectPdi(a.dataset.id, a.dataset.name);
+        window.scrollTo({ top: 0, behavior: "smooth" });
       });
     });
 
