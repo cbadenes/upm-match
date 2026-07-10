@@ -442,9 +442,9 @@ def _publications_for_year(publications: list | None, year: int) -> list[dict]:
 
 
 def load_yearly(researcher_id: int) -> list[dict]:
-    """Load the per-year generated summaries (MinIO `history`) for the evolution
-    section, restricted to EVOLUTION_YEARS and ordered most-recent-first. Each year
-    also carries the publications used to generate its summary."""
+    """Load every per-year generated summary (MinIO `history`) for the evolution
+    section, ordered most-recent-first. Each year also carries the publications
+    used to generate its summary. Callers decide how many years to surface."""
     try:
         from dbs import minio  # lazy: keeps the main app import light
 
@@ -457,18 +457,22 @@ def load_yearly(researcher_id: int) -> list[dict]:
     history = (data or {}).get("history") or {}
     publications = (data or {}).get("publications") or []
     years: list[dict] = []
-    for year in EVOLUTION_YEARS:
-        snap = history.get(str(year))
+    for key, snap in history.items():
+        try:
+            year = int(key)
+        except (TypeError, ValueError):
+            continue
         profile = (snap or {}).get("profile")
-        if profile:
-            years.append(
-                {
-                    "year": year,
-                    "profile": profile.strip(),
-                    "domains": (snap or {}).get("domains") or [],
-                    "publications": _publications_for_year(publications, year),
-                }
-            )
+        if not profile:
+            continue
+        years.append(
+            {
+                "year": year,
+                "profile": profile.strip(),
+                "domains": (snap or {}).get("domains") or [],
+                "publications": _publications_for_year(publications, year),
+            }
+        )
     years.sort(key=lambda y: y["year"], reverse=True)
     return years
 

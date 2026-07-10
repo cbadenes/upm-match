@@ -9,13 +9,16 @@
 {% block head %}
 <style>
   /* ── Hero (compact) ── */
-  .explore-hero { position: relative; overflow: hidden; padding: 3.25rem 1.5rem 1.5rem; }
+  /* No overflow:hidden here: the dot-grid backdrop clips itself (.hero-backdrop),
+     and clipping the hero would cut off the combobox dropdown that overflows it. */
+  .explore-hero { position: relative; padding: 3.25rem 1.5rem 1.5rem; }
   .explore-hero-content { position: relative; z-index: 1; max-width: 640px; margin: 0 auto; text-align: center; }
   .explore-hero h1 { font-size: clamp(1.5rem, 4vw, 2.4rem); margin-bottom: .75rem; }
   .explore-hero-sub { font-size: 15px; color: var(--muted); line-height: 1.65; max-width: 52ch; margin: 0 auto; }
 
   /* ── Selector ── */
-  .explore-select { max-width: 640px; margin: 1.75rem auto 0; }
+  /* Own stacking context above the state/result blocks so the dropdown floats over them. */
+  .explore-select { max-width: 640px; margin: 1.75rem auto 0; position: relative; z-index: 30; }
   .field-label { display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: .5rem; }
   .combo { position: relative; }
   .combo-input {
@@ -101,6 +104,8 @@
   .year-pub-count { font-size: 12px; color: var(--muted); }
   .year-summary { font-size: 14px; line-height: 1.65; color: var(--muted); background: var(--surface); border-left: 2px solid var(--ia-teal); border-radius: 0 var(--r-sm) var(--r-sm) 0; padding: .7rem .85rem; margin-bottom: .9rem; }
   .year-sub-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: .9rem 0 .5rem; }
+  .year-hidden { display: none; }
+  .years-more { text-align: center; margin-top: 1.25rem; }
 
   /* Publications per year */
   .pubs { margin: .3rem 0 0; border: 1px solid var(--border); border-radius: var(--r-md); overflow: hidden; }
@@ -230,6 +235,9 @@
   const errorBox    = document.getElementById("error-box");
   const resultWrap  = document.getElementById("result-wrap");
   const MAX_SHOWN = 40;
+  // How many years show at first, and how many each "load more" click reveals.
+  const YEARS_INITIAL = 4;
+  const YEARS_BATCH = 4;
 
   // ── Combobox ──────────────────────────────────────────────────────────────
   function closePanel() { panelEl.classList.remove("open"); searchEl.setAttribute("aria-expanded", "false"); }
@@ -355,11 +363,12 @@
     if (years.length === 0) {
       yearsHTML = `<div class="card"><p class="card-sub">${esc(T("explore.no_years"))}</p></div>`;
     } else {
-      const items = years.map((y) => {
+      const items = years.map((y, i) => {
         const summary = y.profile
           ? `<div class="year-summary">${esc(y.profile)}</div>`
           : "";
-        return `<div class="year-item">
+        const hiddenCls = i >= YEARS_INITIAL ? " year-hidden" : "";
+        return `<div class="year-item${hiddenCls}">
           <div class="year-head">
             <span class="year-num">${esc(y.year)}</span>
             ${y.publications && y.publications.length ? `<span class="year-pub-count">${y.publications.length} ${esc(T("explore.pubs"))}</span>` : ""}
@@ -369,10 +378,19 @@
           ${pubsBlock(y.publications)}
         </div>`;
       }).join("");
+      const hiddenCount = Math.max(0, years.length - YEARS_INITIAL);
+      const moreHTML = hiddenCount > 0
+        ? `<div class="years-more">
+            <button type="button" class="btn" id="years-more">
+              ${esc(T("explore.more_years"))} (<span id="years-remaining">${hiddenCount}</span>)
+            </button>
+          </div>`
+        : "";
       yearsHTML = `<div class="card">
         <div class="card-head"><span class="card-num">↧</span><h2>${esc(T("explore.evolution"))}</h2></div>
         <p class="card-sub">${esc(T("explore.evolution_sub"))}</p>
         ${items}
+        ${moreHTML}
       </div>`;
     }
 
@@ -390,6 +408,23 @@
         if (caret) caret.classList.toggle("open", willShow);
       });
     });
+
+    // Load more years: reveal the next batch of hidden year cards.
+    const moreBtn = resultWrap.querySelector("#years-more");
+    if (moreBtn) {
+      moreBtn.addEventListener("click", () => {
+        let revealed = 0;
+        for (const el of resultWrap.querySelectorAll(".year-item.year-hidden")) {
+          if (revealed >= YEARS_BATCH) break;
+          el.classList.remove("year-hidden");
+          revealed++;
+        }
+        const remaining = resultWrap.querySelectorAll(".year-item.year-hidden").length;
+        const remEl = resultWrap.querySelector("#years-remaining");
+        if (remEl) remEl.textContent = remaining;
+        if (remaining === 0) moreBtn.closest(".years-more").remove();
+      });
+    }
 
     // Share: copy a deep link (?pdi=<id>) to the clipboard.
     const shareBtn = resultWrap.querySelector("#share-btn");
