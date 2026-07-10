@@ -8,6 +8,7 @@ from loguru import logger
 from dbs.vector import QdrantBackend, get_vector_db
 
 from .agent import enrich_query, extract_keywords
+from .evaluation import list_pdis, load_profile, load_yearly
 from .search import (
     COLLECTION_NAME,
     SUMMARY_COLLECTION,
@@ -57,6 +58,29 @@ def match():
 @bp.get("/about")
 def about():
     return render_template("about.html", active_page="about")
+
+
+@bp.get("/search")
+def pdi_search():
+    """
+    Public researcher explorer:
+      pick a PDI and browse everything we store about them (consolidated profile + per-year summaries, keywords and publications).
+    The per-PDI data is loaded lazily via `pdi_data`.
+    """
+    return render_template("search.html", active_page="search", pdis=list_pdis())
+
+
+@bp.get("/api/pdi/<int:researcher_id>")
+def pdi_data(researcher_id: int):
+    """Return the full stored profile for one researcher (JSON).
+
+    Combines the consolidated summary/keywords/topics (Qdrant payload) with the
+    per-year generated summaries, domains and publications (MinIO enrichment).
+    """
+    profile = load_profile(researcher_id, translate=True)
+    if profile is None:
+        return jsonify({"error": "No encontramos información de este PDI."}), 404
+    return jsonify({"profile": profile, "years": load_yearly(researcher_id)})
 
 
 @bp.get("/api/stats")

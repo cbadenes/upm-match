@@ -1,0 +1,428 @@
+{% extends "base.html" %}
+
+{% block title %}Consultar PDI · UPM Match{% endblock %}
+{% block title_key %}explore.title{% endblock %}
+{% block description %}Consulta toda la información almacenada de cualquier investigador de la UPM: perfil generado, resúmenes anuales, palabras clave y publicaciones.{% endblock %}
+{% block og_title %}Consultar PDI · UPM Match{% endblock %}
+{% block og_description %}Explora el perfil generado y la evolución año a año de los investigadores de la UPM.{% endblock %}
+
+{% block head %}
+<style>
+  /* ── Hero (compact) ── */
+  .explore-hero { position: relative; overflow: hidden; padding: 3.25rem 1.5rem 1.5rem; }
+  .explore-hero-content { position: relative; z-index: 1; max-width: 640px; margin: 0 auto; text-align: center; }
+  .explore-hero h1 { font-size: clamp(1.5rem, 4vw, 2.4rem); margin-bottom: .75rem; }
+  .explore-hero-sub { font-size: 15px; color: var(--muted); line-height: 1.65; max-width: 52ch; margin: 0 auto; }
+
+  /* ── Selector ── */
+  .explore-select { max-width: 640px; margin: 1.75rem auto 0; }
+  .field-label { display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: .5rem; }
+  .combo { position: relative; }
+  .combo-input {
+    width: 100%; background: var(--surface); color: var(--text);
+    border: 1px solid var(--border-md); border-radius: var(--r-md);
+    padding: .85rem 1rem; font-size: 15px; outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .combo-input:focus { border-color: var(--ia-teal); box-shadow: 0 0 0 3px rgba(0,169,224,0.12); }
+  .combo-panel {
+    position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + 6px);
+    background: var(--surface); border: 1px solid var(--border-md); border-radius: var(--r-md);
+    max-height: 300px; overflow-y: auto; box-shadow: var(--shadow-card); display: none;
+  }
+  .combo-panel.open { display: block; }
+  .combo-opt { padding: .6rem 1rem; font-size: 14px; cursor: pointer; border-bottom: 1px solid var(--border); }
+  .combo-opt:last-child { border-bottom: none; }
+  .combo-opt:hover, .combo-opt.active { background: var(--surface-2); }
+  .combo-opt .rid { color: var(--muted-2); font-size: 12px; font-family: 'JetBrains Mono', monospace; margin-left: .4rem; }
+  .combo-empty { padding: .85rem 1rem; font-size: 13px; color: var(--muted); }
+
+  .selected-chip {
+    display: none; align-items: center; gap: .6rem; margin-top: .7rem;
+    background: rgba(0,169,224,0.08); border: 1px solid rgba(0,169,224,0.3);
+    border-radius: var(--r-md); padding: .65rem .85rem; font-size: 14px;
+  }
+  .selected-chip.show { display: flex; }
+  .selected-chip .nm { font-weight: 600; }
+  .selected-chip .rid { color: var(--muted); font-size: 12px; font-family: 'JetBrains Mono', monospace; }
+  .selected-chip button { margin-left: auto; background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; }
+  .selected-chip button:hover { color: var(--text); }
+
+  /* ── Content area ── */
+  .explore-area { max-width: 760px; margin: 0 auto; padding: 1.5rem 1.5rem 5rem; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r-xl); padding: 1.6rem; margin-top: 1.25rem;
+    box-shadow: var(--shadow-card);
+  }
+  @media (max-width: 560px) { .card { padding: 1.15rem; border-radius: var(--r-lg); } }
+  .card-head { display: flex; align-items: baseline; gap: .6rem; margin-bottom: .5rem; }
+  .card-num {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ia-teal);
+    border: 1px solid var(--border); border-radius: var(--r-sm); padding: 2px 7px; flex-shrink: 0;
+  }
+  .card-sub { color: var(--muted); font-size: 13.5px; line-height: 1.6; margin-top: .35rem; }
+
+  /* Profile header */
+  .profile-name { font-size: 1.15rem; font-weight: 600; }
+  .profile-meta { font-size: 12.5px; color: var(--muted); margin-top: .2rem; }
+  .profile-summary { font-size: 14.5px; line-height: 1.7; color: var(--text); margin-top: .9rem; }
+  .profile-none { color: var(--muted); }
+  .portal-btn { margin-top: 1rem; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    font-size: 14px; font-weight: 500; border-radius: var(--r-md);
+    padding: .7rem 1.2rem; border: 1px solid var(--border-md); cursor: pointer;
+    background: rgba(15,21,32,0.6); color: var(--text); text-decoration: none;
+    transition: border-color .15s, background .15s;
+  }
+  .btn:hover { border-color: rgba(0,169,224,0.4); }
+
+  /* Spanish summary + collapsible English original */
+  .summary-orig { margin-top: .5rem; }
+  .summary-orig summary { cursor: pointer; font-size: 12.5px; color: var(--ia-teal); font-weight: 600; list-style: none; }
+  .summary-orig summary::-webkit-details-marker { display: none; }
+  .summary-orig summary::before { content: "＋ "; }
+  .summary-orig[open] summary::before { content: "－ "; }
+  .summary-en { color: var(--muted); margin-top: .5rem; }
+
+  /* Chips */
+  .kw-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: 1.1rem 0 .5rem; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { background: var(--surface-2); color: var(--muted); font-size: 12px; border-radius: var(--r-full); padding: 4px 11px; }
+  .chip.kw { background: rgba(0,169,224,0.14); color: #7fd8ef; }
+
+  /* Yearly */
+  .year-item { border: 1px solid var(--border); border-radius: var(--r-lg); padding: 1.1rem 1.2rem; margin-top: 1rem; background: rgba(24,32,48,0.3); }
+  .year-head { display: flex; align-items: baseline; gap: .6rem; margin-bottom: .6rem; }
+  .year-num { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--ia-teal); font-size: 1.1rem; }
+  .year-pub-count { font-size: 12px; color: var(--muted); }
+  .year-summary { font-size: 14px; line-height: 1.65; color: var(--muted); background: var(--surface); border-left: 2px solid var(--ia-teal); border-radius: 0 var(--r-sm) var(--r-sm) 0; padding: .7rem .85rem; margin-bottom: .9rem; }
+  .year-sub-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: .9rem 0 .5rem; }
+
+  /* Publications per year */
+  .pubs { margin: .3rem 0 0; border: 1px solid var(--border); border-radius: var(--r-md); overflow: hidden; }
+  .pubs-toggle, .pub-head {
+    width: 100%; display: flex; align-items: center; justify-content: space-between; gap: .6rem;
+    border: none; color: var(--text); padding: .6rem .85rem; font-size: 13px; text-align: left; cursor: pointer;
+  }
+  .pubs-toggle { background: rgba(24,32,48,0.55); font-weight: 600; color: var(--muted); }
+  .pubs-toggle:hover, .pub-head:hover { color: var(--text); }
+  .pubs-list { border-top: 1px solid var(--border); }
+  .pub { border-top: 1px solid var(--border); }
+  .pub:first-child { border-top: none; }
+  .pub-head { background: transparent; align-items: flex-start; }
+  .pub-title { font-size: 13px; line-height: 1.45; }
+  .caret { transition: transform .15s; flex-shrink: 0; color: var(--muted); }
+  .caret.open { transform: rotate(180deg); }
+  .pub-body { padding: 0 .85rem .8rem; }
+  .pub-abstract { font-size: 13px; line-height: 1.6; color: var(--muted); }
+  .pub-none { font-size: 13px; color: var(--muted-2); font-style: italic; }
+  .pub-link { display: inline-block; margin-top: .5rem; font-size: 12.5px; color: var(--ia-teal); }
+
+  /* States */
+  .explore-state {
+    max-width: 760px; margin: 1.5rem auto 0; padding: 0 1.5rem;
+  }
+  .empty-state, .loading-state {
+    border: 1px dashed var(--border-md); background: rgba(15,21,32,0.3);
+    border-radius: var(--r-lg); padding: 2.75rem 1.5rem; text-align: center;
+    color: var(--muted); font-size: 14px;
+  }
+  .empty-icon { width: 38px; height: 38px; stroke: var(--muted-2); fill: none; stroke-width: 1.5; margin: 0 auto 1rem; display: block; }
+  .alert {
+    background: rgba(127,29,29,0.3); border: 1px solid rgba(185,28,28,0.4);
+    color: #fca5a5; border-radius: var(--r-md); padding: .8rem 1rem; font-size: 14px;
+  }
+  .spinner {
+    width: 22px; height: 22px; border: 2px solid var(--border-md);
+    border-top-color: var(--ia-teal); border-radius: 50%;
+    animation: spin .7s linear infinite; margin: 0 auto .8rem;
+  }
+  .hidden { display: none !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Hero + selector ── -->
+<section class="explore-hero" aria-labelledby="explore-heading">
+  <div class="hero-backdrop" aria-hidden="true">
+    <div class="glow-orb glow-teal" style="opacity:.6"></div>
+    <svg class="dot-grid" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <pattern id="dots-explore" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
+          <circle cx="1" cy="1" r="1" fill="currentColor"/>
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#dots-explore)"/>
+    </svg>
+  </div>
+  <div class="explore-hero-content">
+    <div class="pill-badge" style="margin-bottom:1rem">
+      <span class="pill-dot" aria-hidden="true"></span>
+      <span class="label-eyebrow" data-i18n="explore.eyebrow">Perfiles de investigadores</span>
+    </div>
+    <h1 id="explore-heading" data-i18n="explore.hero_title">Consulta el perfil de un PDI</h1>
+    <p class="explore-hero-sub" data-i18n="explore.hero_sub">Selecciona a un investigador de la UPM y consulta toda la información que tenemos: su perfil generado y la evolución año a año de sus resúmenes, palabras clave y publicaciones.</p>
+  </div>
+
+  <div class="explore-select">
+    <label class="field-label" for="pdi-search" data-i18n="explore.select_label">Busca por nombre o apellidos</label>
+    <div class="combo">
+      <input type="text" id="pdi-search" class="combo-input" autocomplete="off"
+             placeholder="Empieza a escribir un nombre…" data-i18n-ph="explore.select_ph"
+             aria-expanded="false" aria-controls="pdi-panel"/>
+      <div class="combo-panel" id="pdi-panel" role="listbox"></div>
+    </div>
+    <div class="selected-chip" id="selected-chip">
+      <span class="nm" id="selected-name"></span>
+      <span class="rid" id="selected-rid"></span>
+      <button type="button" id="clear-selection" data-i18n="explore.change">Cambiar</button>
+    </div>
+  </div>
+</section>
+
+<!-- ── States ── -->
+<div class="explore-state">
+  <div class="empty-state" id="empty-state">
+    <svg class="empty-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+    </svg>
+    <span data-i18n="explore.empty">Selecciona un investigador arriba para ver su perfil.</span>
+  </div>
+  <div class="loading-state hidden" id="loading-state">
+    <div class="spinner" aria-hidden="true"></div>
+    <span data-i18n="explore.loading">Cargando el perfil…</span>
+  </div>
+  <div class="alert hidden" id="error-box" role="alert"></div>
+</div>
+
+<!-- ── Result ── -->
+<div class="explore-area hidden" id="result-wrap"></div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const PDIS = {{ pdis|tojson }};
+  // url_for builds ".../api/pdi/0"; swap the trailing id per request.
+  const API_TPL = "{{ url_for('main.pdi_data', researcher_id=0) }}";
+  const apiUrl = (id) => API_TPL.replace(/\/0$/, "/" + id);
+
+  const T = (key) => (window.i18nT ? window.i18nT(key) : "");
+
+  // Accent-insensitive normaliser.
+  const norm = (s) => (s || "").toString().toLowerCase()
+    .normalize("NFD").replace(/\p{Diacritic}/gu, "");
+  const esc = (s) => { const d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; };
+
+  const searchEl  = document.getElementById("pdi-search");
+  const panelEl   = document.getElementById("pdi-panel");
+  const chip      = document.getElementById("selected-chip");
+  const chipName  = document.getElementById("selected-name");
+  const chipRid   = document.getElementById("selected-rid");
+  const clearBtn  = document.getElementById("clear-selection");
+  const emptyState  = document.getElementById("empty-state");
+  const loadingState = document.getElementById("loading-state");
+  const errorBox    = document.getElementById("error-box");
+  const resultWrap  = document.getElementById("result-wrap");
+  const MAX_SHOWN = 40;
+
+  // ── Combobox ──────────────────────────────────────────────────────────────
+  function closePanel() { panelEl.classList.remove("open"); searchEl.setAttribute("aria-expanded", "false"); }
+
+  function renderMatches(q) {
+    const nq = norm(q);
+    const matches = (nq ? PDIS.filter((p) => norm(p.name).includes(nq)) : PDIS).slice(0, MAX_SHOWN);
+    if (matches.length === 0) {
+      panelEl.innerHTML = `<div class="combo-empty">${esc(T("explore.no_match") || "Sin coincidencias.")}</div>`;
+    } else {
+      panelEl.innerHTML = matches.map((p) =>
+        `<div class="combo-opt" role="option" data-id="${p.id}" data-name="${esc(p.name)}">`
+        + `${esc(p.name)}<span class="rid">#${p.id}</span></div>`
+      ).join("");
+    }
+    panelEl.classList.add("open");
+    searchEl.setAttribute("aria-expanded", "true");
+  }
+
+  function selectPdi(id, name) {
+    chipName.textContent = name;
+    chipRid.textContent = "#" + id;
+    chip.classList.add("show");
+    searchEl.value = "";
+    searchEl.style.display = "none";
+    closePanel();
+    loadPdi(id);
+  }
+
+  function clearSelection() {
+    chip.classList.remove("show");
+    searchEl.style.display = "";
+    searchEl.focus();
+    resultWrap.classList.add("hidden");
+    resultWrap.innerHTML = "";
+    errorBox.classList.add("hidden");
+    loadingState.classList.add("hidden");
+    emptyState.classList.remove("hidden");
+    if (history.replaceState) history.replaceState(null, "", location.pathname);
+  }
+
+  searchEl.addEventListener("input", () => renderMatches(searchEl.value));
+  searchEl.addEventListener("focus", () => { if (chip.classList.contains("show") === false) renderMatches(searchEl.value); });
+  panelEl.addEventListener("click", (e) => {
+    const opt = e.target.closest(".combo-opt");
+    if (opt) selectPdi(opt.dataset.id, opt.dataset.name);
+  });
+  clearBtn.addEventListener("click", clearSelection);
+  document.addEventListener("click", (e) => { if (!e.target.closest(".combo")) closePanel(); });
+
+  // ── Rendering ─────────────────────────────────────────────────────────────
+  function chipsBlock(labelKey, items, cls) {
+    if (!items || items.length === 0) return "";
+    const chips = items.map((it) => `<span class="chip ${cls}">${esc(it)}</span>`).join("");
+    return `<div class="kw-label">${esc(T(labelKey))}</div><div class="chips">${chips}</div>`;
+  }
+
+  function pubsBlock(pubs) {
+    if (!pubs || pubs.length === 0) return "";
+    const rows = pubs.map((p) => {
+      const body = p.abstract
+        ? `<div class="pub-abstract">${esc(p.abstract)}</div>`
+        : `<div class="pub-none">${esc(T("explore.no_abstract"))}</div>`;
+      const link = p.url
+        ? `<a class="pub-link" href="${esc(p.url)}" target="_blank" rel="noopener">${esc(T("explore.view_portal"))} &nearr;</a>`
+        : "";
+      return `<div class="pub">
+        <button type="button" class="pub-head" data-pub-toggle>
+          <span class="pub-title">${esc(p.title)}</span>
+          <svg class="caret" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="pub-body hidden">${body}${link}</div>
+      </div>`;
+    }).join("");
+    const label = `${esc(T("explore.pubs"))} (${pubs.length})`;
+    return `<div class="year-sub-label">${esc(T("explore.pubs_label"))}</div>
+      <div class="pubs">
+        <button type="button" class="pubs-toggle" data-pubs-toggle>
+          <span>${label}</span>
+          <svg class="caret" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="pubs-list hidden">${rows}</div>
+      </div>`;
+  }
+
+  function render(data) {
+    const p = data.profile || {};
+    const years = data.years || [];
+
+    // Consolidated summary (ES with collapsible EN original).
+    let summaryHTML;
+    if (p.summary_es) {
+      summaryHTML = `<p class="profile-summary">${esc(p.summary_es)}</p>`;
+      if (p.summary) {
+        summaryHTML += `<details class="summary-orig"><summary>${esc(T("explore.see_original"))}</summary>`
+          + `<p class="profile-summary summary-en">${esc(p.summary)}</p></details>`;
+      }
+    } else if (p.summary) {
+      summaryHTML = `<p class="profile-summary">${esc(p.summary)}</p>`;
+    } else {
+      summaryHTML = `<p class="profile-summary profile-none">${esc(T("explore.no_summary"))}</p>`;
+    }
+
+    const metaBits = [`${esc(T("explore.generated_profile"))} · #${esc(p.researcher_id)}`];
+    if (p.year) metaBits.push(`${esc(T("explore.last_active"))} ${esc(p.year)}`);
+
+    const profileCard = `<div class="card">
+      <div class="profile-name">${esc(p.name)}</div>
+      <div class="profile-meta">${metaBits.join(" · ")}</div>
+      ${summaryHTML}
+      ${chipsBlock("explore.keywords", p.keywords, "kw")}
+      ${chipsBlock("explore.topics", p.topics, "")}
+      <a class="btn portal-btn" href="${esc(p.portal_url)}" target="_blank" rel="noopener">${esc(T("explore.portal_link"))} &nearr;</a>
+    </div>`;
+
+    let yearsHTML;
+    if (years.length === 0) {
+      yearsHTML = `<div class="card"><p class="card-sub">${esc(T("explore.no_years"))}</p></div>`;
+    } else {
+      const items = years.map((y) => {
+        const summary = y.profile
+          ? `<div class="year-summary">${esc(y.profile)}</div>`
+          : "";
+        return `<div class="year-item">
+          <div class="year-head">
+            <span class="year-num">${esc(y.year)}</span>
+            ${y.publications && y.publications.length ? `<span class="year-pub-count">${y.publications.length} ${esc(T("explore.pubs"))}</span>` : ""}
+          </div>
+          ${summary}
+          ${chipsBlock("explore.keywords", y.domains, "kw")}
+          ${pubsBlock(y.publications)}
+        </div>`;
+      }).join("");
+      yearsHTML = `<div class="card">
+        <div class="card-head"><span class="card-num">↧</span><h2>${esc(T("explore.evolution"))}</h2></div>
+        <p class="card-sub">${esc(T("explore.evolution_sub"))}</p>
+        ${items}
+      </div>`;
+    }
+
+    resultWrap.innerHTML = profileCard + yearsHTML;
+    resultWrap.classList.remove("hidden");
+
+    // Wire collapsibles (publication list + each abstract).
+    resultWrap.querySelectorAll("[data-pubs-toggle], [data-pub-toggle]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const body = btn.nextElementSibling;
+        if (!body) return;
+        const willShow = body.classList.contains("hidden");
+        body.classList.toggle("hidden", !willShow);
+        const caret = btn.querySelector(".caret");
+        if (caret) caret.classList.toggle("open", willShow);
+      });
+    });
+  }
+
+  // ── Load ──────────────────────────────────────────────────────────────────
+  let currentReq = 0;
+
+  async function loadPdi(id) {
+    const reqId = ++currentReq;
+    emptyState.classList.add("hidden");
+    errorBox.classList.add("hidden");
+    resultWrap.classList.add("hidden");
+    loadingState.classList.remove("hidden");
+    if (history.replaceState) history.replaceState(null, "", location.pathname + "?pdi=" + id);
+    try {
+      const resp = await fetch(apiUrl(id));
+      const data = await resp.json();
+      if (reqId !== currentReq) return; // superseded by a newer selection
+      if (!resp.ok) throw new Error(data.error || ("Error " + resp.status));
+      render(data);
+    } catch (err) {
+      if (reqId !== currentReq) return;
+      errorBox.textContent = err.message || T("explore.error");
+      errorBox.classList.remove("hidden");
+    } finally {
+      if (reqId === currentReq) loadingState.classList.add("hidden");
+    }
+  }
+
+  // Re-render on language change so labels follow the toggle.
+  let lastData = null;
+  const _render = render;
+  render = function (data) { lastData = data; _render(data); };
+  document.addEventListener("langchange", () => { if (lastData) _render(lastData); });
+
+  // ── Deep link (?pdi=<id>) so profiles are shareable ─────────────────────────
+  (function initFromUrl() {
+    const m = /[?&]pdi=(\d+)/.exec(location.search);
+    if (!m) return;
+    const id = m[1];
+    const found = PDIS.find((p) => String(p.id) === id);
+    selectPdi(id, found ? found.name : "PDI #" + id);
+  })();
+</script>
+{% endblock %}
