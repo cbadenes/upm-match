@@ -48,4 +48,16 @@ def create_app() -> Flask:
 
     app.register_blueprint(bp, url_prefix=base_path or None)
     app.register_blueprint(eval_bp, url_prefix=base_path or None)
+
+    # Branded error pages instead of the raw Werkzeug defaults.
+    from flask import render_template  # noqa: PLC0415
+
+    @app.errorhandler(404)
+    def not_found(_e):
+        return render_template("error.html", code=404), 404
+
+    @app.errorhandler(500)
+    def server_error(_e):
+        return render_template("error.html", code=500), 500
+
     return app

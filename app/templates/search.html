@@ -69,7 +69,8 @@
   .profile-meta { font-size: 12.5px; color: var(--muted); margin-top: .2rem; }
   .profile-summary { font-size: 14.5px; line-height: 1.7; color: var(--text); margin-top: .9rem; }
   .profile-none { color: var(--muted); }
-  .portal-btn { margin-top: 1rem; }
+  .profile-actions { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1rem; }
+  .btn.copied { border-color: rgba(52,211,153,0.5); color: #6ee7b7; }
   .btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
     font-size: 14px; font-weight: 500; border-radius: var(--r-md);
@@ -341,7 +342,13 @@
       ${summaryHTML}
       ${chipsBlock("explore.keywords", p.keywords, "kw")}
       ${chipsBlock("explore.topics", p.topics, "")}
-      <a class="btn portal-btn" href="${esc(p.portal_url)}" target="_blank" rel="noopener">${esc(T("explore.portal_link"))} &nearr;</a>
+      <div class="profile-actions">
+        <a class="btn" href="${esc(p.portal_url)}" target="_blank" rel="noopener">${esc(T("explore.portal_link"))} &nearr;</a>
+        <button type="button" class="btn" id="share-btn" data-id="${esc(p.researcher_id)}">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v14"/></svg>
+          <span class="share-label">${esc(T("explore.share"))}</span>
+        </button>
+      </div>
     </div>`;
 
     let yearsHTML;
@@ -383,6 +390,31 @@
         if (caret) caret.classList.toggle("open", willShow);
       });
     });
+
+    // Share: copy a deep link (?pdi=<id>) to the clipboard.
+    const shareBtn = resultWrap.querySelector("#share-btn");
+    if (shareBtn) {
+      shareBtn.addEventListener("click", async () => {
+        const url = location.origin + location.pathname + "?pdi=" + shareBtn.dataset.id;
+        const label = shareBtn.querySelector(".share-label");
+        try {
+          await navigator.clipboard.writeText(url);
+        } catch (e) {
+          // Fallback for non-secure contexts / older browsers.
+          const ta = document.createElement("textarea");
+          ta.value = url; ta.style.position = "fixed"; ta.style.opacity = "0";
+          document.body.appendChild(ta); ta.select();
+          try { document.execCommand("copy"); } catch (_) {}
+          document.body.removeChild(ta);
+        }
+        shareBtn.classList.add("copied");
+        if (label) label.textContent = T("explore.copied");
+        setTimeout(() => {
+          shareBtn.classList.remove("copied");
+          if (label) label.textContent = T("explore.share");
+        }, 2000);
+      });
+    }
   }
 
   // ── Load ──────────────────────────────────────────────────────────────────

@@ -12,6 +12,7 @@
   <meta property="og:description" content="{% block og_description %}Buscador semántico que conecta estudiantes y PDIs de la UPM.{% endblock %}"/>
   <meta property="og:image" content="{{ url_for('static', filename='horizontal-1200.png', _external=True) }}"/>
   <meta name="theme-color" content="#0a0d12"/>
+  <link rel="canonical" href="{{ request.base_url }}"/>
 
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}"/>
   <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon-32.png') }}"/>
@@ -742,6 +743,14 @@
     "nav.evaluate":    { es: "Evaluación", en: "Feedback" },
     "nav.portal":      { es: "Portal Científico UPM ↗", en: "UPM Research Portal ↗" },
     "nav.menu":        { es: "Menú", en: "Menu" },
+
+    /* ── Error pages ── */
+    "err.404_title":   { es: "Página no encontrada", en: "Page not found" },
+    "err.404_sub":     { es: "La dirección que buscas no existe o se ha movido. Comprueba la URL o vuelve al inicio.", en: "The page you are looking for does not exist or has moved. Check the URL or go back home." },
+    "err.500_title":   { es: "Algo ha ido mal", en: "Something went wrong" },
+    "err.500_sub":     { es: "Ha ocurrido un error inesperado en el servidor. Vuelve a intentarlo en unos instantes.", en: "An unexpected server error occurred. Please try again in a moment." },
+    "err.home":        { es: "Volver al inicio", en: "Back to home" },
+    "err.search":      { es: "Ir al buscador", en: "Go to search" },
     "footer.authorship": {
       es: "Desarrollado por Yago Boleas Francisco y Carlos Badenes-Olmedo en el marco del Proyecto de Innovación Educativa IE26.6102 de la Universidad Politécnica de Madrid.",
       en: "Developed by Yago Boleas Francisco and Carlos Badenes-Olmedo as part of the Educational Innovation Project IE26.6102 at Universidad Politécnica de Madrid."
@@ -782,6 +791,8 @@
     "explore.keywords":    { es: "Palabras clave / Dominios", en: "Keywords / Domains" },
     "explore.topics":      { es: "Temas de investigación", en: "Research topics" },
     "explore.portal_link": { es: "Ver perfil en el Portal Científico", en: "View profile on the Research Portal" },
+    "explore.share":       { es: "Copiar enlace", en: "Copy link" },
+    "explore.copied":      { es: "¡Enlace copiado!", en: "Link copied!" },
     "explore.evolution":   { es: "Evolución año a año", en: "Year-by-year evolution" },
     "explore.evolution_sub": {
       es: "Resumen generado, palabras clave y publicaciones utilizadas para cada año.",

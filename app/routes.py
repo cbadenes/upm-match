@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from flask import Blueprint, jsonify, render_template, request
+from flask import Blueprint, Response, jsonify, render_template, request, url_for
 from loguru import logger
 
 from dbs.vector import QdrantBackend, get_vector_db
@@ -58,6 +58,28 @@ def match():
 @bp.get("/about")
 def about():
     return render_template("about.html", active_page="about")
+
+
+@bp.get("/healthz")
+def healthz():
+    """Liveness probe for monitoring/orchestration. Intentionally does not touch
+    Qdrant/MinIO/Ollama: it reports whether the web process is up and serving."""
+    return jsonify({"status": "ok"}), 200
+
+
+@bp.get("/robots.txt")
+def robots():
+    """Public pages are indexable; the questionnaire and the JSON API are not."""
+    api_root = url_for("main.stats").rsplit("/", 1)[0]  # .../api
+    body = "\n".join(
+        [
+            "User-agent: *",
+            f"Disallow: {url_for('eval.eval_home')}",
+            f"Disallow: {api_root}",
+            "",
+        ]
+    )
+    return Response(body, mimetype="text/plain")
 
 
 @bp.get("/search")

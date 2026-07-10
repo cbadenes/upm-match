@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}{{ code }} · UPM Match{% endblock %}
+
+{% block head %}
+<style>
+  .error-wrap {
+    max-width: 560px; margin: 0 auto; padding: 6rem 1.5rem;
+    text-align: center; min-height: 60vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .error-code {
+    font-family: 'JetBrains Mono', monospace; font-weight: 600;
+    font-size: clamp(3.5rem, 14vw, 6rem); line-height: 1;
+    color: var(--ia-teal); letter-spacing: -0.04em;
+  }
+  .error-title { margin-top: 1rem; }
+  .error-sub { color: var(--muted); font-size: 15px; line-height: 1.7; margin-top: .9rem; max-width: 44ch; }
+  .error-actions { display: flex; flex-wrap: wrap; gap: .75rem; justify-content: center; margin-top: 2rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="error-wrap">
+  <div class="error-code">{{ code }}</div>
+  {% if code == 404 %}
+  <h1 class="error-title" data-i18n="err.404_title">Página no encontrada</h1>
+  <p class="error-sub" data-i18n="err.404_sub">La dirección que buscas no existe o se ha movido. Comprueba la URL o vuelve al inicio.</p>
+  {% else %}
+  <h1 class="error-title" data-i18n="err.500_title">Algo ha ido mal</h1>
+  <p class="error-sub" data-i18n="err.500_sub">Ha ocurrido un error inesperado en el servidor. Vuelve a intentarlo en unos instantes.</p>
+  {% endif %}
+  <div class="error-actions">
+    <a href="{{ url_for('main.landing') }}" class="btn-primary" data-i18n="err.home">Volver al inicio</a>
+    <a href="{{ url_for('main.match') }}" class="btn-outline" data-i18n="err.search">Ir al buscador</a>
+  </div>
+</section>
+{% endblock %}
