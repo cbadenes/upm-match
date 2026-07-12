@@ -143,6 +143,29 @@
   }
   .coauthor:hover { border-color: rgba(0,169,224,0.5); background: rgba(0,169,224,0.22); }
 
+  /* Academic trajectory (Memgraph: positions, subjects, supervised works) */
+  .pos-item { display: flex; flex-direction: column; gap: 2px; padding: .55rem 0; border-bottom: 1px solid var(--border); }
+  .pos-item:last-child { border-bottom: none; }
+  .pos-name { font-size: 14px; font-weight: 600; }
+  .pos-meta { font-size: 12.5px; color: var(--muted); }
+  .chip .chip-period { color: var(--muted-2); font-size: 11px; margin-left: 5px; }
+  .chips-more { background: none; border: 1px dashed var(--border-md); color: var(--muted); font-size: 12px; border-radius: var(--r-full); padding: 4px 11px; cursor: pointer; }
+  .chips-more:hover { color: var(--text); border-color: rgba(0,169,224,0.4); }
+  .proj { display: flex; align-items: baseline; gap: .7rem; padding: .55rem .85rem; border-top: 1px solid var(--border); }
+  .proj:first-child { border-top: none; }
+  .proj-year { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ia-teal); flex-shrink: 0; min-width: 38px; }
+  .proj-body { flex: 1; }
+  .proj-title { font-size: 13px; line-height: 1.5; }
+  .proj-type {
+    display: inline-block; margin-left: .5rem; padding: 1px 7px; vertical-align: middle;
+    border-radius: var(--r-full); background: var(--surface-2); color: var(--muted);
+    font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+  }
+  .proj-oa { font-size: 12px; color: var(--ia-teal); text-decoration: none; margin-left: .5rem; white-space: nowrap; }
+  .proj-oa:hover { text-decoration: underline; }
+  .proj-hidden { display: none; }
+  .projs-more { text-align: center; padding: .6rem; border-top: 1px solid var(--border); }
+
   /* States */
   .explore-state {
     max-width: 760px; margin: 1.5rem auto 0; padding: 0 1.5rem;
@@ -358,6 +381,80 @@
       </div>`;
   }
 
+  // ── Academic trajectory card (Memgraph data) ─────────────────────────────
+  const SUBJECTS_INITIAL = 15;
+  const PROJECTS_INITIAL = 12;
+  const PROJECTS_BATCH = 20;
+
+  function positionsBlock(positions) {
+    if (!positions || positions.length === 0) return "";
+    const rows = positions.map((x) => {
+      const meta = [x.entity, x.role, x.since ? `${esc(T("explore.since"))} ${esc(x.since)}` : null]
+        .filter(Boolean).map(esc).join(" · ");
+      return `<div class="pos-item">
+        <span class="pos-name">${esc(x.name)}</span>
+        ${meta ? `<span class="pos-meta">${meta}</span>` : ""}
+      </div>`;
+    }).join("");
+    return `<div class="kw-label">${esc(T("explore.positions"))}</div>${rows}`;
+  }
+
+  function subjectsBlock(subjects) {
+    if (!subjects || subjects.length === 0) return "";
+    const chips = subjects.map((s, i) => {
+      const period = s.from && s.to && s.from !== s.to ? `${s.from}–${s.to}` : (s.to || s.from || "");
+      const hid = i >= SUBJECTS_INITIAL ? " proj-hidden" : "";
+      return `<span class="chip${hid}" data-subject-chip>${esc(s.name)}${period ? `<span class="chip-period">${esc(period)}</span>` : ""}</span>`;
+    }).join("");
+    const hiddenCount = Math.max(0, subjects.length - SUBJECTS_INITIAL);
+    const more = hiddenCount > 0
+      ? `<button type="button" class="chips-more" data-subjects-more>+${hiddenCount} ${esc(T("explore.more"))}</button>`
+      : "";
+    return `<div class="kw-label">${esc(T("explore.subjects"))} (${subjects.length})</div>
+      <div class="chips">${chips}${more}</div>`;
+  }
+
+  function projectsBlock(projects) {
+    if (!projects || projects.length === 0) return "";
+    const rows = projects.map((t, i) => {
+      const hid = i >= PROJECTS_INITIAL ? " proj-hidden" : "";
+      const oa = t.oa_url
+        ? `<a class="proj-oa" href="${esc(t.oa_url)}" target="_blank" rel="noopener">${esc(T("explore.oa_link"))} &nearr;</a>`
+        : "";
+      return `<div class="proj${hid}">
+        <span class="proj-year">${t.year ? esc(t.year) : "—"}</span>
+        <span class="proj-body"><span class="proj-title">${esc(t.title)}</span>${t.type ? `<span class="proj-type">${esc(t.type)}</span>` : ""}${oa}</span>
+      </div>`;
+    }).join("");
+    const hiddenCount = Math.max(0, projects.length - PROJECTS_INITIAL);
+    const more = hiddenCount > 0
+      ? `<div class="projs-more">
+          <button type="button" class="btn" data-projects-more>
+            ${esc(T("explore.show_more"))} (<span data-projects-remaining>${hiddenCount}</span>)
+          </button>
+        </div>`
+      : "";
+    return `<div class="kw-label">${esc(T("explore.projects"))} (${projects.length})</div>
+      <div class="pubs">
+        <button type="button" class="pubs-toggle" data-pubs-toggle>
+          <span>${esc(T("explore.projects_toggle"))}</span>
+          <svg class="caret" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="pubs-list hidden">${rows}${more}</div>
+      </div>`;
+  }
+
+  function academicBlock(g) {
+    if (!g) return "";
+    const inner = positionsBlock(g.positions) + subjectsBlock(g.subjects) + projectsBlock(g.projects);
+    if (!inner) return "";
+    return `<div class="card">
+      <div class="card-head"><span class="card-num">✦</span><h2>${esc(T("explore.academic"))}</h2></div>
+      <p class="card-sub">${esc(T("explore.academic_sub"))}</p>
+      ${inner}
+    </div>`;
+  }
+
   function render(data) {
     const p = data.profile || {};
     const years = data.years || [];
@@ -429,8 +526,35 @@
       </div>`;
     }
 
-    resultWrap.innerHTML = profileCard + yearsHTML;
+    resultWrap.innerHTML = profileCard + academicBlock(data.graph) + yearsHTML;
     resultWrap.classList.remove("hidden");
+
+    // Reveal all subject chips.
+    const subjMore = resultWrap.querySelector("[data-subjects-more]");
+    if (subjMore) {
+      subjMore.addEventListener("click", () => {
+        resultWrap.querySelectorAll("[data-subject-chip].proj-hidden")
+          .forEach((el) => el.classList.remove("proj-hidden"));
+        subjMore.remove();
+      });
+    }
+
+    // Reveal supervised works in batches.
+    const projMore = resultWrap.querySelector("[data-projects-more]");
+    if (projMore) {
+      projMore.addEventListener("click", () => {
+        let revealed = 0;
+        for (const el of resultWrap.querySelectorAll(".proj.proj-hidden")) {
+          if (revealed >= PROJECTS_BATCH) break;
+          el.classList.remove("proj-hidden");
+          revealed++;
+        }
+        const remaining = resultWrap.querySelectorAll(".proj.proj-hidden").length;
+        const remEl = resultWrap.querySelector("[data-projects-remaining]");
+        if (remEl) remEl.textContent = remaining;
+        if (remaining === 0) projMore.closest(".projs-more").remove();
+      });
+    }
 
     // Wire collapsibles (publication list + each abstract).
     resultWrap.querySelectorAll("[data-pubs-toggle], [data-pub-toggle]").forEach((btn) => {
