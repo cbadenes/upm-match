@@ -4,38 +4,68 @@ import re
 from collections import Counter, defaultdict
 from unicodedata import normalize as unicodedata_normalize
 
-# Markers used by clean_description
+# Labelled sections used by clean_description
 #
-# The UPM portal serialises a publication record as a sequence of labelled sections, each section TERMINATED by a parenthesised label, e.g.:
+# The UPM portal serialises a publication record as a sequence of sections, each section TERMINATED by a parenthesised label and separated by ", ", e.g.:
 #
-#   <authors> (Authors with Filk); <abstract> (Summary); <contact> (Author of contact); <recognitions> (Recognitions linked to item)
+#   <recognitions> (Recognitions linked to item), <contact> (Author of contact),
+#   <authors> (Authors with Filk), <abstract> (Summary)
 #
-# So the abstract is the text that ENDS with "(Summary)" (or, when there is no explicit summary section, the text before the first of the other labels).
-# "(Authors with Filk)" is special: it terminates a LEADING author block, so everything up to and including it must be dropped.
+# The section ORDER varies between records, so the abstract cannot be assumed to come first: it is the section explicitly labelled "(Summary)" (or one of the content fallbacks below).
+# The label vocabulary was inventoried over the full raw corpus (66k publications, 2026-07); it is a closed English set.
 
-PUBLICATION_AUTHORS_BLOCK_MARKER = "(Authors with Filk)"
+# Content labels, in preference order. "(Objectives)" and "(Most relevant results)" belong to the same fallback tier and are joined together.
+PUBLICATION_SUMMARY_LABEL = "(Summary)"
+PUBLICATION_DESCRIPTION_LABEL = "(General Description)"
+PUBLICATION_OBJECTIVES_LABELS = ["(Objectives)", "(Most relevant results)"]
 
-# Section labels that mark the END of the abstract: cut from the earliest one.
-PUBLICATION_TRAILING_MARKERS = [
-    "(Summary)",
-    "(Notes)",
-    "(Objectives)",
-    "(Most relevant results)",
-    "(Degree of originality and innovation)",
+# Metadata labels: their sections never contain the abstract (authors, contact addresses, acknowledgments/funding, CV-merit prose, quality indicators...).
+PUBLICATION_METADATA_LABELS = [
+    "(Author of contact)",
+    "(Authors with Filk)",
+    "(Recognitions linked to item)",
     "(Methodological contribution)",
+    "(Degree of originality and innovation)",
     "(Thematic priority)",
     "(Use of the contribution)",
-    "(Cites received for the contribution)",
     "(Quality of the publication/dissemination/exhibition medium)",
+    "(Cites received for the contribution)",
+    "(Degree of opening)",
+    "(Notes)",
     "(Non-academic mentions and references to the contribution)",
+    "(Quality indications)",
+    "(Miscellaneous)",
     "(Copyright held by the owner/author(s))",
-    "(Author of contact)",
-    "(Recognitions linked to item)",
+    # Inline author annotations; treating them as boundaries only splits author/contact blocks further, which is harmless.
+    "(corresponding author)",
+    "(autor correspondiente)",
+    "(reprint author)",
 ]
+
+PUBLICATION_SECTION_LABELS = (
+    [PUBLICATION_SUMMARY_LABEL, PUBLICATION_DESCRIPTION_LABEL]
+    + PUBLICATION_OBJECTIVES_LABELS
+    + PUBLICATION_METADATA_LABELS
+)
+
+# Longest-first so overlapping labels can never shadow each other.
+_SECTION_LABEL_REGEX = re.compile(
+    "|".join(
+        re.escape(label)
+        for label in sorted(PUBLICATION_SECTION_LABELS, key=len, reverse=True)
+    )
+)
+
+# Separator between a section label and the next section ("," in the AJAX
+# dataset, ";" in other portal serialisations).
+_SECTION_SEPARATOR_REGEX = re.compile(r"^\s*[;,.]\s*")
 
 PUBLICATION_PREFIX_REGEXES = [
     re.compile(r"^\s*Abstract:\s*", re.IGNORECASE),
     re.compile(r"^\s*©\s*\d{4}\s*(?:Copyright\s+)?", re.IGNORECASE),
+    # Publisher copyright boilerplate ending in "rights reserved", e.g. "© Springer India 2016. All rights reserved. ..." or "Copyright © 2020 by SCITEPRESS ... Lda. All rights reserved ...".
+    # A real abstract never *opens* with that phrase, so a prefix containing it within the first ~100 characters is always boilerplate.
+    re.compile(r"^.{0,100}?\brights reserved\b\.?[:\s]*", re.IGNORECASE | re.DOTALL),
 ]
 
 PUBLICATION_BILINGUAL_ABSTRACT_REGEX = re.compile(
@@ -67,10 +97,8 @@ PUBLICATION_METADATA_REGEX = re.compile(
 def normalize_topic(topic: str) -> str:
     """Normalise a single research topic or keyword string.
 
-    Steps: lowercase, strip a trailing possessive ("'s"), NFKD → ASCII, trim,
-    remove trailing period, collapse spaces. Plural/inflection merging is NOT
-    done here (a per-string view cannot tell "analysis" from a real plural) — use
-    :func:`canonicalize_topics` on the whole list for that.
+    Steps: lowercase, strip a trailing possessive ("'s"), NFKD → ASCII, trim, remove trailing period, collapse spaces.
+    Plural/inflection merging is NOT done here (a per-string view cannot tell "analysis" from a real plural), use :func:`canonicalize_topics` on the whole list for that.
     """
     t = topic.lower().strip()
     t = re.sub(r"[''’]s\b", "", t)  # drop possessive ("ontology's" -> "ontology")
@@ -105,10 +133,8 @@ def _trigram_jaccard(a: str, b: str) -> float:
 def _same_token_stem(a: str, b: str) -> bool:
     """True when two single tokens are the same word up to a plural inflection.
 
-    Handles -s, -es and -y/-ies. This is enough to merge "graph"/"graphs",
-    "disease"/"diseases", "box"/"boxes", "ontology"/"ontologies" and even
-    "coronavirus"/"coronaviruses" (singular already ends in 's'). A short fuzzy
-    fallback catches light typos / diacritic leftovers.
+    Handles -s, -es and -y/-ies. This is enough to merge "graph"/"graphs", "disease"/"diseases", "box"/"boxes", "ontology"/"ontologies" and even "coronavirus"/"coronaviruses" (singular already ends in 's').
+    A short fuzzy fallback catches light typos / diacritic leftovers.
     """
     if a == b:
         return True
@@ -128,11 +154,8 @@ def _same_token_stem(a: str, b: str) -> bool:
 def _is_variant(a: str, b: str) -> bool:
     """True when two normalised topics are inflectional variants of each other.
 
-    Compared token by token: they must have the same number of tokens, every
-    token must match or be a plural/inflection of its counterpart, and at least
-    one token must differ (otherwise they are identical). The equal-token-count
-    rule keeps distinct concepts apart ("language model" vs "large language
-    model", "topic model" vs "dynamic topic model").
+    Compared token by token: they must have the same number of tokens, every token must match or be a plural/inflection of its counterpart, and at least one token must differ (otherwise they are identical).
+    The equal-token-count rule keeps distinct concepts apart ("language model" vs "large language model", "topic model" vs "dynamic topic model").
     """
     ta, tb = a.split(), b.split()
     if len(ta) != len(tb) or not ta:
@@ -256,13 +279,61 @@ def choose_keyword_source(record: dict[str, object]) -> object | None:
 
 
 # Abstract / description cleaning
+def split_labelled_sections(text: str) -> list[tuple[str | None, str]]:
+    """Split a portal description into (label, content) sections.
+
+    Each known label terminates the section that precedes it; text remaining after the last label (or the whole text when no label is present) is an unlabelled trailing section with label None.
+    Separators left at the start of a section by the previous label are stripped.
+    """
+    sections: list[tuple[str | None, str]] = []
+    pos = 0
+    for match in _SECTION_LABEL_REGEX.finditer(text):
+        content = _SECTION_SEPARATOR_REGEX.sub("", text[pos : match.start()]).strip()
+        sections.append((match.group(0), content))
+        pos = match.end()
+    tail = _SECTION_SEPARATOR_REGEX.sub("", text[pos:]).strip()
+    if tail:
+        sections.append((None, tail))
+    return sections
+
+
+def _select_abstract_section(text: str) -> str:
+    """Pick the abstract content out of a labelled-section description.
+
+    Preference order (first tier with non-empty content wins):
+      1. "(Summary)": the portal's explicit abstract section.
+      2. "(General Description)": used instead of Summary by some records.
+      3. "(Objectives)" + "(Most relevant results)" joined.
+      4. Unlabelled trailing text (records whose abstract carries no label).
+    Metadata sections (authors, contact, acknowledgments, merit prose,
+    quality indicators...) are always discarded, wherever they appear.
+    """
+    sections = split_labelled_sections(text)
+    if len(sections) == 1 and sections[0][0] is None:
+        return text  # no labels at all: the whole text is the candidate
+
+    def collect(*labels: str) -> str:
+        return " ".join(
+            content for label, content in sections if label in labels and content
+        ).strip()
+
+    for candidate in (
+        collect(PUBLICATION_SUMMARY_LABEL),
+        collect(PUBLICATION_DESCRIPTION_LABEL),
+        collect(*PUBLICATION_OBJECTIVES_LABELS),
+        collect(None),
+    ):
+        if candidate:
+            return candidate
+    return ""
+
+
 def clean_description(value: str | None) -> str | None:
     """Clean and normalise a publication description.
 
-    Works with the UPM portal's labelled-section format: it drops a leading author block (terminated by "(Authors with Filk)"), keeps the abstract up to the first section label and strips prefixes, bilingual duplicates and copyright notices.
+    Works with the UPM portal's labelled-section format: the description is split into its labelled sections (which appear in ARBITRARY order) and the abstract is selected by its explicit label — "(Summary)", falling back to "(General Description)", then "(Objectives)"/"(Most relevant results)",then unlabelled trailing text.
+    Author/contact/acknowledgment/merit sections are discarded, and prefixes, bilingual duplicates, copyright notices and citation metadata are stripped from the selected abstract.
     Returns None when no real content remains.
-
-    The cleaning is intentionally conservative: it only cuts at explicit section labels / copyright notices, never on loose heuristics, so a real abstract is never silently truncated.
     """
     if not value:
         return None
@@ -270,6 +341,12 @@ def clean_description(value: str | None) -> str | None:
     text = value.replace("\xa0", " ").strip()
 
     if PUBLICATION_MISSING_STATEMENT_REGEX.match(text):
+        return None
+
+    text = _select_abstract_section(text)
+    # Re-check after selection: the placeholder can also appear INSIDE a
+    # labelled section (e.g. "No Statement Available (Summary)").
+    if not text or PUBLICATION_MISSING_STATEMENT_REGEX.match(text):
         return None
 
     for prefix_regex in PUBLICATION_PREFIX_REGEXES:
@@ -284,33 +361,11 @@ def clean_description(value: str | None) -> str | None:
         if section_match:
             text = text[section_match.start() :].strip()
 
-    def earliest_marker(haystack: str) -> int | None:
-        """Index of the first abstract-ending section label, or None."""
-        found = None
-        for marker in PUBLICATION_TRAILING_MARKERS:
-            marker_index = haystack.find(marker)
-            if marker_index != -1 and (found is None or marker_index < found):
-                found = marker_index
-        return found
-
-    # An author block ("(Authors with Filk)") only leads when it appears BEFORE the abstract-ending label.
-    # In many records the order is reversed (<abstract> (Summary); <authors> (Authors with Filk)), so stripping unconditionally would wrongly drop the abstract.
-    authors_index = text.find(PUBLICATION_AUTHORS_BLOCK_MARKER)
-    end_index = earliest_marker(text)
-    if authors_index != -1 and (end_index is None or authors_index < end_index):
-        cut = authors_index + len(PUBLICATION_AUTHORS_BLOCK_MARKER)
-        text = re.sub(r"^\s*;\s*", "", text[cut:]).strip()
-        end_index = earliest_marker(text)
-
     match = PUBLICATION_COPYRIGHT_REGEX.search(text)
     if match:
         prefix = text[: match.start()].strip()
         if prefix:
             text = prefix
-        end_index = earliest_marker(text)
-
-    if end_index is not None:
-        text = text[:end_index]
 
     if re.search(r"\b(?:DOI|arXiv)\b", text, re.IGNORECASE):
         citation_tail_match = re.search(r"\s+\d{4}\s*[;,].*$|\s*,\s*\(\):\s*.*$", text)
