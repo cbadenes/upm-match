@@ -118,7 +118,7 @@ REPORTS_DIR = Path(os.environ.get("EVAL_REPORTS_DIR", "evaluation/reports"))
 
 # Search modes compared by the harness. The first is a control (a pure lexical baseline with no LLM, used as an ablation).
 # The other four are the strategies exposed by the web app (see app/routes.py).
-# Order matches the memoria tables, with the control reported first.
+# Order matches the tables, with the control reported first.
 SEARCH_MODES: list[str] = [
     "lexical_direct",
     "keywords",
@@ -127,7 +127,7 @@ SEARCH_MODES: list[str] = [
     "hybrid",
 ]
 
-# Human-readable strategy names (match the labels used in the memoria tables).
+# Human-readable strategy names (match the labels used in the tables).
 MODE_LABELS: dict[str, str] = {
     "lexical_direct": "Léxica directa (control)",
     "keywords": "Léxica con LLM",
@@ -136,8 +136,7 @@ MODE_LABELS: dict[str, str] = {
     "hybrid": "Híbrida",
 }
 
-# Cut-offs at which ranking metrics are reported.
-K_VALUES: list[int] = [1, 3, 5, 10, 25]
+K_VALUES: list[int] = [1, 5, 10, 25, 50, 100]
 
 # Fixed seed so the silver standard is reproducible across runs.
 SEED = 42
@@ -216,6 +215,12 @@ class RecommendationResult(BaseModel):
     llm_seconds: float | None = None
     search_seconds: float | None = None
     total_seconds: float | None = None
+    # Reserved for the two-stage re-ranking extension.
+    # Maps researcher_id -> {component: score} with the SEPARATE signals that feed the final ordering (e.g. "listwise" textual score and each graph signal).
+    # Storing them per query lets us re-fuse off-line under many parameter settings (fusion weight, signal subset) and run a SENSITIVITY ANALYSIS without re-invoking the costly re-ranker.
+    # None for the single-stage strategies, which have no components to sweep.
+    # TODO(phase B4): populate this from the re-ranker and add the sweep to analyze_results.
+    rerank_components: dict[str, dict[str, float]] | None = None
 
 
 class MetricReport(BaseModel):
@@ -883,7 +888,7 @@ def analyze_by_segment(
     return reports
 
 
-_HEADLINE = ["mrr", "map", "hit@1", "hit@3", "hit@5", "hit@10", "ndcg@5", "ndcg@10"]
+_HEADLINE = ["mrr", "map", "hit@1", "hit@5", "hit@10", "hit@25", "ndcg@5", "ndcg@10"]
 
 
 def _markdown_table(
@@ -916,7 +921,7 @@ def _timing_table(reports: list[MetricReport]) -> str:
 
 
 def _legend() -> str:
-    """One-line mapping of internal mode keys to the memoria strategy labels."""
+    """One-line mapping of internal mode keys to the strategy labels."""
     return "Modos: " + " · ".join(
         f"`{m}` = {MODE_LABELS.get(m, m)}" for m in SEARCH_MODES
     )
@@ -987,17 +992,25 @@ def _atomic_write_json(path: Path, data) -> None:
     os.replace(tmp, path)
 
 
-def _recs_cache_path(mode: str, source: str) -> Path:
-    """Cache path for one mode, namespaced by query source.
-
-    Gold and silver runs are kept apart (``cache/gold/`` vs ``cache/silver/``) so
-    re-running one never clobbers the other's cached rankings.
+def _namespace(source: str, tag: str | None) -> str:
+    """Path namespace for a run: ``source`` or ``source/tag`` when a campaign tag is given.
+    The tag isolates a re-run (e.g. after regenerating the data) from earlier ones.
+    A fresh tag means a fresh cache subtree and a separate reports/MinIO prefix.
     """
-    return CACHE_DIR / source / f"recommendations_{mode}.json"
+    return f"{source}/{tag}" if tag else source
 
 
-def _load_recs_cache(mode: str, source: str) -> dict[str, RecommendationResult]:
-    path = _recs_cache_path(mode, source)
+def _recs_cache_path(mode: str, source: str, tag: str | None = None) -> Path:
+    """Cache path for one mode, namespaced by query source (and campaign tag).
+    Gold and silver runs are kept apart (``cache/gold/`` vs ``cache/silver/``) so re-running one never clobbers the other's cached rankings; a ``tag`` nests one level deeper (``cache/gold/<tag>/``) for an isolated campaign.
+    """
+    return CACHE_DIR / _namespace(source, tag) / f"recommendations_{mode}.json"
+
+
+def _load_recs_cache(
+    mode: str, source: str, tag: str | None = None
+) -> dict[str, RecommendationResult]:
+    path = _recs_cache_path(mode, source, tag)
     if not path.exists():
         return {}
     raw = json.loads(path.read_text(encoding="utf-8"))
@@ -1005,22 +1018,23 @@ def _load_recs_cache(mode: str, source: str) -> dict[str, RecommendationResult]:
 
 
 def _save_recs_cache(
-    mode: str, cache: dict[str, RecommendationResult], source: str
+    mode: str,
+    cache: dict[str, RecommendationResult],
+    source: str,
+    tag: str | None = None,
 ) -> None:
     _atomic_write_json(
-        _recs_cache_path(mode, source), [r.model_dump() for r in cache.values()]
+        _recs_cache_path(mode, source, tag), [r.model_dump() for r in cache.values()]
     )
 
 
-def publish_to_minio(report_dir: Path, source: str, modes: list[str]) -> None:
+def publish_to_minio(
+    report_dir: Path, source: str, modes: list[str], tag: str | None = None
+) -> None:
     """Upload the report + raw per-mode rankings to MinIO for off-server retrieval.
-
-    Writes two copies per artefact: a timestamped one under
-    ``<source>/<timestamp>/`` (immutable history) and an overwriting
-    ``<source>/latest/`` pointer (so consumers can always grab the newest run).
-    The bucket (``MINIO_EVAL_BUCKET``, default ``tfm-evaluation``) is created on
-    first use. Failures are logged but never abort the evaluation, whose results
-    are already safe on disk.
+    Writes two copies per artefact: a timestamped one under ``<source>[/<tag>]/<timestamp>/`` (immutable history) and an overwriting ``<source>[/<tag>]/latest/`` pointer (so consumers can always grab the newest run).
+    The bucket (``MINIO_EVAL_BUCKET``, default ``tfm-evaluation``) is created on first use.
+    Failures are logged but never abort the evaluation, whose results are already safe on disk.
     """
     try:
         from dbs import minio
@@ -1029,8 +1043,9 @@ def publish_to_minio(report_dir: Path, source: str, modes: list[str]) -> None:
         return
 
     bucket = os.environ.get("MINIO_EVAL_BUCKET", "tfm-evaluation")
-    base = f"{source}/{report_dir.name}"
-    latest = f"{source}/latest"
+    ns = _namespace(source, tag)
+    base = f"{ns}/{report_dir.name}"
+    latest = f"{ns}/latest"
 
     uploads: list[tuple[Path, str]] = []
     for fname in ("report.md", "metrics.json"):
@@ -1038,7 +1053,7 @@ def publish_to_minio(report_dir: Path, source: str, modes: list[str]) -> None:
         if fp.exists():
             uploads.append((fp, fname))
     for mode in modes:
-        cp = _recs_cache_path(mode, source)
+        cp = _recs_cache_path(mode, source, tag)
         if cp.exists():
             uploads.append((cp, f"cache/{cp.name}"))
 
@@ -1060,11 +1075,8 @@ def publish_to_minio(report_dir: Path, source: str, modes: list[str]) -> None:
 
 def fetch_from_minio(dest_dir: Path, source: str | None = None) -> int:
     """Download every evaluation artefact from MinIO into a local directory.
-
-    Mirrors the bucket layout under ``dest_dir`` (each object key becomes a relative
-    path), so the results published by ``--publish-minio`` can be pulled back to the
-    repo in one shot. Pass ``source`` to fetch only one reference set; omit it to
-    fetch everything stored in the bucket. Returns the number of objects downloaded.
+    Mirrors the bucket layout under ``dest_dir`` (each object key becomes a relative path), so the results published by ``--publish-minio`` can be pulled back to the repo in one shot.
+    Pass ``source`` to fetch only one reference set; omit it to fetch everything stored in the bucket. Returns the number of objects downloaded.
     """
     try:
         from dbs import minio
@@ -1131,15 +1143,15 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
     gold_by_id = {g.gold_id: g for g in gold}
 
     if args.source == "gold":
-        # Evaluate directly over the real thesis descriptions as the query. Every mode
-        # uses gold.description as its input text (already what the lexical_direct
-        # control uses), so the pipeline is otherwise identical.
+        # Evaluate directly over the real thesis descriptions as the query.
+        # Every mode uses `gold.description` as its input text (already what the `lexical_direct`` control uses), so the pipeline is otherwise identical.
         query_records = gold
         logger.info("Source=gold: querying with {} thesis descriptions.", len(gold))
     else:
-        # The final silver files share the gold schema, with `description` already set
-        # to the chosen student proposal, so they feed the exact same path as gold.
-        silver_paths = tuple(p for p in (SILVER_TFG_PATH, SILVER_TFM_PATH) if p.exists())
+        # The final silver files share the gold schema, with `description` already set to the chosen student proposal, so they feed the exact same path as gold.
+        silver_paths = tuple(
+            p for p in (SILVER_TFG_PATH, SILVER_TFM_PATH) if p.exists()
+        )
         if not silver_paths:
             logger.error(
                 "No final silver standard in {}. Run the silver DAG (incl. the "
@@ -1150,12 +1162,10 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
         query_records = load_gold_standard(paths=silver_paths)
         logger.info("Source=silver: querying with {} proposals.", len(query_records))
 
-    # Build the per-query work list. The query text is the record's `description`
-    # (the thesis text for gold, the chosen proposal for silver); the ground truth
-    # (director, year, area, type) comes from `gold_by_id`, keyed by gold_id.
+    # Build the per-query work list. The query text is the record's `description` (the thesis text for gold, the chosen proposal for silver).
+    # The ground truth (director, year, area, type) comes from `gold_by_id`, keyed by gold_id.
     silver = [
-        SilverRecord(gold_id=r.gold_id, proposal=r.description)
-        for r in query_records
+        SilverRecord(gold_id=r.gold_id, proposal=r.description) for r in query_records
     ]
 
     db = get_vector_db()
@@ -1168,8 +1178,7 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
     )
     warn_unresolved_directors(gold, common)
 
-    # Restrict to the common universe FIRST (before --limit) so every mode ranks the
-    # true director over the same population and --limit yields evaluable queries.
+    # Restrict to the common universe FIRST (before --limit) so every mode ranks the true director over the same population and --limit yields evaluable queries.
     if not args.no_universe_filter:
         before = len(silver)
         silver = [
@@ -1197,8 +1206,9 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
     per_mode: list[MetricReport] = []
     per_segment: dict[str, dict[str, list[MetricReport]]] = {}
 
+    tag = getattr(args, "tag", None) or None
     for mode in args.modes:
-        cache = {} if args.no_cache else _load_recs_cache(mode, args.source)
+        cache = {} if args.no_cache else _load_recs_cache(mode, args.source, tag)
         results: list[RecommendationResult] = []
         for i, s in enumerate(silver, 1):
             gold_rec = gold_by_id.get(s.gold_id)
@@ -1208,13 +1218,13 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
             if cached is not None and cached.error is None:
                 results.append(cached)
                 continue
-            res = run_recommendations(s, gold_rec, mode, db)
+            res = run_recommendations(s, gold_rec, mode, db, limit=max(K_VALUES))
             cache[s.gold_id] = res
             results.append(res)
             if i % CACHE_FLUSH_EVERY == 0:
-                _save_recs_cache(mode, cache, args.source)
+                _save_recs_cache(mode, cache, args.source, tag)
                 logger.info("[{}] {}/{} done", mode, i, len(silver))
-        _save_recs_cache(mode, cache, args.source)
+        _save_recs_cache(mode, cache, args.source, tag)
 
         per_mode.append(compute_metrics(results, segment="all"))
         per_segment[mode] = {
@@ -1222,10 +1232,14 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
             for key in ("study_type", "knowledge_area", "year")
         }
 
-    out_dir = REPORTS_DIR / args.source / datetime.now().strftime("%Y%m%d_%H%M%S")
+    out_dir = (
+        REPORTS_DIR
+        / _namespace(args.source, tag)
+        / datetime.now().strftime("%Y%m%d_%H%M%S")
+    )
     report(per_mode, per_segment, out_dir=out_dir)
     if args.publish_minio:
-        publish_to_minio(out_dir, args.source, args.modes)
+        publish_to_minio(out_dir, args.source, args.modes, tag)
     return 0
 
 
@@ -1332,6 +1346,15 @@ def main() -> int:
         "(no silver standard needed); 'silver' uses the generated student-style "
         "proposals (run the silver DAG: silver-generate/grade/finalize first). Cache + "
         "report are namespaced by source so the two never collide.",
+    )
+    p_eval.add_argument(
+        "--tag",
+        default=None,
+        help="Campaign tag: isolates this run under <source>/<tag>/ in the cache, "
+        "reports and MinIO. Use it after regenerating the underlying data (e.g. "
+        "--tag clean_abstracts) so a fresh cache is built on the new data and the "
+        "analysis never mixes this campaign with earlier ones. Omit to keep the "
+        "flat <source>/ layout.",
     )
     p_eval.add_argument(
         "--modes",

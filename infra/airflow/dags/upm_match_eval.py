@@ -60,6 +60,14 @@ with DAG(
             description="Query source: 'gold' = thesis descriptions (no silver needed); "
             "'silver' = generated student proposals (run the upm_match_silver DAG first).",
         ),
+        "tag": Param(
+            "",
+            type="string",
+            description="Campaign tag to isolate this run under <source>/<tag>/ "
+            "(cache, reports and MinIO). Set it after regenerating the data (e.g. "
+            "'clean_abstracts') so a fresh cache is built on the new data and the "
+            "analysis never mixes it with earlier runs. Leave empty for the flat layout.",
+        ),
         "modes": Param(
             _SEARCH_MODES,
             type="array",
@@ -107,6 +115,7 @@ with DAG(
             "evaluate --source {{ params.source }} "
             "--modes {{ params.modes | join(' ') }} "
             "--publish-minio"
+            "{{ ' --tag ' ~ params.tag if params.tag else '' }}"
             "{{ ' --no-cache' if params.no_cache else '' }}"
             "{{ ' --no-universe-filter' if params.no_universe_filter else '' }}"
         ),

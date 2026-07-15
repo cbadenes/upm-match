@@ -1,7 +1,7 @@
 """
-UPM Match — statistical analysis of the evaluation runs (memoria tables).
+UPM Match — statistical analysis of the evaluation runs.
 
-Reads every evaluation run published by `evaluate_recommendations.py --publish-minio` and mirrored back into the repo (`evaluation/reports/<source>/<ts>/...`), and turns the raw per-query rankings into the tables the memoria needs, with proper uncertainty quantification.
+Reads every evaluation run published by `evaluate_recommendations.py --publish-minio` and mirrored back into the repo (`evaluation/reports/<source>/<ts>/...`), and turns the raw per-query rankings into the tables we need, with proper uncertainty quantification.
 
 WHAT IT READS
    For each source ("gold", "silver") it discovers every timestamped run under `<reports>/<source>/<ts>/` (the overwriting `latest/` pointer is ignored so no run is counted twice) and loads the per-query rankings from each run's `cache/recommendations_<mode>.json`. Those files hold one RecommendationResult per query (ranked researcher_ids + the true director + timings), which is all the metric math needs.
@@ -47,8 +47,9 @@ import numpy as np  # noqa: E402
 from loguru import logger  # noqa: E402
 from scipy.stats import binomtest, wilcoxon  # noqa: E402
 
-# Reuse the harness so the metric math is the single source of truth.
+# Reuse the harness so the metric math AND the K cut-offs are a single source of truth.
 from evaluation.evaluate_recommendations import (  # noqa: E402
+    K_VALUES,
     MODE_LABELS,
     SEARCH_MODES,
     GoldRecord,
@@ -61,24 +62,27 @@ from evaluation.evaluate_recommendations import (  # noqa: E402
     reciprocal_rank,
 )
 
-# Metrics reported per mode (mrr == map and recall@k == hit@k for a single relevant item,
-# both kept for fidelity with the existing memoria tables).
-HEADLINE_METRICS = [
-    "mrr",
-    "map",
-    "hit@1",
-    "hit@3",
-    "hit@5",
-    "hit@10",
-    "ndcg@5",
-    "ndcg@10",
-]
+# Metrics reported per mode (mrr == map and recall@k == hit@k for a single relevant item, both kept for fidelity).
+# Hit@k cut-offs are the "shallow" (presentation-range) values of K_VALUES.
+HEADLINE_METRICS = (
+    ["mrr", "map"] + [f"hit@{k}" for k in K_VALUES if k <= 25] + ["ndcg@5", "ndcg@10"]
+)
 SOURCES_DEFAULT = ["gold", "silver"]
 SEGMENT_KEYS = ["study_type", "knowledge_area", "year"]
 
 # Metric used for the pairwise significance tests and most breakdowns.
 PRIMARY_METRIC = "mrr"
 MCNEMAR_K = 5  # Hit@k cut-off for the binary (McNemar) significance test.
+
+# Cut-offs for the recall ceiling of the first-stage candidate list: the "deep" values of the single K_VALUES list.
+RECALL_CEILING_K = [k for k in K_VALUES if k >= 25]
+
+# Default location of the per-PDI productivity map used by the equity metric.
+# JSON: {"pdi_<id>": <activity count>}.
+# Published to MinIO by the evaluation DAG and fetched with the reports.
+PRODUCTIVITY_DEFAULT = "evaluation/reports/productividad_pdis.json"
+EQUITY_METRICS = ["mrr", f"hit@{MCNEMAR_K}"]
+TERCILE_LABELS = ["T1 (baja)", "T2 (media)", "T3 (alta)"]
 
 
 # Per-query metric extraction
@@ -101,12 +105,16 @@ def per_query_value(res: RecommendationResult, metric: str) -> float:
 
 
 # Run discovery + loading
-def discover_runs(reports_dir: Path, source: str) -> list[Path]:
+def discover_runs(reports_dir: Path, source: str, tag: str | None = None) -> list[Path]:
     """Return the timestamped run directories for a source (skipping `latest/`).
     A run directory is one that holds a `cache/` with at least one `recommendations_<mode>.json`.
     Sorted by name (timestamp), so order is chronological.
+
+    With ``tag`` set, only the campaign under ``<source>/<tag>/`` is scanned, so a
+    re-run published with ``evaluate --tag <tag>`` is analysed in isolation from
+    earlier runs stored under the flat ``<source>/`` layout.
     """
-    base = reports_dir / source
+    base = reports_dir / source / tag if tag else reports_dir / source
     if not base.is_dir():
         return []
     runs = []
@@ -129,6 +137,35 @@ def load_run_mode(run_dir: Path, mode: str) -> dict[str, RecommendationResult]:
         res = RecommendationResult.model_validate(item)
         if res.error is None:
             out[res.gold_id] = res
+    return out
+
+
+def load_productivity(path: Path) -> dict[str, float] | None:
+    """Load the per-PDI productivity map used by the equity metric, or None.
+
+    Expected JSON: ``{"pdi_<id>": <activity count>}``, produced by the evaluation DAG on the server and fetched with the reports.
+    Returns None when the file is missing so the equity table is skipped gracefully, mirroring how the segment tables degrade when the gold standard is absent.
+    """
+    if not path.exists():
+        return None
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+        return {str(k): float(v) for k, v in raw.items()}
+    except (ValueError, TypeError, OSError) as exc:
+        logger.warning("Could not read productivity map {}: {}", path, exc)
+        return None
+
+
+def _assign_terciles(prod_by_pdi: dict[str, float]) -> dict[str, int]:
+    """Assign each PDI to a productivity tercile 0 (low) / 1 / 2 (high).
+
+    Boundaries are the 33rd and 66th percentiles over the PDI population given, so the split describes the candidates, not the queries (a prolific supervisor with many queries still counts once towards the boundaries).
+    """
+    values = np.array(sorted(prod_by_pdi.values()), dtype=float)
+    q33, q66 = np.percentile(values, [100 / 3, 200 / 3])
+    out: dict[str, int] = {}
+    for pdi, v in prod_by_pdi.items():
+        out[pdi] = 0 if v <= q33 else (1 if v <= q66 else 2)
     return out
 
 
@@ -506,6 +543,97 @@ def build_t6_cross_source(sources: dict[str, SourceData]) -> tuple[str, str]:
     return _md_table(header, rows), _latex_table(header, rows, cap, "tab:cross-source")
 
 
+def build_t7_recall_ceiling(sd: SourceData) -> tuple[str, str]:
+    """T7 — recall ceiling recall@{25,50,100} of the first-stage candidate list.
+
+    The re-ranking extension can only reorder candidates the first stage retrieved, so this is the upper bound of Hit@k after re-ranking and the go/no-go for the extension.
+    Every strategy retrieves max(K_VALUES) candidates, so these cut-offs are always populated from a normal evaluation run.
+    """
+    header = ["Modo", "n"] + [f"recall@{k}" for k in RECALL_CEILING_K]
+    rows = []
+    for mode in sd.modes:
+        cells = [MODE_LABELS.get(mode, mode), str(len(sd.common))]
+        for k in RECALL_CEILING_K:
+            cells.append(_fmt(float(sd.denoised(mode, f"recall@{k}").mean())))
+        rows.append(cells)
+    cap = (
+        f"Techo de recall de la primera etapa (fuente {sd.source}): fracción de consultas "
+        f"cuyo supervisor real aparece entre los primeros $K$ candidatos, para "
+        f"$K\\in\\{{{', '.join(map(str, RECALL_CEILING_K))}\\}}$. Cota superior del "
+        "$\\mathrm{Hit@}k$ tras la reordenación; requiere una profundidad de candidatos "
+        "$\\ge$ 100 para ser informativo más allá de recall@25."
+    )
+    return _md_table(header, rows), _latex_table(
+        header, rows, cap, f"tab:recall-ceiling-{sd.source}"
+    )
+
+
+def build_t8_equity(
+    sd: SourceData, productivity: dict[str, float]
+) -> tuple[str, str] | None:
+    """T8 — equity of the recommendation across productivity terciles of the true supervisor.
+
+    Each query is placed in the tercile of its true supervisor's productivity; per mode we report a quality metric per tercile plus the gap T3-T1.
+    A large gap in favour of the most productive tercile signals reliance on popularity — the risk the graph-grounded re-ranking must not aggravate.
+    Returns None when too few supervisors have a productivity value to form terciles.
+    """
+    # True supervisor per common query (identical across modes/runs: it is the gold truth), taken from any loaded result.
+    ref_run = sd.by_mode[sd.modes[0]][0]
+    director_by_gid = {gid: ref_run[gid].true_director for gid in sd.common}
+
+    directors = {d for d in director_by_gid.values() if d in productivity}
+    if len(directors) < 3:
+        logger.warning(
+            "Equity table skipped (fuente {}): only {} supervisors have a productivity "
+            "value; need at least 3 for terciles.",
+            sd.source,
+            len(directors),
+        )
+        return None
+
+    tercile_of_pdi = _assign_terciles({d: productivity[d] for d in directors})
+    # Query indices (into sd.common) per tercile.
+    idx_by_tercile: dict[int, list[int]] = {0: [], 1: [], 2: []}
+    dropped = 0
+    for i, gid in enumerate(sd.common):
+        d = director_by_gid[gid]
+        if d in tercile_of_pdi:
+            idx_by_tercile[tercile_of_pdi[d]].append(i)
+        else:
+            dropped += 1
+
+    header = (
+        ["Modo", "Métrica"]
+        + [f"{TERCILE_LABELS[t]} (n={len(idx_by_tercile[t])})" for t in (0, 1, 2)]
+        + ["brecha T3−T1"]
+    )
+    rows = []
+    for mode in sd.modes:
+        for metric in EQUITY_METRICS:
+            vals = sd.denoised(mode, metric)
+            per_t = [
+                float(vals[idx_by_tercile[t]].mean())
+                if idx_by_tercile[t]
+                else float("nan")
+                for t in (0, 1, 2)
+            ]
+            gap = per_t[2] - per_t[0]
+            rows.append(
+                [MODE_LABELS.get(mode, mode), metric]
+                + [_fmt(v) for v in per_t]
+                + [_fmt(gap)]
+            )
+    cap = (
+        f"Equidad por tercil de productividad del supervisor real (fuente {sd.source}): "
+        "calidad de la recomendación en el tercil menos, medianamente y más productivo. "
+        "Una brecha T3$-$T1 grande delata dependencia de la popularidad. "
+        f"{dropped} consultas sin dato de productividad quedaron fuera."
+    )
+    return _md_table(header, rows), _latex_table(
+        header, rows, cap, f"tab:equity-{sd.source}"
+    )
+
+
 # Orchestration
 def analyze(args: argparse.Namespace) -> int:
     reports_dir = Path(args.reports_dir)
@@ -520,12 +648,24 @@ def analyze(args: argparse.Namespace) -> int:
         logger.warning("Gold standard not found ({}); segment tables skipped.", exc)
         gold_by_id = {}
 
+    productivity = load_productivity(Path(args.productivity))
+    if productivity is None:
+        logger.warning(
+            "Productivity map not found ({}); equity table (T8) skipped. "
+            "It is produced by the evaluation DAG and fetched with the reports.",
+            args.productivity,
+        )
+
+    tag = getattr(args, "tag", None) or None
     sources: dict[str, SourceData] = {}
     for source in args.sources:
-        runs = discover_runs(reports_dir, source)
+        runs = discover_runs(reports_dir, source, tag)
         if not runs:
             logger.warning(
-                "No runs found for source {!r} under {}.", source, reports_dir
+                "No runs found for source {!r}{} under {}.",
+                source,
+                f" (tag {tag!r})" if tag else "",
+                reports_dir,
             )
             continue
         sd = SourceData(source, runs)
@@ -582,6 +722,24 @@ def analyze(args: argparse.Namespace) -> int:
                 f"T5 · MRR por {seg_key} — {source}",
             )
 
+        md, tex = build_t7_recall_ceiling(sd)
+        emit(
+            f"t7_recall_ceiling_{source}",
+            md,
+            tex,
+            f"T7 · Techo de recall (etapa 1) — {source}",
+        )
+
+        if productivity is not None:
+            equity = build_t8_equity(sd, productivity)
+            if equity is not None:
+                emit(
+                    f"t8_equity_{source}",
+                    equity[0],
+                    equity[1],
+                    f"T8 · Equidad por tercil de productividad — {source}",
+                )
+
     if len(sources) > 1:
         md, tex = build_t6_cross_source(sources)
         emit("t6_cross_source", md, tex, "T6 · Comparativa gold vs silver")
@@ -637,15 +795,18 @@ def selftest(_args: argparse.Namespace) -> int:
     d, lo, hi = paired_diff_ci(big + 2.0, big, rng, 2000, 0.05)
     assert lo <= 2.0 <= hi and abs(d - 2.0) < 1e-9
 
-    print("selftest OK — bootstrap, Wilcoxon, McNemar, Holm/BH all pass.")
+    # Terciles: 9 evenly-spread values split 3/3/3 into low/mid/high.
+    ter = _assign_terciles({f"pdi_{i}": float(i) for i in range(9)})
+    assert [ter[f"pdi_{i}"] for i in range(9)] == [0, 0, 0, 1, 1, 1, 2, 2, 2], ter
+
+    print("selftest OK — bootstrap, Wilcoxon, McNemar, Holm/BH, terciles all pass.")
     return 0
 
 
 def main() -> int:
     import os
 
-    # The tables use Unicode (Δ, σ, ±, accents); force UTF-8 so a Windows cp1252
-    # console doesn't crash on print/log.
+    # The tables use Unicode (Δ, σ, ±, accents); force UTF-8 so a Windows cp1252 console doesn't crash on print/log.
     for stream in (sys.stdout, sys.stderr):
         try:
             stream.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
@@ -656,7 +817,7 @@ def main() -> int:
     logger.add(sys.stderr, level=os.environ.get("LOG_LEVEL", "INFO"))
 
     parser = argparse.ArgumentParser(
-        description="Statistical analysis of UPM Match evaluation runs (memoria tables).",
+        description="Statistical analysis of UPM Match evaluation runs.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
@@ -675,6 +836,20 @@ def main() -> int:
         default=SOURCES_DEFAULT,
         choices=SOURCES_DEFAULT,
         help="Reference sets to analyze (default: both).",
+    )
+    parser.add_argument(
+        "--tag",
+        default=None,
+        help="Only analyze the campaign published with 'evaluate --tag <tag>' "
+        "(runs under <source>/<tag>/). Omit to analyze the flat <source>/ layout. "
+        "Use it to exclude earlier runs made on outdated data.",
+    )
+    parser.add_argument(
+        "--productivity",
+        default=PRODUCTIVITY_DEFAULT,
+        help="JSON map {pdi_<id>: activity count} for the equity table (T8), "
+        "produced by the evaluation DAG and fetched with the reports; T8 is "
+        "skipped if absent.",
     )
     parser.add_argument(
         "--bootstrap", type=int, default=10000, help="Bootstrap resamples."
