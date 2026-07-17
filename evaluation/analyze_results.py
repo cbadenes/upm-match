@@ -21,6 +21,9 @@ TABLES PRODUCED (per source unless noted), as Markdown + standalone LaTeX (bookt
    T4  Per-query timings (total/LLM/retrieval seconds), pooled over runs.
    T5  Segment breakdown of MRR by study_type / knowledge_area / year (mode x segment).
    T6  Cross-source comparison (gold vs silver) of MRR / Hit@5 / NDCG@10 per mode — the "flip" discussion.
+   T7  Recall ceiling recall@{25,50,100} of the first-stage candidate list (go/no-go for the re-ranking extension).
+   T8  Equity of the recommendation across productivity terciles of the true supervisor (popularity-bias guard); needs the productivity map.
+   T9  Off-line late-fusion sensitivity sweep over the graph-grounded re-ranker's stored components: quality + equity per weight config, without re-invoking the LLM.
 
 USAGE
    uv run --module evaluation.analyze_results            # all sources, defaults
@@ -79,16 +82,41 @@ RECALL_CEILING_K = [k for k in K_VALUES if k >= 25]
 
 # Default location of the per-PDI productivity map used by the equity metric.
 # JSON: {"pdi_<id>": <activity count>}.
-# Published to MinIO by the evaluation DAG and fetched with the reports.
+# Built and published to MinIO by the upm_match_productivity DAG (the server runs
+# only through Airflow) and mirrored here by fetch-minio.
 PRODUCTIVITY_DEFAULT = "evaluation/reports/productividad_pdis.json"
 EQUITY_METRICS = ["mrr", f"hit@{MCNEMAR_K}"]
 TERCILE_LABELS = ["T1 (baja)", "T2 (media)", "T3 (alta)"]
 
+# Off-line late-fusion sensitivity sweep (T9). The graph-grounded re-ranker
+# stores, per candidate, its listwise textual rank plus the raw graph signals in
+# `rerank_components`; we re-compose the ranking under many fusion weights WITHOUT
+# re-invoking the LLM (the dominant cost), and read off which signals/weights help
+# quality and at what cost in equity (memoria sec:eval-estrategias-rerank).
+SWEEP_MODE = "rerank_listwise_kg"  # the only mode carrying graph components
+# Graph signals available per candidate (higher = better), fused with the text rank.
+GRAPH_SIGNALS = ["supervised_total", "supervised_fit", "teaching_fit", "coauthors_in_set"]
+GRAPH_SIGNAL_LABELS = {
+    "supervised_total": "supervisión (volumen)",
+    "supervised_fit": "ajuste de supervisión",
+    "teaching_fit": "ajuste docente",
+    "coauthors_in_set": "coautoría",
+}
+# Late fusion is rank-based RRF (scale-free, so the raw-count signals and the
+# text rank combine without per-signal normalisation); text rank is anchored at
+# weight 1.0 and each graph signal weight is swept over this grid.
+RRF_K = 60
+SWEEP_GRID = [0.0, 0.5, 1.0]
+SWEEP_METRICS = ["mrr", f"hit@{MCNEMAR_K}", "ndcg@10"]
+
 
 # Per-query metric extraction
-def per_query_value(res: RecommendationResult, metric: str) -> float:
-    """Value of one ranking metric for one query (single relevant item)."""
-    ranked, rel = res.ranked_researcher_ids, res.true_director
+def metric_on_ranking(ranked: list[str], rel: str, metric: str) -> float:
+    """Value of one ranking metric for an arbitrary ranked id list (single relevant item).
+
+    Split from `per_query_value` so the off-line sweep (T9) can score a ranking
+    it re-composes from stored components, not just the one stored in a result.
+    """
     if metric in ("mrr", "map"):  # average precision == reciprocal rank here
         return reciprocal_rank(ranked, rel)
     name, _, k_str = metric.partition("@")
@@ -102,6 +130,11 @@ def per_query_value(res: RecommendationResult, metric: str) -> float:
     if name == "ndcg":
         return ndcg_at_k(ranked, rel, k)
     raise ValueError(f"Unknown metric: {metric!r}")
+
+
+def per_query_value(res: RecommendationResult, metric: str) -> float:
+    """Value of one ranking metric for one query (single relevant item)."""
+    return metric_on_ranking(res.ranked_researcher_ids, res.true_director, metric)
 
 
 # Run discovery + loading
@@ -634,6 +667,233 @@ def build_t8_equity(
     )
 
 
+# Late-fusion sensitivity sweep (T9)
+def _ranks_by_signal(
+    comp: dict[str, dict[str, float]], ids: list[str], signal: str
+) -> dict[str, int]:
+    """Rank candidates 1..N by DESCENDING signal value (ties -> better stage-1 rank).
+
+    Turns a raw graph signal (a count, higher = better) into a per-query rank so
+    it can enter the rank-based RRF fusion on the same footing as the text rank.
+    """
+    order = sorted(
+        ids,
+        key=lambda c: (-comp[c].get(signal, 0.0), comp[c].get("stage1_rank", 0.0)),
+    )
+    return {c: i + 1 for i, c in enumerate(order)}
+
+
+def _fused_order(comp: dict[str, dict[str, float]], weights: dict[str, float]) -> list[str]:
+    """Re-compose the candidate ranking under `weights` via rank-based RRF.
+
+    `weights["text"]` scales the stored listwise rank; each graph signal with a
+    positive weight contributes its own descending-value rank. Higher fused score
+    first; the text rank breaks ties so a text-only config reproduces exactly the
+    re-ranker's stored ordering.
+    """
+    ids = list(comp)
+    text_rank = {
+        c: int(comp[c].get("listwise_rank", comp[c].get("stage1_rank", i + 1)))
+        for i, c in enumerate(ids)
+    }
+    active = {s: w for s, w in weights.items() if s != "text" and w > 0}
+    sig_ranks = {s: _ranks_by_signal(comp, ids, s) for s in active}
+
+    def score(c: str) -> float:
+        s = weights.get("text", 0.0) / (RRF_K + text_rank[c])
+        for sig, w in active.items():
+            s += w / (RRF_K + sig_ranks[sig][c])
+        return s
+
+    return sorted(ids, key=lambda c: (-score(c), text_rank[c]))
+
+
+def _sweep_per_query(
+    runs: list[dict[str, RecommendationResult]],
+    common: list[str],
+    weights: dict[str, float],
+    metric: str,
+) -> np.ndarray:
+    """Per-query metric of the re-composed ranking, denoised across the mode's runs.
+
+    Mirrors `SourceData.denoised`: one value per common query, averaged over the
+    runs that carry graph components for that query.
+    """
+    out = np.zeros(len(common))
+    for i, gid in enumerate(common):
+        vals = []
+        for run in runs:
+            res = run.get(gid)
+            if res is None or not res.rerank_components:
+                continue
+            order = _fused_order(res.rerank_components, weights)
+            vals.append(metric_on_ranking(order, res.true_director, metric))
+        if vals:
+            out[i] = float(np.mean(vals))
+    return out
+
+
+def _sweep_configs() -> list[tuple[str, dict[str, float]]]:
+    """Named ablation configs: text-only, each graph signal alone, then all together."""
+    configs: list[tuple[str, dict[str, float]]] = [("solo texto (listwise)", {"text": 1.0})]
+    for sig in GRAPH_SIGNALS:
+        configs.append((f"+ {GRAPH_SIGNAL_LABELS[sig]}", {"text": 1.0, sig: 0.5}))
+    configs.append(("todas las señales (0.5)", {"text": 1.0, **{s: 0.5 for s in GRAPH_SIGNALS}}))
+    configs.append(("todas las señales (1.0)", {"text": 1.0, **{s: 1.0 for s in GRAPH_SIGNALS}}))
+    return configs
+
+
+def _grid_configs() -> list[tuple[str, dict[str, float]]]:
+    """Full |SWEEP_GRID|^|GRAPH_SIGNALS| grid (text anchored at 1.0) for the argmax search."""
+    from itertools import product
+
+    out: list[tuple[str, dict[str, float]]] = []
+    for combo in product(SWEEP_GRID, repeat=len(GRAPH_SIGNALS)):
+        weights = {"text": 1.0}
+        weights.update({s: w for s, w in zip(GRAPH_SIGNALS, combo)})
+        label = ", ".join(
+            f"{GRAPH_SIGNAL_LABELS[s]}={w:g}" for s, w in zip(GRAPH_SIGNALS, combo) if w > 0
+        )
+        out.append((label or "solo texto", weights))
+    return out
+
+
+def build_t9_sweep(
+    sd: SourceData, productivity: dict[str, float] | None
+) -> tuple[str, str] | None:
+    """T9 — late-fusion sensitivity sweep over the graph-grounded re-ranker's signals.
+
+    Re-composes `rerank_listwise_kg`'s ranking off-line under a grid of fusion
+    weights and reports quality (MRR / Hit@k / NDCG) plus, when a productivity map
+    is available, the equity gap T3-T1 on MRR. Rows: a text-only reference, each
+    graph signal added alone, all signals together, and the grid-search optimum by
+    MRR — so the reader sees each signal's marginal value AND whether chasing MRR
+    widens the popularity gap. Returns None when the graph-grounded mode is absent.
+    """
+    if SWEEP_MODE not in sd.by_mode:
+        return None
+    runs = sd.by_mode[SWEEP_MODE]
+
+    # Optional equity: query indices per productivity tercile of the true supervisor.
+    idx_by_tercile: dict[int, list[int]] | None = None
+    if productivity is not None:
+        ref = runs[0]
+        director_by_gid = {gid: ref[gid].true_director for gid in sd.common if gid in ref}
+        directors = {d for d in director_by_gid.values() if d in productivity}
+        if len(directors) >= 3:
+            tercile_of_pdi = _assign_terciles({d: productivity[d] for d in directors})
+            idx_by_tercile = {0: [], 1: [], 2: []}
+            for i, gid in enumerate(sd.common):
+                d = director_by_gid.get(gid)
+                if d in tercile_of_pdi:
+                    idx_by_tercile[tercile_of_pdi[d]].append(i)
+
+    def equity_gap(mrr_per_query: np.ndarray) -> float:
+        if not idx_by_tercile or not idx_by_tercile[0] or not idx_by_tercile[2]:
+            return float("nan")
+        return float(
+            mrr_per_query[idx_by_tercile[2]].mean() - mrr_per_query[idx_by_tercile[0]].mean()
+        )
+
+    def row_for(label: str, weights: dict[str, float]) -> tuple[list[str], float]:
+        cells = [label]
+        mrr_pq = _sweep_per_query(runs, sd.common, weights, "mrr")
+        for metric in SWEEP_METRICS:
+            pq = mrr_pq if metric == "mrr" else _sweep_per_query(runs, sd.common, weights, metric)
+            cells.append(_fmt(float(pq.mean())))
+        if idx_by_tercile is not None:
+            cells.append(_fmt(equity_gap(mrr_pq)))
+        return cells, float(mrr_pq.mean())
+
+    header = ["Configuración"] + [m.upper() if m == "mrr" else m for m in SWEEP_METRICS]
+    if idx_by_tercile is not None:
+        header.append("brecha T3−T1 (MRR)")
+
+    rows = [row_for(label, w)[0] for label, w in _sweep_configs()]
+
+    # Grid-search optimum by MRR (many configs, so only the winner is reported here;
+    # the full grid goes to a machine-readable CSV for the appendix / reproducibility).
+    grid = [(label, w, *row_for(label, w)) for label, w in _grid_configs()]
+    best_label, _best_w, best_cells, _best_mrr = max(grid, key=lambda g: g[3])
+    best_cells[0] = f"óptimo por MRR ({best_label})"
+    rows.append(best_cells)
+
+    cap = (
+        f"Barrido de sensibilidad de la fusión tardía (fuente {sd.source}) sobre las "
+        "señales del reordenador con grafo, recompuesto sin volver a invocar el LLM. "
+        "Cada fila fija el peso del texto en 1.0 y varía las señales de grafo; la última "
+        f"es el óptimo de una rejilla de ${len(_grid_configs())}$ combinaciones por MRR. "
+        + (
+            "La brecha T3$-$T1 vigila que ganar MRR no ensanche el sesgo de popularidad."
+            if idx_by_tercile is not None
+            else "(Sin mapa de productividad: columna de equidad omitida.)"
+        )
+    )
+    return _md_table(header, rows), _latex_table(
+        header, rows, cap, f"tab:rerank-sweep-{sd.source}"
+    )
+
+
+def write_sweep_grid(sd: SourceData, out_dir: Path) -> Path | None:
+    """Dump the full weight grid × metrics to CSV for the appendix (one row per config)."""
+    if SWEEP_MODE not in sd.by_mode:
+        return None
+    runs = sd.by_mode[SWEEP_MODE]
+    lines = ["config," + ",".join(GRAPH_SIGNALS) + "," + ",".join(SWEEP_METRICS)]
+    for label, weights in _grid_configs():
+        cols = [f'"{label}"'] + [f"{weights.get(s, 0.0):g}" for s in GRAPH_SIGNALS]
+        for metric in SWEEP_METRICS:
+            cols.append(
+                _fmt(float(_sweep_per_query(runs, sd.common, weights, metric).mean()))
+            )
+        lines.append(",".join(cols))
+    path = out_dir / f"t9_sweep_grid_{sd.source}.csv"
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return path
+
+
+def publish_analysis_to_minio(out_dir: Path, tag: str | None) -> None:
+    """Upload the analysis outputs (report.md, LaTeX tables, sweep CSVs) to MinIO.
+
+    Written for the Airflow-only server: the campaign DAG runs the analysis right
+    after the evaluation and this publishes it next to the raw runs, so the whole
+    campaign (data + analysis) can be pulled from anywhere with MinIO credentials.
+    Layout mirrors the harness: ``analysis/<tag>/<timestamp>/`` (immutable) plus an
+    overwriting ``analysis/<tag>/latest/``. Failures are logged, never raised — the
+    analysis is already safe on disk.
+    """
+    try:
+        from dbs import minio
+    except Exception as exc:  # noqa: BLE001 — MinIO is optional for local runs
+        logger.warning("MinIO not available, skipping analysis publish: {}", exc)
+        return
+
+    import os
+    from datetime import datetime
+
+    bucket = os.environ.get("MINIO_EVAL_BUCKET", "tfm-evaluation")
+    ns = f"analysis/{tag}" if tag else "analysis"
+    base = f"{ns}/{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    latest = f"{ns}/latest"
+
+    uploads = [p for p in sorted(out_dir.rglob("*")) if p.is_file() and p.name != ".gitignore"]
+    ok = 0
+    for fp in uploads:
+        rel = fp.relative_to(out_dir).as_posix()
+        if minio.upload_file(bucket, fp, f"{base}/{rel}") and minio.upload_file(
+            bucket, fp, f"{latest}/{rel}"
+        ):
+            ok += 1
+    logger.info(
+        "Published {}/{} analysis artefacts to MinIO bucket {!r} under {}/ (and {}/)",
+        ok,
+        len(uploads),
+        bucket,
+        base,
+        latest,
+    )
+
+
 # Orchestration
 def analyze(args: argparse.Namespace) -> int:
     reports_dir = Path(args.reports_dir)
@@ -652,7 +912,7 @@ def analyze(args: argparse.Namespace) -> int:
     if productivity is None:
         logger.warning(
             "Productivity map not found ({}); equity table (T8) skipped. "
-            "It is produced by the evaluation DAG and fetched with the reports.",
+            "Run the upm_match_productivity DAG and fetch the reports to get it.",
             args.productivity,
         )
 
@@ -740,6 +1000,18 @@ def analyze(args: argparse.Namespace) -> int:
                     f"T8 · Equidad por tercil de productividad — {source}",
                 )
 
+        sweep = build_t9_sweep(sd, productivity)
+        if sweep is not None:
+            emit(
+                f"t9_rerank_sweep_{source}",
+                sweep[0],
+                sweep[1],
+                f"T9 · Barrido de sensibilidad del reordenador — {source}",
+            )
+            grid_path = write_sweep_grid(sd, out_dir)
+            if grid_path is not None:
+                logger.info("Full re-ranking weight grid → {}", grid_path)
+
     if len(sources) > 1:
         md, tex = build_t6_cross_source(sources)
         emit("t6_cross_source", md, tex, "T6 · Comparativa gold vs silver")
@@ -753,6 +1025,8 @@ def analyze(args: argparse.Namespace) -> int:
         len(list(tex_dir.glob("*.tex"))),
         tex_dir,
     )
+    if getattr(args, "publish_minio", False):
+        publish_analysis_to_minio(out_dir, tag)
     print("\n" + report_md + "\n")
     return 0
 
@@ -799,7 +1073,25 @@ def selftest(_args: argparse.Namespace) -> int:
     ter = _assign_terciles({f"pdi_{i}": float(i) for i in range(9)})
     assert [ter[f"pdi_{i}"] for i in range(9)] == [0, 0, 0, 1, 1, 1, 2, 2, 2], ter
 
-    print("selftest OK — bootstrap, Wilcoxon, McNemar, Holm/BH, terciles all pass.")
+    # Late fusion: text-only reproduces the listwise order; a strong graph signal
+    # on the tail candidate lifts it above the others.
+    comp = {
+        "pdi_a": {"stage1_rank": 1, "listwise_rank": 1, "supervised_fit": 0.0},
+        "pdi_b": {"stage1_rank": 2, "listwise_rank": 2, "supervised_fit": 0.0},
+        "pdi_c": {"stage1_rank": 3, "listwise_rank": 3, "supervised_fit": 9.0},
+    }
+    assert _fused_order(comp, {"text": 1.0}) == ["pdi_a", "pdi_b", "pdi_c"]
+    lifted = _fused_order(comp, {"text": 1.0, "supervised_fit": 5.0})
+    assert lifted[0] == "pdi_c", lifted
+    # metric_on_ranking scores an arbitrary re-composed list, not a stored one.
+    assert metric_on_ranking(["x", "y", "z"], "y", "mrr") == 0.5
+    assert metric_on_ranking(["x", "y", "z"], "y", "hit@2") == 1.0
+    assert metric_on_ranking(["x", "y", "z"], "w", "hit@3") == 0.0
+
+    print(
+        "selftest OK — bootstrap, Wilcoxon, McNemar, Holm/BH, terciles, "
+        "late-fusion all pass."
+    )
     return 0
 
 
@@ -843,6 +1135,14 @@ def main() -> int:
         help="Only analyze the campaign published with 'evaluate --tag <tag>' "
         "(runs under <source>/<tag>/). Omit to analyze the flat <source>/ layout. "
         "Use it to exclude earlier runs made on outdated data.",
+    )
+    parser.add_argument(
+        "--publish-minio",
+        action="store_true",
+        help="Upload the analysis outputs (report.md, tables/, sweep CSVs) to the "
+        "evaluation MinIO bucket under analysis/<tag>/<timestamp>/ (plus an "
+        "overwriting analysis/<tag>/latest/). Used by the campaign DAG so the "
+        "whole campaign is retrievable off-server.",
     )
     parser.add_argument(
         "--productivity",
