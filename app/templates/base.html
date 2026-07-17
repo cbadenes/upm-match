@@ -882,8 +882,8 @@
     "um.btn_search":  { es: "Buscar", en: "Search" },
     "um.btn_smart":   { es: "Búsqueda inteligente", en: "Smart search" },
     "um.smart_hint": {
-      es: "La búsqueda inteligente analiza tu descripción más a fondo: detecta los conceptos clave y los combina con el significado global del texto.",
-      en: "Smart search analyses your description in more depth: it detects the key concepts and combines them with the overall meaning of the text."
+      es: "La búsqueda inteligente analiza tu descripción más a fondo: detecta los conceptos clave, los combina con el significado global del texto y revisa uno a uno los mejores perfiles — incluida su experiencia dirigiendo trabajos — para ordenarlos mejor. Tarda un poco más.",
+      en: "Smart search analyses your description in more depth: it detects the key concepts, combines them with the overall meaning of the text and reviews the top profiles one by one — including their supervision experience — to order them better. It takes a bit longer."
     },
     "um.topics_ph": {
       es: "Ej.: aprendizaje automático, robótica, redes de comunicaciones…",
@@ -932,6 +932,29 @@
     "match.submode_direct":  { es: "Búsqueda directa", en: "Direct search" },
     "match.submode_enriched": { es: "Búsqueda enriquecida", en: "Enriched search" },
     "match.submode_enriched_note": { es: "(LLM expande la consulta)", en: "(the LLM expands the query)" },
+    "match.submode_hybrid_label":  { es: "Variante del modo híbrido", en: "Hybrid mode variant" },
+    "match.submode_hybrid_direct": { es: "Búsqueda directa (RRF)", en: "Direct search (RRF)" },
+    "match.submode_hybrid_rerank": { es: "Con re-ranking", en: "With re-ranking" },
+    "match.submode_hybrid_rerank_note": {
+      es: "(un LLM reordena los mejores candidatos, listwise)",
+      en: "(an LLM reorders the top candidates, listwise)"
+    },
+    "match.rerank_variant_label": { es: "Aproximación:", en: "Approach:" },
+    "match.rerank_variant_text":  { es: "Solo texto", en: "Text only" },
+    "match.rerank_variant_kg":    { es: "Texto + grafo (KG)", en: "Text + graph (KG)" },
+    "match.rerank_variant_kg_note": {
+      es: "(evidencia de supervisión y docencia)",
+      en: "(supervision and teaching evidence)"
+    },
+    "match.rerank_info_label": { es: "Re-ranking", en: "Re-ranking" },
+    "match.rerank_failed":     { es: "El re-ranking falló; se muestra el orden de la etapa 1", en: "Re-ranking failed; showing the stage-1 order" },
+    "match.rerank_model":      { es: "modelo", en: "model" },
+    "match.rerank_windows":    { es: "ventanas", en: "windows" },
+    "match.rerank_kg_degraded": {
+      es: "grafo no disponible: degradado a solo texto",
+      en: "graph unavailable: degraded to text-only"
+    },
+    "match.stage1_label": { es: "etapa 1", en: "stage 1" },
     "match.placeholder": {
       es: "Ej.: Me interesa desarrollar un sistema de detección temprana de dificultades de aprendizaje analizando registros de actividad en plataformas LMS como Moodle. Quiero aplicar modelos de clasificación supervisada combinados con técnicas de IA explicable (XAI) para que los resultados sean interpretables por el profesorado sin conocimientos técnicos avanzados.",
       en: "E.g.: I want to develop a system for the early detection of learning difficulties by analysing activity logs from LMS platforms such as Moodle. I would like to apply supervised classification models combined with explainable AI (XAI) techniques so that the results are interpretable by teachers without advanced technical knowledge."

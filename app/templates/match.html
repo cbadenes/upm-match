@@ -584,8 +584,13 @@
   function searchDescribe(smart) {
     const idea = ideaEl.value.trim();
     if (!idea) { showError(T('match.err_empty')); return; }
-    const mode = smart ? 'hybrid' : (quickEl.checked ? 'summary_direct' : 'summary_enriched');
-    runSearch({ idea, mode });
+    if (smart) {
+      // Smart search = hybrid retrieval + KG-grounded listwise re-ranking
+      // (degrades server-side to text-only or to stage-1 order if needed).
+      runSearch({ idea, mode: 'hybrid', rerank: 'kg' });
+    } else {
+      runSearch({ idea, mode: quickEl.checked ? 'summary_direct' : 'summary_enriched' });
+    }
   }
 
   function searchTopics() {

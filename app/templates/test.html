@@ -111,6 +111,32 @@
     </div>
   </div>
 
+  <!-- Hybrid sub-mode: single-stage RRF vs two-stage listwise re-ranking -->
+  <div class="sub-mode visible" id="sub-mode-hybrid" style="margin-top:10px">
+    <div class="sub-mode-label" data-i18n="match.submode_hybrid_label">Variante del modo híbrido</div>
+    <div class="radio-group">
+      <label>
+        <input type="radio" name="sub-mode-hybrid" value="direct" checked/>
+        <span data-i18n="match.submode_hybrid_direct">Búsqueda directa (RRF)</span>
+      </label>
+      <label>
+        <input type="radio" name="sub-mode-hybrid" value="rerank"/>
+        <span data-i18n="match.submode_hybrid_rerank">Con re-ranking</span> <span style="font-size:11px; color:var(--muted)" data-i18n="match.submode_hybrid_rerank_note">(un LLM reordena los mejores candidatos, listwise)</span>
+      </label>
+    </div>
+    <div class="radio-group" id="rerank-variant-group" style="display:none; margin-top:8px">
+      <span class="sub-mode-label" style="margin-bottom:0; align-self:center" data-i18n="match.rerank_variant_label">Aproximación:</span>
+      <label>
+        <input type="radio" name="rerank-variant" value="text" checked/>
+        <span data-i18n="match.rerank_variant_text">Solo texto</span>
+      </label>
+      <label>
+        <input type="radio" name="rerank-variant" value="kg"/>
+        <span data-i18n="match.rerank_variant_kg">Texto + grafo (KG)</span> <span style="font-size:11px; color:var(--muted)" data-i18n="match.rerank_variant_kg_note">(evidencia de supervisión y docencia)</span>
+      </label>
+    </div>
+  </div>
+
   <!-- Search card -->
   <div class="search-card" style="margin-top:14px">
     <div class="card-top">
@@ -173,6 +199,12 @@
     <p class="enriched-text" id="enriched-text"></p>
   </div>
 
+  <!-- Re-ranking telemetry (two-stage hybrid searches) -->
+  <div class="enriched-section" id="rerank-section" style="display:none; margin-bottom:1.25rem">
+    <div class="section-label" data-i18n="match.rerank_info_label">Re-ranking</div>
+    <p class="enriched-text" id="rerank-text" style="font-family:var(--mono, monospace); font-size:12px"></p>
+  </div>
+
   <!-- Results -->
   <div id="results-wrap" style="display:none">
     <div class="results-divider">
@@ -218,6 +250,10 @@
   const errorBox     = document.getElementById('error-box');
   const emptyState   = document.getElementById('empty-state');
   const subModeWrap  = document.getElementById('sub-mode');
+  const subModeHybridWrap = document.getElementById('sub-mode-hybrid');
+  const rerankVariantGrp  = document.getElementById('rerank-variant-group');
+  const rerankSection     = document.getElementById('rerank-section');
+  const rerankText        = document.getElementById('rerank-text');
   const modeHintEl   = document.getElementById('mode-hint');
 
   // ── i18n helper (engine lives in base.html) ─────────────────────────────────
@@ -239,15 +275,32 @@
       modeBtn.classList.add('active');
       currentMode = modeBtn.dataset.mode;
       subModeWrap.classList.toggle('visible', currentMode === 'summary');
+      subModeHybridWrap.classList.toggle('visible', currentMode === 'hybrid');
       modeHintEl.textContent = modeHint(currentMode);
     });
   });
 
-  function getSearchMode() {
-    if (currentMode === 'hybrid')   return 'hybrid';
-    if (currentMode === 'keywords') return 'keywords';
+  // Show the re-ranking approach selector only when re-ranking is chosen.
+  document.querySelectorAll('input[name="sub-mode-hybrid"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      const rerankOn = document.querySelector('input[name="sub-mode-hybrid"]:checked').value === 'rerank';
+      rerankVariantGrp.style.display = rerankOn ? '' : 'none';
+    });
+  });
+
+  function buildSearchPayload(idea) {
+    if (currentMode === 'hybrid') {
+      const payload = { idea, mode: 'hybrid' };
+      const sub = document.querySelector('input[name="sub-mode-hybrid"]:checked');
+      if (sub && sub.value === 'rerank') {
+        const variant = document.querySelector('input[name="rerank-variant"]:checked');
+        payload.rerank = variant ? variant.value : 'text';
+      }
+      return payload;
+    }
+    if (currentMode === 'keywords') return { idea, mode: 'keywords' };
     const checked = document.querySelector('input[name="sub-mode"]:checked');
-    return checked ? checked.value : 'summary_direct';
+    return { idea, mode: checked ? checked.value : 'summary_direct' };
   }
 
   // ── Example chips ────────────────────────────────────────────────────────────
@@ -296,10 +349,11 @@
   function showError(msg) {
     errorBox.textContent    = msg;
     errorBox.style.display  = 'block';
-    kwSection.style.display   = 'none';
-    enrichedSec.style.display = 'none';
-    resultsWrap.style.display = 'none';
-    emptyState.style.display  = 'none';
+    kwSection.style.display     = 'none';
+    enrichedSec.style.display   = 'none';
+    rerankSection.style.display = 'none';
+    resultsWrap.style.display   = 'none';
+    emptyState.style.display    = 'none';
   }
 
   function clearError() {
@@ -329,6 +383,16 @@
     card.className = 'result-card';
 
     const sinceText = r.since ? `${T('match.active_since')} ${r.since} · ` : '';
+
+    // Rank movement across the two stages (re-ranked searches only).
+    let moveText = '';
+    if (r.stage1_rank && r.stage1_rank !== r.rank) {
+      const delta = r.stage1_rank - r.rank;
+      const arrow = delta > 0 ? '▲' : '▼';
+      moveText = ` · ${arrow}${Math.abs(delta)} (${T('match.stage1_label')} #${r.stage1_rank})`;
+    } else if (r.stage1_rank) {
+      moveText = ` · = (${T('match.stage1_label')} #${r.stage1_rank})`;
+    }
 
     // Summary block (shown in summary and hybrid modes when available)
     let summaryHTML = '';
@@ -377,7 +441,7 @@
       <div class="result-rank">${r.rank < 10 ? '0' + r.rank : r.rank}</div>
       <div>
         <div class="result-name">${escHtml(r.name)}</div>
-        <div class="result-meta">${sinceText}${escHtml(r.researcher_id)}</div>
+        <div class="result-meta">${sinceText}${escHtml(r.researcher_id)}${escHtml(moveText)}</div>
         <div class="score-wrap">
           <div class="score-track">
             <div class="score-fill" style="width:${r.score_pct}%"></div>
@@ -416,6 +480,28 @@
       enrichedSec.style.display = 'none';
     }
 
+    // Re-ranking telemetry (model, windows, latency, degradations).
+    if (data.rerank) {
+      const ri = data.rerank;
+      if (ri.error) {
+        rerankText.textContent = `${T('match.rerank_failed')}: ${ri.error}`;
+      } else {
+        const variant = ri.variant === 'kg' ? 'texto + grafo (KG)' : 'solo texto';
+        const parts = [
+          variant,
+          `${T('match.rerank_model')}: ${ri.model}`,
+          `pool: ${ri.pool}`,
+          `${T('match.rerank_windows')}: ${ri.windows}`,
+          `${ri.seconds.toFixed(1)} s`,
+        ];
+        if (ri.kg_degraded) parts.push(T('match.rerank_kg_degraded'));
+        rerankText.textContent = parts.join(' · ');
+      }
+      rerankSection.style.display = 'block';
+    } else {
+      rerankSection.style.display = 'none';
+    }
+
     resultList.innerHTML = '';
     const items = data.results || [];
     const noun = items.length !== 1 ? T('match.result_many') : T('match.result_one');
@@ -443,16 +529,17 @@
 
     clearError();
     setLoading(true);
-    kwSection.style.display   = 'none';
-    enrichedSec.style.display = 'none';
-    resultsWrap.style.display = 'none';
-    emptyState.style.display  = 'none';
+    kwSection.style.display     = 'none';
+    enrichedSec.style.display   = 'none';
+    rerankSection.style.display = 'none';
+    resultsWrap.style.display   = 'none';
+    emptyState.style.display    = 'none';
 
     try {
       const resp = await fetch('{{ url_for("main.search") }}', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ idea, mode: getSearchMode() }),
+        body:    JSON.stringify(buildSearchPayload(idea)),
       });
       const data = await resp.json();
       if (!resp.ok) { showError(data.error || `${T('match.err_generic')} ${resp.status}`); return; }

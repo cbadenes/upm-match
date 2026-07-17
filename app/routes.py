@@ -12,8 +12,10 @@ from .evaluation import _numeric_id, list_pdis, load_profile, load_yearly
 from .graph import load_graph_profile
 from .search import (
     COLLECTION_NAME,
+    RERANK_POOL,
     SUMMARY_COLLECTION,
     PDIResult,
+    rerank_pdi_results,
     search_pdis,
     search_pdis_by_summary,
     search_pdis_hybrid,
@@ -40,6 +42,8 @@ def _serialise_result(r: PDIResult) -> dict:
         "all_topics": r.all_topics,
         "since": r.since,
         "summary": r.summary,
+        # Rank before the second-stage re-ranking (None for single-stage modes).
+        "stage1_rank": r.stage1_rank,
     }
 
 
@@ -153,15 +157,21 @@ def search():
       - keywords (list[str]): user-provided topic keywords ('keywords_user' only).
       - mode (str, optional): 'keywords' (default), 'keywords_user', 'hybrid',
         'summary_direct' or 'summary_enriched'.
+      - rerank (str, optional, 'hybrid' only): '' (no re-ranking, default),
+        'text' (second-stage listwise LLM re-ranking) or 'kg' (listwise with
+        knowledge-graph evidence per candidate; degrades to 'text' without
+        Memgraph). Powers the smart search and the /test bench.
       - limit (int, optional): number of results to return (default 10, max 20).
 
     Response (JSON) common fields:
       - mode: the mode that was used.
-      - results: list of ranked PDI objects.
+      - results: list of ranked PDI objects (with stage1_rank when re-ranked).
 
     Additional fields by mode:
       - keywords: general_keywords, specific_keywords.
       - summary_enriched: enriched_query (the LLM-expanded English paragraph).
+      - hybrid with rerank: rerank {variant, model, pool, windows, seconds,
+        kg_degraded?, error?} (null when re-ranking was not requested).
     """
     body = request.get_json(silent=True) or {}
     idea: str = (body.get("idea") or "").strip()
@@ -235,6 +245,15 @@ def search():
         )
 
     if mode == "hybrid":
+        # Optional second stage: 'text' re-ranks the top candidates with the
+        # listwise LLM; 'kg' additionally grounds each candidate with its
+        # knowledge-graph evidence (fase B). Empty = classic single-stage RRF.
+        rerank_variant: str = (body.get("rerank") or "").strip().lower()
+        if rerank_variant not in ("", "text", "kg"):
+            return jsonify(
+                {"error": f"Variante de re-ranking desconocida: '{rerank_variant}'."}
+            ), 422
+
         # Sparse leg: keyword extraction. Dense leg: enriched query (falls back
         # to the raw idea if enrichment fails) so the summaries (written in
         # English) are matched on comparable text.
@@ -252,14 +271,36 @@ def search():
         except Exception:
             logger.warning("Query enrichment failed; using raw idea for dense leg")
 
+        # The re-ranker reorders a pool deeper than the displayed page, so a
+        # relevant candidate buried past `limit` can still surface.
+        pool = max(limit, RERANK_POOL) if rerank_variant else limit
         try:
             results = search_pdis_hybrid(
-                _db, keywords.general, keywords.specific, dense_text, limit=limit
+                _db, keywords.general, keywords.specific, dense_text, limit=pool
             )
             logger.info("Hybrid search returned {} results", len(results))
         except Exception as exc:
             logger.exception("Qdrant hybrid search failed")
             return jsonify({"error": f"Error en la búsqueda híbrida: {exc}"}), 500
+
+        rerank_info: dict | None = None
+        if rerank_variant and results:
+            try:
+                results, rerank_info = rerank_pdi_results(
+                    results, dense_text, use_kg=rerank_variant == "kg"
+                )
+                logger.info(
+                    "Re-ranked {} candidates ({}, {} windows, {:.1f}s)",
+                    rerank_info["pool"],
+                    rerank_info["variant"],
+                    rerank_info["windows"],
+                    rerank_info["seconds"],
+                )
+            except Exception as exc:
+                # Stage 1 already answered the query: degrade, don't fail.
+                logger.exception("Re-ranking failed; returning stage-1 order")
+                rerank_info = {"error": str(exc)}
+            results = results[:limit]
 
         return jsonify(
             {
@@ -267,6 +308,7 @@ def search():
                 "general_keywords": keywords.general,
                 "specific_keywords": keywords.specific,
                 "enriched_query": enriched_query,
+                "rerank": rerank_info,
                 "results": [_serialise_result(r) for r in results],
             }
         )

@@ -1,12 +1,15 @@
-"""PDI search logic: sparse keyword retrieval and dense summary retrieval."""
+"""PDI search logic: sparse keyword retrieval, dense summary retrieval and the
+optional second-stage listwise re-ranking (smart search)."""
 
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field
+import time
+from dataclasses import dataclass, field, replace
 
 import ollama as _ollama
 from dotenv import load_dotenv
+from loguru import logger
 
 from dbs.vector import QdrantBackend, SearchResult
 
@@ -37,6 +40,9 @@ class PDIResult:
     all_topics: list[str] = field(default_factory=list)
     since: int | None = None
     summary: str | None = None
+    # Rank the candidate held BEFORE the second-stage re-ranking (None for
+    # single-stage searches). Score/score_pct always keep the stage-1 affinity.
+    stage1_rank: int | None = None
 
 
 def _matched_topics(query_keywords: list[str], topics: list[str]) -> list[str]:
@@ -266,3 +272,94 @@ def search_pdis_hybrid(
         limit=limit,
     )
     return _to_pdi_results_hybrid(raw, sparse_terms)
+
+
+# Two-stage listwise re-ranking (fase B: the smart search / test-bench extension)
+# How many stage-1 candidates the re-ranker reorders in the app. Deeper pools
+# rescue more buried candidates but cost more LLM windows (latency); the
+# harness campaign (B0/B4) informs the production value.
+RERANK_POOL = int(os.environ.get("RERANK_POOL", "25"))
+
+# When Memgraph is down, don't retry the graph-signal load on every request.
+_SIGNAL_RETRY_SECONDS = 300
+_signal_fail_until = 0.0
+
+
+def _load_signal_store(researcher_ids: list[str]):
+    """Load the KG signal store for these candidates, or None (with a cooldown).
+
+    `load_signal_store` already degrades to None on any Memgraph failure; here we
+    additionally remember the failure for a few minutes so the smart search does
+    not pay a connection timeout per request while the graph is down.
+    """
+    global _signal_fail_until
+    if time.time() < _signal_fail_until:
+        return None
+    from .graph_signals import load_signal_store
+
+    store = load_signal_store(researcher_ids)
+    if store is None:
+        _signal_fail_until = time.time() + _SIGNAL_RETRY_SECONDS
+    return store
+
+
+def rerank_pdi_results(
+    results: list[PDIResult],
+    dense_text: str,
+    use_kg: bool,
+) -> tuple[list[PDIResult], dict]:
+    """Second stage: reorder hybrid results with the listwise LLM re-ranker.
+
+    Mirrors the evaluation harness (`evaluation/evaluate_recommendations.run_rerank`):
+    the candidate text is the indexed profile the dense leg searched over (summary
+    + domains, already carried by the hybrid PDIResults), and the query is the
+    same enriched text the dense leg used. With `use_kg`, each candidate also
+    carries its knowledge-graph evidence lines (supervision record, subjects
+    taught) in the prompt; if Memgraph is unavailable the call degrades to the
+    text-only variant and says so in the info dict.
+
+    :param results: stage-1 hybrid results, best-first (the re-ranking pool).
+    :param dense_text: the query text stage 1 embedded (enriched or raw idea).
+    :param use_kg: attach graph evidence to each candidate (kg variant).
+    :return: (reordered results with `stage1_rank` set and ranks renumbered,
+        info dict for the response: variant/model/windows/seconds/pool).
+    """
+    from .rerank import RERANK_MODEL, RerankCandidate, rerank_listwise
+
+    candidates = [
+        RerankCandidate(
+            researcher_id=r.researcher_id,
+            summary=r.summary or "",
+            domains=r.all_topics,
+        )
+        for r in results
+    ]
+    info: dict = {
+        "variant": "kg" if use_kg else "text",
+        "model": RERANK_MODEL,
+        "pool": len(results),
+    }
+    if use_kg:
+        store = _load_signal_store([r.researcher_id for r in results])
+        if store is None:
+            info["variant"] = "text"
+            info["kg_degraded"] = True
+            logger.warning("KG re-ranking degraded to text-only (no graph signals)")
+        else:
+            candidates = [
+                replace(c, evidence=store.evidence_lines(c.researcher_id))
+                for c in candidates
+            ]
+
+    outcome = rerank_listwise(dense_text, candidates)
+
+    by_id = {r.researcher_id: r for r in results}
+    reordered: list[PDIResult] = []
+    for new_rank, rid in enumerate(outcome.ranked_ids, 1):
+        r = by_id[rid]
+        r.stage1_rank = r.rank
+        r.rank = new_rank
+        reordered.append(r)
+    info["windows"] = outcome.windows
+    info["seconds"] = outcome.llm_seconds
+    return reordered, info
