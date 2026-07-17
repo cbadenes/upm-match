@@ -117,15 +117,23 @@ CACHE_DIR = Path(os.environ.get("EVAL_CACHE_DIR", "evaluation/cache"))
 REPORTS_DIR = Path(os.environ.get("EVAL_REPORTS_DIR", "evaluation/reports"))
 
 # Search modes compared by the harness. The first is a control (a pure lexical baseline with no LLM, used as an ablation).
-# The other four are the strategies exposed by the web app (see app/routes.py).
-# Order matches the tables, with the control reported first.
+# The next four are the strategies exposed by the web app (see app/routes.py).
+# `rerank_listwise` is the two-stage extension (memoria sec:met-reranking): it
+# consumes the CACHED hybrid rankings of the same campaign as its first stage
+# (registered protocol decision: stage 1 is fixed across repetitions so the
+# re-ranker's own behaviour is what gets measured) — so `hybrid` must run before
+# it, which the list order guarantees within a single invocation.
 SEARCH_MODES: list[str] = [
     "lexical_direct",
     "keywords",
     "summary_direct",
     "summary_enriched",
     "hybrid",
+    "rerank_listwise",
+    "rerank_listwise_kg",
 ]
+# Modes that re-rank the cached hybrid stage instead of retrieving.
+RERANK_MODES = ("rerank_listwise", "rerank_listwise_kg")
 
 # Human-readable strategy names (match the labels used in the tables).
 MODE_LABELS: dict[str, str] = {
@@ -134,7 +142,16 @@ MODE_LABELS: dict[str, str] = {
     "summary_direct": "Semántica directa",
     "summary_enriched": "Semántica enriquecida",
     "hybrid": "Híbrida",
+    "rerank_listwise": "Reordenación listwise (texto)",
+    "rerank_listwise_kg": "Reordenación listwise (grafo+texto)",
 }
+
+# How many stage-1 candidates the re-ranker reorders (the K of the two-stage
+# extension, memoria sec:eval-protocolo). 0 = every candidate the hybrid stage
+# stored (max(K_VALUES)). To be FIXED from the recall-ceiling results (pending
+# \pendiente in the memoria); candidates beyond K keep their stage-1 order
+# after the reranked head.
+RERANK_K = int(os.environ.get("RERANK_K", "0"))
 
 K_VALUES: list[int] = [1, 5, 10, 25, 50, 100]
 
@@ -215,11 +232,17 @@ class RecommendationResult(BaseModel):
     llm_seconds: float | None = None
     search_seconds: float | None = None
     total_seconds: float | None = None
+    # English text used for the dense leg (the LLM-enriched query), stored by the
+    # enriched/hybrid modes so the re-ranking stage can reuse EXACTLY the query
+    # text its first stage searched with, without re-invoking the enricher.
+    # None for other modes and for caches written before this field existed.
+    dense_query_text: str | None = None
     # Reserved for the two-stage re-ranking extension.
     # Maps researcher_id -> {component: score} with the SEPARATE signals that feed the final ordering (e.g. "listwise" textual score and each graph signal).
     # Storing them per query lets us re-fuse off-line under many parameter settings (fusion weight, signal subset) and run a SENSITIVITY ANALYSIS without re-invoking the costly re-ranker.
     # None for the single-stage strategies, which have no components to sweep.
-    # TODO(phase B4): populate this from the re-ranker and add the sweep to analyze_results.
+    # Populated by the re-rankers (app/rerank.py + graph_signals.py); the off-line
+    # sensitivity sweep over these components is table T9 in analyze_results.py.
     rerank_components: dict[str, dict[str, float]] | None = None
 
 
@@ -627,6 +650,7 @@ def run_recommendations(
     proposal = silver.proposal
     llm_seconds = 0.0
     search_seconds = 0.0
+    dense_query_text: str | None = None
     try:
         if mode == "lexical_direct":
             # Control: original thesis text -> sparse index, straight through the
@@ -670,6 +694,7 @@ def run_recommendations(
             t0 = time.perf_counter()
             enriched = enrich_query(proposal)
             llm_seconds += time.perf_counter() - t0
+            dense_query_text = enriched
             t0 = time.perf_counter()
             results = search_pdis_by_summary(db, enriched, limit=limit)
             search_seconds += time.perf_counter() - t0
@@ -681,6 +706,7 @@ def run_recommendations(
             except Exception:  # noqa: BLE001 — fall back to raw idea, as the app does
                 dense_text = proposal
             llm_seconds += time.perf_counter() - t0
+            dense_query_text = dense_text
             t0 = time.perf_counter()
             results = search_pdis_hybrid(
                 db, kw.general, kw.specific, dense_text, limit=limit
@@ -702,6 +728,133 @@ def run_recommendations(
         llm_seconds=round(llm_seconds, 4),
         search_seconds=round(search_seconds, 4),
         total_seconds=round(llm_seconds + search_seconds, 4),
+        dense_query_text=dense_query_text,
+    )
+
+
+# 3b. Two-stage re-ranking (rerank_listwise mode)
+def _load_candidate_profiles(db) -> dict:
+    """researcher_id -> RerankCandidate (summary + domains) from the dense index.
+
+    Scrolled ONCE per evaluation run and shared across queries: the candidate
+    texts the re-ranker sees are exactly the indexed profiles the dense leg
+    searched over (decision (a) of the plan: consolidated summary only).
+    """
+    from app.rerank import RerankCandidate
+    from app.search import SUMMARY_COLLECTION
+
+    collection = db.latest_collection(SUMMARY_COLLECTION) or SUMMARY_COLLECTION
+    profiles: dict[str, RerankCandidate] = {}
+    for row in db.scroll_payloads(
+        collection, payload_fields=["researcher_id", "summary", "domains"]
+    ):
+        payload = row.get("payload") or {}
+        rid = str(payload.get("researcher_id") or "")
+        if rid:
+            profiles[rid] = RerankCandidate(
+                researcher_id=rid,
+                summary=payload.get("summary") or "",
+                domains=payload.get("domains") or [],
+            )
+    logger.info("Loaded {} candidate profiles for re-ranking.", len(profiles))
+    return profiles
+
+
+def run_rerank(
+    silver: SilverRecord,
+    gold: GoldRecord,
+    stage1: RecommendationResult | None,
+    profiles: dict,
+    mode: str = "rerank_listwise",
+    signal_store=None,
+) -> RecommendationResult:
+    """Second stage: listwise re-ranking over the CACHED hybrid ranking.
+
+    Protocol (registered decision): stage 1 is the hybrid ranking already cached
+    by this campaign, identical across repetitions, so what varies (and gets
+    measured) is only the re-ranker. The query text is the enriched English text
+    stage 1 stored (`dense_query_text`); if the cache predates that field, the
+    query is re-enriched on the fly (timed as LLM cost) to honour the
+    English-vs-English design of the memoria.
+
+    With a `signal_store` (mode rerank_listwise_kg), each candidate carries its
+    knowledge-graph evidence lines in the prompt (features-in-prompt mechanism)
+    and the numeric graph signals are merged into `rerank_components`, enabling
+    the off-line late-fusion / sensitivity analysis.
+
+    The re-ranker reorders the top RERANK_K candidates (0 = all stored); deeper
+    candidates keep their stage-1 order after the reranked head.
+    """
+    if stage1 is None or stage1.error is not None or not stage1.ranked_researcher_ids:
+        return RecommendationResult(
+            gold_id=gold.gold_id,
+            mode=mode,
+            true_director=gold.director,
+            error="missing stage-1 hybrid cache for this query (run hybrid first "
+            "in this campaign)",
+        )
+
+    from dataclasses import replace
+
+    from app.rerank import RerankCandidate, rerank_listwise
+
+    llm_seconds = 0.0
+    query = stage1.dense_query_text
+    if not query:
+        # Cache written before dense_query_text existed: re-enrich (or fall back
+        # to the raw proposal if enrichment fails, as the hybrid mode does).
+        from app.agent import enrich_query
+
+        t0 = time.perf_counter()
+        try:
+            query = enrich_query(silver.proposal)
+        except Exception:  # noqa: BLE001
+            query = silver.proposal
+        llm_seconds += time.perf_counter() - t0
+
+    ranked1 = stage1.ranked_researcher_ids
+    k = RERANK_K or len(ranked1)
+    head, tail = ranked1[:k], ranked1[k:]
+    candidates = [
+        profiles.get(rid) or RerankCandidate(researcher_id=rid) for rid in head
+    ]
+    if signal_store is not None:
+        # Copy-on-write: the profiles map is shared across queries/modes.
+        candidates = [
+            replace(c, evidence=signal_store.evidence_lines(c.researcher_id))
+            for c in candidates
+        ]
+    try:
+        outcome = rerank_listwise(query, candidates)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Re-ranking failed ({}): {}", gold.gold_id, exc)
+        return RecommendationResult(
+            gold_id=gold.gold_id, mode=mode, true_director=gold.director, error=str(exc)
+        )
+
+    components = outcome.components
+    if signal_store is not None:
+        # Match against BOTH texts: the enriched query is English while the
+        # supervised-work keywords / subject names are mostly Spanish, so the
+        # raw proposal is what lets same-language terms match (see SignalStore).
+        normalized_query = signal_store.normalize_query(f"{query} {silver.proposal}")
+        head_set = set(head)
+        for rid in head:
+            components.setdefault(rid, {}).update(
+                signal_store.components(rid, normalized_query, head_set)
+            )
+
+    llm_seconds += outcome.llm_seconds
+    return RecommendationResult(
+        gold_id=gold.gold_id,
+        mode=mode,
+        ranked_researcher_ids=outcome.ranked_ids + tail,
+        true_director=gold.director,
+        llm_seconds=round(llm_seconds, 4),
+        search_seconds=0.0,
+        total_seconds=round(llm_seconds, 4),
+        dense_query_text=query,
+        rerank_components=components,
     )
 
 
@@ -1118,6 +1271,67 @@ def cmd_fetch_minio(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_productivity(args: argparse.Namespace) -> int:
+    """Build the per-PDI productivity map for the equity metric (memoria
+    sec:eval-metricas-rerank) and publish it next to the evaluation artefacts.
+
+    Productivity = number of publications (Authorship) + supervised works
+    (Tutoring) per researcher, read from the knowledge graph. The map is written
+    to <EVAL_REPORTS_DIR>/productividad_pdis.json and, with --publish-minio,
+    uploaded to the ROOT of the eval bucket, so `fetch-minio` mirrors it to
+    evaluation/reports/productividad_pdis.json — exactly where analyze_results
+    looks for it (T8 is skipped gracefully while the file does not exist).
+
+    Runs on the server through the `upm_match_productivity` Airflow DAG (the
+    server allows no ad-hoc code execution); requires Memgraph reachable.
+    """
+    from dbs.graph.memgraph import MemgraphBackend  # lazy: needs MEMGRAPH_* env
+
+    db = MemgraphBackend()
+    # One query with OPTIONAL MATCH so researchers having only one of the two
+    # relation types (or neither) still get counted.
+    rows = db.query(
+        """
+        MATCH (p:Pdi)
+        OPTIONAL MATCH (p)-[:Authorship]->(pub:Publication)
+        WITH p, count(DISTINCT pub) AS pubs
+        OPTIONAL MATCH (p)-[:Tutoring]->(t:LastYearProject)
+        RETURN p.id AS pdi, pubs + count(DISTINCT t) AS total
+        """
+    )
+    productivity = {
+        str(row["pdi"]): int(row.get("total") or 0)
+        for row in rows
+        if row.get("pdi")
+    }
+    if not productivity:
+        logger.error("No PDIs returned from the graph — is Memgraph reachable?")
+        return 1
+
+    out = REPORTS_DIR / "productividad_pdis.json"
+    _atomic_write_json(out, productivity)
+    nonzero = sum(1 for v in productivity.values() if v > 0)
+    logger.info(
+        "Productivity map: {} PDIs ({} with activity > 0) -> {}",
+        len(productivity),
+        nonzero,
+        out,
+    )
+
+    if args.publish_minio:
+        try:
+            from dbs import minio
+
+            bucket = os.environ.get("MINIO_EVAL_BUCKET", "tfm-evaluation")
+            if minio.upload_file(bucket, out, "productividad_pdis.json"):
+                logger.info(
+                    "Published productividad_pdis.json to MinIO bucket {!r}.", bucket
+                )
+        except Exception as exc:  # noqa: BLE001 — the map is already safe on disk
+            logger.warning("MinIO publish failed: {}", exc)
+    return 0
+
+
 def cmd_silver_generate(args: argparse.Namespace) -> int:
     for gold_path, cand_path in _SILVER_GEN_PAIRS:
         silver_generate_for_model(args.model, gold_path, cand_path)
@@ -1207,7 +1421,36 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
     per_segment: dict[str, dict[str, list[MetricReport]]] = {}
 
     tag = getattr(args, "tag", None) or None
+    profiles: dict | None = None  # candidate texts for re-ranking, loaded once
+    signal_store = None  # graph signals for the kg mode, loaded once
     for mode in args.modes:
+        stage1_cache: dict[str, RecommendationResult] | None = None
+        if mode in RERANK_MODES:
+            # Two-stage extension: consumes the hybrid rankings cached by THIS
+            # campaign (fixed stage 1 across repetitions, registered protocol).
+            stage1_cache = _load_recs_cache("hybrid", args.source, tag)
+            if not stage1_cache:
+                logger.error(
+                    "Mode {} skipped: no hybrid cache for source={} tag={} — "
+                    "run the hybrid mode first.",
+                    mode,
+                    args.source,
+                    tag,
+                )
+                continue
+            if profiles is None:
+                profiles = _load_candidate_profiles(db)
+            if mode == "rerank_listwise_kg" and signal_store is None:
+                from app.graph_signals import load_signal_store
+
+                signal_store = load_signal_store(list(profiles))
+                if signal_store is None:
+                    logger.error(
+                        "Mode rerank_listwise_kg skipped: Memgraph unavailable "
+                        "(graph signals cannot be computed)."
+                    )
+                    continue
+
         cache = {} if args.no_cache else _load_recs_cache(mode, args.source, tag)
         results: list[RecommendationResult] = []
         for i, s in enumerate(silver, 1):
@@ -1218,7 +1461,17 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
             if cached is not None and cached.error is None:
                 results.append(cached)
                 continue
-            res = run_recommendations(s, gold_rec, mode, db, limit=max(K_VALUES))
+            if stage1_cache is not None:
+                res = run_rerank(
+                    s,
+                    gold_rec,
+                    stage1_cache.get(s.gold_id),
+                    profiles,
+                    mode=mode,
+                    signal_store=signal_store if mode == "rerank_listwise_kg" else None,
+                )
+            else:
+                res = run_recommendations(s, gold_rec, mode, db, limit=max(K_VALUES))
             cache[s.gold_id] = res
             results.append(res)
             if i % CACHE_FLUSH_EVERY == 0:
@@ -1411,6 +1664,20 @@ def main() -> int:
         help="Only fetch this reference set (default: everything in the bucket).",
     )
     p_fetch.set_defaults(func=cmd_fetch_minio)
+
+    p_prod = sub.add_parser(
+        "productivity",
+        help="Build the per-PDI productivity map (publications + supervised works, "
+        "from Memgraph) used by the equity table T8, and optionally publish it "
+        "to MinIO next to the evaluation artefacts.",
+    )
+    p_prod.add_argument(
+        "--publish-minio",
+        action="store_true",
+        help="Upload productividad_pdis.json to the eval bucket root so "
+        "fetch-minio mirrors it into evaluation/reports/.",
+    )
+    p_prod.set_defaults(func=cmd_productivity)
 
     p_sgen = sub.add_parser(
         "silver-generate",
