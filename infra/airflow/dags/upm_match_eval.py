@@ -10,6 +10,10 @@ Reference set (DAG param `source`):
   - "silver": query = the generated student-style proposals. Build the silver standard first with the `upm_match_silver` DAG, which writes evaluation/silver/silver_standard_{tfg,tfm}.json (gold schema), before triggering with source=silver.
 
 Resumability: the harness caches every (mode, project) result to disk under evaluation/cache/<source>/ and skips the ones already done, so a crashed or retried task resumes from the last completed project rather than starting over.
+
+NOTE: for the DEFINITIVE measurement campaign (both sources, 3 repetitions,
+productivity map, statistical analysis and publication, all unattended) use the
+`upm_match_campaign` DAG instead; this DAG remains for ad-hoc/partial runs.
 """
 
 from __future__ import annotations
@@ -26,12 +30,18 @@ _UV = "uv run"
 
 # Search modes the harness can evaluate (mirrors SEARCH_MODES in the eval script).
 # Kept here so the DAG stays self-contained; the script validates the choice too.
+# NOTE: rerank_listwise (two-stage extension) reorders the CACHED hybrid rankings
+# of the same campaign/tag, so hybrid must have run first — guaranteed when both
+# are selected in one run (modes execute in this order), or by running hybrid in
+# an earlier trigger with the same tag.
 _SEARCH_MODES = [
     "lexical_direct",
     "keywords",
     "summary_direct",
     "summary_enriched",
     "hybrid",
+    "rerank_listwise",
+    "rerank_listwise_kg",
 ]
 
 _default_args = {
