@@ -37,6 +37,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections import Counter
 from itertools import combinations
 from pathlib import Path
 
@@ -852,6 +853,102 @@ def write_sweep_grid(sd: SourceData, out_dir: Path) -> Path | None:
     return path
 
 
+# Clarification effect (T10)
+CLARIFY_MODE = "clarify_hybrid"
+CLARIFY_BASELINE = "hybrid"
+
+
+def build_t10_clarify(sd: SourceData) -> tuple[str, str] | None:
+    """T10 — effect of the ASK-style clarification loop (memoria sec:eval-clarify).
+
+    Reports how often the detector decided to ask (activation rate, overall and
+    by ambiguity class) and what clarification bought, comparing the clarified
+    ranking against the SAME queries' hybrid ranking. The gain is reported on
+    the activated subset — where clarification actually happened — and on the
+    whole set, since a loop that fires rarely can help a lot where it fires and
+    still barely move the aggregate.
+    Returns None when the clarification mode is absent from the campaign.
+    """
+    if CLARIFY_MODE not in sd.by_mode or CLARIFY_BASELINE not in sd.by_mode:
+        return None
+    runs = sd.by_mode[CLARIFY_MODE]
+
+    # A query counts as activated when the detector asked at least once in the
+    # majority of runs (the detector is deterministic per state, but the query
+    # interpretation that precedes it is not).
+    activated: list[int] = []
+    rounds_total = 0
+    levels: Counter[str] = Counter()
+    for i, gid in enumerate(sd.common):
+        fired = 0
+        for run in runs:
+            info = (run.get(gid).clarify_info or {}) if run.get(gid) else {}
+            rounds = int(info.get("rounds") or 0)
+            rounds_total += rounds
+            levels.update(info.get("levels") or [])
+            fired += 1 if rounds else 0
+        if fired * 2 >= len(runs):
+            activated.append(i)
+
+    n_total = len(sd.common)
+    n_act = len(activated)
+    rows: list[list[str]] = []
+    header = ["Métrica", "Valor"]
+    rows.append(["Consultas evaluadas", str(n_total)])
+    rows.append(
+        [
+            "Tasa de activación",
+            f"{n_act / n_total:.1%} ({n_act})" if n_total else "—",
+        ]
+    )
+    rows.append(
+        [
+            "Rondas por consulta (media)",
+            _fmt(rounds_total / (len(runs) * n_total), 2) if n_total and runs else "—",
+        ]
+    )
+    for level, count in sorted(levels.items()):
+        rows.append([f"Preguntas de tipo «{level}»", str(count)])
+
+    for metric in (PRIMARY_METRIC, f"hit@{MCNEMAR_K}"):
+        base = sd.denoised(CLARIFY_BASELINE, metric)
+        clar = sd.denoised(CLARIFY_MODE, metric)
+        rows.append(
+            [f"{metric} — todas: híbrida $\\rightarrow$ clarificada",
+             f"{_fmt(float(base.mean()))} $\\rightarrow$ {_fmt(float(clar.mean()))}"]
+        )
+        if activated:
+            idx = np.array(activated)
+            rows.append(
+                [
+                    f"{metric} — activadas: híbrida $\\rightarrow$ clarificada",
+                    f"{_fmt(float(base[idx].mean()))} $\\rightarrow$ "
+                    f"{_fmt(float(clar[idx].mean()))}",
+                ]
+            )
+    if activated:
+        idx = np.array(activated)
+        diff = sd.denoised(CLARIFY_MODE, PRIMARY_METRIC)[idx] - sd.denoised(
+            CLARIFY_BASELINE, PRIMARY_METRIC
+        )[idx]
+        better = int(np.sum(diff > 0))
+        worse = int(np.sum(diff < 0))
+        rows.append(["Consultas activadas que mejoran / empeoran", f"{better} / {worse}"])
+        rows.append(["p Wilcoxon (activadas, MRR)", _fmt(wilcoxon_p(
+            sd.denoised(CLARIFY_MODE, PRIMARY_METRIC)[idx],
+            sd.denoised(CLARIFY_BASELINE, PRIMARY_METRIC)[idx]), 4)])
+
+    cap = (
+        f"Efecto de la clarificación conversacional (fuente {sd.source}): con qué "
+        "frecuencia el detector decide preguntar y qué aporta hacerlo, frente al "
+        "mismo ranking híbrido sin clarificar. La ganancia se reporta sobre el "
+        "subconjunto activado y sobre el total."
+    )
+    return _md_table(header, rows), _latex_table(
+        header, rows, cap, f"tab:clarify-{sd.source}"
+    )
+
+
 def publish_analysis_to_minio(out_dir: Path, tag: str | None) -> None:
     """Upload the analysis outputs (report.md, LaTeX tables, sweep CSVs) to MinIO.
 
@@ -1011,6 +1108,15 @@ def analyze(args: argparse.Namespace) -> int:
             grid_path = write_sweep_grid(sd, out_dir)
             if grid_path is not None:
                 logger.info("Full re-ranking weight grid → {}", grid_path)
+
+        clarify = build_t10_clarify(sd)
+        if clarify is not None:
+            emit(
+                f"t10_clarify_{source}",
+                clarify[0],
+                clarify[1],
+                f"T10 · Efecto de la clarificación — {source}",
+            )
 
     if len(sources) > 1:
         md, tex = build_t6_cross_source(sources)

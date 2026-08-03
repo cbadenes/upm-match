@@ -131,9 +131,12 @@ SEARCH_MODES: list[str] = [
     "hybrid",
     "rerank_listwise",
     "rerank_listwise_kg",
+    "clarify_hybrid",
 ]
 # Modes that re-rank the cached hybrid stage instead of retrieving.
 RERANK_MODES = ("rerank_listwise", "rerank_listwise_kg")
+# Modes that start from the cached hybrid stage (re-ranking or clarification).
+STAGE1_MODES = (*RERANK_MODES, "clarify_hybrid")
 
 # Human-readable strategy names (match the labels used in the tables).
 MODE_LABELS: dict[str, str] = {
@@ -144,6 +147,7 @@ MODE_LABELS: dict[str, str] = {
     "hybrid": "Híbrida",
     "rerank_listwise": "Reordenación listwise (texto)",
     "rerank_listwise_kg": "Reordenación listwise (grafo+texto)",
+    "clarify_hybrid": "Híbrida con clarificación",
 }
 
 # How many stage-1 candidates the re-ranker reorders (the K of the two-stage
@@ -244,6 +248,15 @@ class RecommendationResult(BaseModel):
     # Populated by the re-rankers (app/rerank.py + graph_signals.py); the off-line
     # sensitivity sweep over these components is table T9 in analyze_results.py.
     rerank_components: dict[str, dict[str, float]] | None = None
+    # Clarification telemetry (mode clarify_hybrid only, memoria sec:eval-clarify):
+    #   rounds       — how many clarifying questions were actually asked (0 = the
+    #                  detector considered the query clear: no clarification).
+    #   levels       — the ambiguity class emitted in each round.
+    #   questions    — the questions asked, with the simulated student answer.
+    #   refined_query— the final query text after folding in the answers.
+    # None for every other mode. Activation rate and pre/post gains are computed
+    # from this field (table T10 in analyze_results.py).
+    clarify_info: dict | None = None
 
 
 class MetricReport(BaseModel):
@@ -858,6 +871,215 @@ def run_rerank(
     )
 
 
+# 3c. Clarification with a simulated student (clarify_hybrid mode)
+# Off-line evaluation of the ASK-style clarification loop (memoria
+# sec:eval-clarify). The system asks its clarifying question and an LLM
+# "student simulator" answers it using the REAL work description as an oracle,
+# exactly like the answer generator of the original framework: the answer is
+# what the student would have said, given what the work turned out to be.
+# Then the query is refined and the search relaunched, so the comparison
+# against the plain hybrid ranking measures what clarification buys.
+
+_ANSWER_SYSTEM = (
+    "Eres un estudiante de la Universidad Politécnica de Madrid que ha "
+    "propuesto una idea de trabajo y busca director. El sistema te hace una "
+    "pregunta para afinar tu búsqueda y tú la respondes."
+)
+_ANSWER_INSTRUCTIONS = (
+    "Responde a la pregunta del sistema eligiendo la opción que mejor encaje "
+    "con el trabajo que realmente quieres hacer, descrito más abajo.\n"
+    "Reglas:\n"
+    "  1. Elige UNA sola opción, copiando su texto tal cual.\n"
+    "  2. Si ninguna opción encaja con el trabajo, responde con una frase "
+    "breve (máximo 8 palabras) que describa el enfoque real.\n"
+    "  3. No menciones que existe una descripción del trabajo ni que eres una "
+    "simulación.\n"
+    "Devuelve un JSON con el campo 'answer'."
+)
+
+
+class _AnswerSchema(BaseModel):
+    answer: str
+
+
+# The student simulator runs on the same local model as the rest of the query
+# pipeline; overridable so the simulation can be made independent of the model
+# under evaluation if that ever becomes a concern.
+ANSWER_MODEL = os.environ.get(
+    "CLARIFY_ANSWER_MODEL", os.environ.get("OLLAMA_MODEL", "qwen2.5:7b-instruct")
+)
+
+
+def _simulate_answer(
+    question: str, options: list[str], oracle: str, model: str
+) -> str:
+    """Answer one clarifying question as the student would, given the oracle.
+
+    Returns the chosen option verbatim when the model picks one (matched
+    case-insensitively), its free-text answer otherwise, or the first option as
+    a last resort so the loop always advances.
+    """
+    listed = "\n".join(f"  - {o}" for o in options)
+    user = (
+        f"{_ANSWER_INSTRUCTIONS}\n\n"
+        f"--- Pregunta del sistema ---\n{question}\n"
+        f"--- Opciones ---\n{listed}\n\n"
+        f"--- Trabajo que quieres hacer ---\n{oracle}"
+    )
+    try:
+        data = _chat_json(
+            model, _ANSWER_SYSTEM, user, _AnswerSchema.model_json_schema(), 0.0
+        )
+        answer = str(_AnswerSchema.model_validate(data).answer).strip()
+    except Exception as exc:  # noqa: BLE001 — never abort a query on this
+        logger.warning("Answer simulation failed: {}", exc)
+        return options[0] if options else ""
+    if not answer:
+        return options[0] if options else ""
+    for opt in options:  # normalise to the option's own wording when it matches
+        if opt.strip().lower() == answer.lower():
+            return opt
+    return answer[:200]
+
+
+def run_clarify(
+    silver: SilverRecord,
+    gold: GoldRecord,
+    stage1: RecommendationResult | None,
+    profiles: dict,
+    db,
+    model: str = ANSWER_MODEL,
+) -> RecommendationResult:
+    """Hybrid search with the ASK-style clarification loop and a simulated user.
+
+    Protocol (memoria sec:eval-clarify):
+      1. The cached hybrid ranking of this campaign provides the initial
+         candidate view the ambiguity detector sees (same first stage as every
+         other extension, so the comparison stays paired).
+      2. The detector decides whether to ask. If it does, the generator writes
+         ONE question and the student simulator answers it from the real work
+         description (the oracle).
+      3. The answer refines the query and the hybrid search is RELAUNCHED —
+         unlike re-ranking, clarification changes the query, so retrieval has to
+         run again.
+      4. Repeat until the detector says the query is clear or the round cap is
+         reached.
+
+    Queries the detector considers clear cost one LLM call and return the
+    cached hybrid ranking unchanged, which is exactly the intended behaviour:
+    the clarification must not disturb what was already fine.
+    """
+    if stage1 is None or stage1.error is not None or not stage1.ranked_researcher_ids:
+        return RecommendationResult(
+            gold_id=gold.gold_id,
+            mode="clarify_hybrid",
+            true_director=gold.director,
+            error="missing stage-1 hybrid cache for this query (run hybrid first "
+            "in this campaign)",
+        )
+
+    from app.agent import enrich_query, extract_keywords
+    from app.clarify import (
+        CLARIFY_MAX_ROUNDS,
+        ClarifyTurn,
+        effective_idea,
+        next_clarification,
+    )
+    from app.search import search_pdis_hybrid
+
+    class _Cand:
+        """Minimal stand-in for PDIResult: the clarifier only reads domains."""
+
+        __slots__ = ("all_topics", "summary")
+
+        def __init__(self, topics, summary):
+            self.all_topics = topics
+            self.summary = summary
+
+    def _candidates(ranked_ids: list[str]) -> list:
+        out = []
+        for rid in ranked_ids:
+            prof = profiles.get(rid)
+            out.append(
+                _Cand(list(prof.domains) if prof else [], prof.summary if prof else "")
+            )
+        return out
+
+    llm_seconds = 0.0
+    search_seconds = 0.0
+    history: list = []
+    levels: list[str] = []
+    asked: list[dict] = []
+    ranked = list(stage1.ranked_researcher_ids)
+    candidates = _candidates(ranked)
+
+    try:
+        for _ in range(CLARIFY_MAX_ROUNDS):
+            t0 = time.perf_counter()
+            clar = next_clarification(silver.proposal, history, candidates)
+            llm_seconds += time.perf_counter() - t0
+            if clar is None:  # detector says clear (or generation unusable)
+                break
+            levels.append(clar.ambiguity)
+            t0 = time.perf_counter()
+            answer = _simulate_answer(
+                clar.question, clar.options, gold.description, model
+            )
+            llm_seconds += time.perf_counter() - t0
+            history.append(ClarifyTurn(question=clar.question, answer=answer))
+            asked.append(
+                {
+                    "question": clar.question,
+                    "options": clar.options,
+                    "answer": answer,
+                    "level": clar.ambiguity,
+                }
+            )
+
+            # The query changed: rerun the full hybrid pipeline on it.
+            refined = effective_idea(silver.proposal, history)
+            t0 = time.perf_counter()
+            kw = extract_keywords(refined)
+            llm_seconds += time.perf_counter() - t0
+            dense_text = refined
+            t0 = time.perf_counter()
+            try:
+                dense_text = enrich_query(refined)
+            except Exception:  # noqa: BLE001 — same fallback as the app
+                logger.warning("Enrichment failed after clarification; raw text used")
+            llm_seconds += time.perf_counter() - t0
+            t0 = time.perf_counter()
+            results = search_pdis_hybrid(
+                db, kw.general, kw.specific, dense_text, limit=max(K_VALUES)
+            )
+            search_seconds += time.perf_counter() - t0
+            ranked = [r.researcher_id for r in results]
+            candidates = [
+                _Cand(r.all_topics, r.summary or "") for r in results
+            ]
+    except Exception as exc:  # noqa: BLE001 — keep whatever ranking we have
+        logger.warning("Clarification failed ({}): {}", gold.gold_id, exc)
+
+    total = llm_seconds + search_seconds
+    return RecommendationResult(
+        gold_id=gold.gold_id,
+        mode="clarify_hybrid",
+        ranked_researcher_ids=ranked,
+        true_director=gold.director,
+        llm_seconds=round(llm_seconds, 4),
+        search_seconds=round(search_seconds, 4),
+        total_seconds=round(total, 4),
+        clarify_info={
+            "rounds": len(asked),
+            "levels": levels,
+            "questions": asked,
+            "refined_query": effective_idea(silver.proposal, history)
+            if history
+            else silver.proposal,
+        },
+    )
+
+
 # 4. Metrics
 # Every query has exactly one relevant item (the true director), which simplifies
 # the single-relevant forms of the standard IR metrics.
@@ -1425,9 +1647,9 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
     signal_store = None  # graph signals for the kg mode, loaded once
     for mode in args.modes:
         stage1_cache: dict[str, RecommendationResult] | None = None
-        if mode in RERANK_MODES:
-            # Two-stage extension: consumes the hybrid rankings cached by THIS
-            # campaign (fixed stage 1 across repetitions, registered protocol).
+        if mode in STAGE1_MODES:
+            # Extensions built on the hybrid rankings cached by THIS campaign
+            # (fixed stage 1 across repetitions, registered protocol).
             stage1_cache = _load_recs_cache("hybrid", args.source, tag)
             if not stage1_cache:
                 logger.error(
@@ -1461,7 +1683,11 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
             if cached is not None and cached.error is None:
                 results.append(cached)
                 continue
-            if stage1_cache is not None:
+            if mode == "clarify_hybrid":
+                res = run_clarify(
+                    s, gold_rec, stage1_cache.get(s.gold_id), profiles, db
+                )
+            elif stage1_cache is not None:
                 res = run_rerank(
                     s,
                     gold_rec,

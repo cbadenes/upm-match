@@ -65,15 +65,18 @@ _ALL_MODES = [
     "hybrid",
     "rerank_listwise",
     "rerank_listwise_kg",
+    "clarify_hybrid",
 ]
 # Modes with an LLM in the query loop: the only ones whose run-to-run variance
-# the repetitions measure. Order matters: hybrid before the rerank modes.
+# the repetitions measure. Order matters: hybrid before the modes that consume
+# its cached ranking (the rerank pair and the clarification loop).
 _LLM_MODES = [
     "keywords",
     "summary_enriched",
     "hybrid",
     "rerank_listwise",
     "rerank_listwise_kg",
+    "clarify_hybrid",
 ]
 
 # 3-run protocol of the memoria. Parse-time constant (Airflow cannot grow the

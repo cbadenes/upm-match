@@ -42,6 +42,7 @@ _SEARCH_MODES = [
     "hybrid",
     "rerank_listwise",
     "rerank_listwise_kg",
+    "clarify_hybrid",
 ]
 
 _default_args = {
