@@ -180,6 +180,15 @@ class VectorDataBase(Protocol):
         """
         ...
 
+    def delete_points(self, collection: str, point_ids: list[int]) -> bool:
+        """Delete specific points by id, leaving the collection in place.
+
+        :param collection: Name of the collection.
+        :param point_ids: Numeric point ids to remove.
+        :return: True if the deletion succeeded, False otherwise.
+        """
+        ...
+
     def delete_collection(self, collection: str) -> bool:
         """Delete a collection entirely. Returns True on success.
         Use with caution, as this will remove all data in the collection.

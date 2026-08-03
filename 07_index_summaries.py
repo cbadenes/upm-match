@@ -41,6 +41,7 @@ from qdrant_client import models as qdrant_models
 
 from dbs import minio
 from dbs.vector import QdrantBackend
+from utils.exclusions import load_excluded_ids, normalise_id
 from utils.logging import setup_logging
 from utils.researchers import ENRICHMENT_KEY_TEMPLATE as _ENRICHMENT_KEY_TEMPLATE
 
@@ -183,12 +184,29 @@ def _build_current(history: dict) -> tuple[str, list[str], int] | None:
 
 # MinIO
 def _iter_enrichment_keys(only_id: int | None) -> list[str]:
+    """Enrichment documents to index, minus the researchers who opted out.
+
+    This phase reads MinIO directly instead of going through
+    `load_researcher_ids`, so the exclusion list has to be applied here as well —
+    this is the collection the public app serves.
+    """
     if only_id is not None:
-        return [_ENRICHMENT_KEY_TEMPLATE.format(researcher_id=only_id)]
-    keys = minio.list_objects(
-        minio.CURATED_BUCKET, prefix="researchers/", recursive=True
-    )
-    return [k for k in keys if k.endswith("/enrichment.json")]
+        keys = [_ENRICHMENT_KEY_TEMPLATE.format(researcher_id=only_id)]
+    else:
+        listed = minio.list_objects(
+            minio.CURATED_BUCKET, prefix="researchers/", recursive=True
+        )
+        keys = [k for k in listed if k.endswith("/enrichment.json")]
+
+    excluded = load_excluded_ids()
+    if not excluded:
+        return keys
+    kept = [k for k in keys if (normalise_id(k.split("/")[1]) or 0) not in excluded]
+    if len(kept) != len(keys):
+        logger.info(
+            "Skipping {} researcher(s) on the exclusion list", len(keys) - len(kept)
+        )
+    return kept
 
 
 def _persist_current(researcher_id: str, summary: str, domains: list[str]) -> None:

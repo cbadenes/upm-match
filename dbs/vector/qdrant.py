@@ -462,6 +462,37 @@ class QdrantBackend:
             for p in results.points
         ]
 
+    def delete_points(self, collection: str, point_ids: list[int]) -> bool:
+        """Delete specific points by id (no-op when the collection is missing).
+
+        Used to honour erasure/objection requests without rebuilding the whole
+        collection; see `08_manage_exclusions.py`.
+
+        :param collection: Collection name.
+        :param point_ids: Numeric point ids to remove.
+        :return: True when the deletion was issued successfully.
+        """
+        if not point_ids:
+            return True
+        if not self.collection_exists(collection):
+            logger.debug("Collection '{}' does not exist; nothing to delete", collection)
+            return True
+        try:
+            self._client.delete(
+                collection_name=collection,
+                points_selector=models.PointIdsList(points=list(point_ids)),
+                wait=True,
+            )
+            logger.info(
+                "Deleted {} point(s) from '{}'", len(point_ids), collection
+            )
+            return True
+        except Exception as exc:
+            logger.exception(
+                "Error deleting points from '{}': {}", collection, exc
+            )
+            return False
+
     def delete_collection(self, collection: str) -> bool:
         try:
             self._client.delete_collection(collection)

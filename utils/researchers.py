@@ -7,6 +7,7 @@ from loguru import logger
 
 from dbs import minio
 from models import ResearcherEnrichmentDocument
+from utils.exclusions import load_excluded_ids
 
 CSV_OBJECT_NAME = "researchers.csv"
 ENRICHMENT_KEY_TEMPLATE = "researchers/{researcher_id}/enrichment.json"
@@ -18,9 +19,13 @@ def load_researcher_ids(
 ) -> list[int]:
     """Load researcher IDs from a CSV stored in MinIO.
 
+    Researchers on the exclusion list (`utils.exclusions`) are dropped here, at
+    the single entry point every pipeline phase uses, so that a PDI who objected
+    is never downloaded, enriched, indexed nor evaluated again.
+
     :param bucket_name: MinIO bucket containing the CSV.
     :param object_name: Object path within the bucket.
-    :return: Sorted, deduplicated list of researcher IDs.
+    :return: Sorted, deduplicated list of researcher IDs, exclusions removed.
     :raises FileNotFoundError: If the CSV does not exist in MinIO.
     :raises ValueError: If the CSV lacks the required column.
     """
@@ -45,6 +50,14 @@ def load_researcher_ids(
         .cast(pl.Int64)
         .to_list()
     )
+    excluded = load_excluded_ids()
+    if excluded:
+        kept = [rid for rid in ids if rid not in excluded]
+        if len(kept) != len(ids):
+            logger.info(
+                "Excluded {} researcher(s) on the opt-out list", len(ids) - len(kept)
+            )
+        ids = kept
     logger.info(
         "Loaded {} researcher IDs from {}/{}", len(ids), bucket_name, object_name
     )

@@ -28,6 +28,7 @@ from loguru import logger
 from dbs.vector import QdrantBackend, VectorPoint
 from dbs.vector.qdrant import SPARSE_MODEL_NAME
 from utils.logging import setup_logging
+from utils.exclusions import drop_excluded
 from utils.researchers import load_enrichment, load_researcher_ids
 from utils.text import canonicalize_topics
 
@@ -177,7 +178,14 @@ def main() -> int:
     logger.info("=== UPM Match - Keyword Indexing Pipeline ===")
 
     if args.ids:
-        researcher_ids = args.ids
+        # --ids bypasses load_researcher_ids(), so the opt-out list is applied here
+        # too: an explicit id must never override an exercised right to object.
+        researcher_ids = drop_excluded(args.ids)
+        if len(researcher_ids) != len(args.ids):
+            logger.warning(
+                "Skipped {} requested id(s) on the exclusion list",
+                len(args.ids) - len(researcher_ids),
+            )
         logger.info("Processing {} specific researcher IDs", len(researcher_ids))
     else:
         try:

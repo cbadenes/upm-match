@@ -34,6 +34,7 @@ from flask import (
 from loguru import logger
 
 from dbs.vector import QdrantBackend, get_vector_db
+from utils.exclusions import load_excluded_ids
 
 eval_bp = Blueprint("eval", __name__)
 
@@ -332,31 +333,40 @@ def _numeric_id(value) -> int | None:
 
 
 def list_pdis() -> list[dict]:
-    """Return [{'id': <numeric portal id>, 'name': <full name>}] for every indexed researcher, sorted by name. Cached after the first scan."""
+    """Return [{'id': <numeric portal id>, 'name': <full name>}] for every indexed researcher, sorted by name.
+
+    The Qdrant scan is cached after the first call, but the exclusion list is
+    applied on every call: an opt-out must take effect without restarting the
+    workers.
+    """
     global _pdi_cache
-    if _pdi_cache is not None:
+    if _pdi_cache is None:
+        try:
+            rows = _db.scroll_payloads(
+                _summaries_collection(), payload_fields=["researcher_id", "name"]
+            )
+        except Exception:  # noqa: BLE001 — el formulario no debe romperse si Qdrant falla
+            logger.exception("Could not scan researchers for the PDI selector")
+            return []
+
+        pdis: list[dict] = []
+        for row in rows:
+            payload = row.get("payload") or {}
+            rid = _numeric_id(payload.get("researcher_id")) or _numeric_id(
+                row.get("id")
+            )
+            name = (payload.get("name") or "").strip()
+            if rid and name:
+                pdis.append({"id": rid, "name": name})
+
+        pdis.sort(key=lambda p: p["name"].lower())
+        _pdi_cache = pdis
+        logger.info("Loaded {} PDIs for the evaluation selector", len(pdis))
+
+    excluded = load_excluded_ids()
+    if not excluded:
         return _pdi_cache
-
-    try:
-        rows = _db.scroll_payloads(
-            _summaries_collection(), payload_fields=["researcher_id", "name"]
-        )
-    except Exception:  # noqa: BLE001 — el formulario no debe romperse si Qdrant falla
-        logger.exception("Could not scan researchers for the PDI selector")
-        return []
-
-    pdis: list[dict] = []
-    for row in rows:
-        payload = row.get("payload") or {}
-        rid = _numeric_id(payload.get("researcher_id")) or _numeric_id(row.get("id"))
-        name = (payload.get("name") or "").strip()
-        if rid and name:
-            pdis.append({"id": rid, "name": name})
-
-    pdis.sort(key=lambda p: p["name"].lower())
-    _pdi_cache = pdis
-    logger.info("Loaded {} PDIs for the evaluation selector", len(pdis))
-    return pdis
+    return [p for p in _pdi_cache if p["id"] not in excluded]
 
 
 # In-memory cache of Spanish translations, keyed by the (English) summary text.
@@ -392,8 +402,13 @@ def load_profile(researcher_id: int, translate: bool = False) -> dict | None:
     :param translate: when True, also add `summary_es` (Spanish translation of the
         summary). Left False for cheap existence checks.
     :return: dict with name, portal_url, summary, summary_es, keywords, topics, year;
-        or None when the researcher is not present in the current index.
+        or None when the researcher is not present in the current index or has
+        been excluded at their own request.
     """
+    # Single gate for the whole public profile: /api/pdi answers 404 when this
+    # returns None, so the per-year summaries and the graph sections go with it.
+    if researcher_id in load_excluded_ids():
+        return None
     payload = _db.get_payload(_summaries_collection(), researcher_id)
     if not payload:
         return None

@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 from loguru import logger
 
 from dbs.vector import QdrantBackend, SearchResult
+from utils.exclusions import load_excluded_ids, normalise_id
 
 load_dotenv()
 
@@ -43,6 +44,26 @@ class PDIResult:
     # Rank the candidate held BEFORE the second-stage re-ranking (None for
     # single-stage searches). Score/score_pct always keep the stage-1 affinity.
     stage1_rank: int | None = None
+
+
+def _drop_excluded(raw: list[SearchResult]) -> list[SearchResult]:
+    """Remove researchers who exercised their right to object, before ranking.
+
+    Applied to every retrieval mode at conversion time, so an exclusion takes
+    effect on the next request without waiting for the collection to be rebuilt
+    (the index is only cleaned on the following pipeline run).
+    """
+    excluded = load_excluded_ids()
+    if not excluded:
+        return raw
+    kept = [
+        sr
+        for sr in raw
+        if (normalise_id((sr.payload or {}).get("researcher_id")) or 0) not in excluded
+    ]
+    if len(kept) != len(raw):
+        logger.debug("Filtered {} excluded researcher(s)", len(raw) - len(kept))
+    return kept
 
 
 def _matched_topics(query_keywords: list[str], topics: list[str]) -> list[str]:
@@ -79,6 +100,7 @@ def _to_pdi_results(
     :param all_keywords: Combined list of general and specific keywords used in the search, for interpretability scoring.
     :return: List of PDIResult objects with rank, score, matched topics and other metadata.
     """
+    raw = _drop_excluded(raw)
     if not raw:
         return []
 
@@ -146,6 +168,7 @@ def _to_pdi_results_summary(raw: list[SearchResult]) -> list[PDIResult]:
     :param raw: List of SearchResult objects from the dense search.
     :return: List of PDIResult objects with rank, score, summary text, and topics.
     """
+    raw = _drop_excluded(raw)
     if not raw:
         return []
 
@@ -208,6 +231,7 @@ def _to_pdi_results_hybrid(
     :param all_keywords: Combined keyword list used for the sparse leg, for interpretability.
     :return: List of PDIResult objects.
     """
+    raw = _drop_excluded(raw)
     if not raw:
         return []
 
