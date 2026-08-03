@@ -295,6 +295,9 @@ services:
       # Second-stage listwise re-ranking (smart search / /test bench)
       RERANK_MODEL: ${RERANK_MODEL:-qwen2.5:7b-instruct}
       RERANK_POOL: ${RERANK_POOL:-50}    # stage-1 candidates the re-ranker reorders (recall ceiling: 53% @50)
+      # ASK-style clarification loop (smart search mini-conversation)
+      CLARIFY_MAX_ROUNDS: ${CLARIFY_MAX_ROUNDS:-3}
+      CLARIFY_POOL: ${CLARIFY_POOL:-100}  # retrieval depth feeding the domain-level aspects
     depends_on:
       - qdrant
       - ollama

@@ -2,12 +2,20 @@
 
 from __future__ import annotations
 
+import os
+
 from flask import Blueprint, Response, jsonify, render_template, request, url_for
 from loguru import logger
 
 from dbs.vector import QdrantBackend, get_vector_db
 
 from .agent import enrich_query, extract_keywords
+from .clarify import (
+    CLARIFY_MAX_ROUNDS,
+    ClarifyTurn,
+    effective_idea,
+    next_clarification,
+)
 from .evaluation import _numeric_id, list_pdis, load_profile, load_yearly
 from .graph import load_graph_profile
 from .search import (
@@ -21,6 +29,14 @@ from .search import (
     search_pdis_hybrid,
 )
 
+# Retrieval depth when the clarification loop is active: domain-level questions draw their aspects from this whole pool (depth as taxonomy substitute).
+CLARIFY_POOL = int(os.environ.get("CLARIFY_POOL", "100"))
+
+# Rights channel published on /legal: the address a PDI writes to in order to correct or remove their profile. Kept in sync with the questionnaire contact.
+CONTACT_EMAIL = os.environ.get("CONTACT_EMAIL", "carlos.badenes@upm.es")
+# Shown on /legal so the notice carries a visible date, as a privacy notice should.
+LEGAL_LAST_UPDATED = os.environ.get("LEGAL_LAST_UPDATED", "agosto de 2026")
+
 bp = Blueprint("main", __name__)
 
 # Shared Qdrant client - created once and reused across requests.
@@ -32,8 +48,7 @@ def _serialise_result(r: PDIResult) -> dict:
     return {
         "rank": r.rank,
         "researcher_id": r.researcher_id,
-        # Numeric portal id, so the UI can deep-link to the profile explorer
-        # (/search?pdi=<id>) from each result card.
+        # Numeric portal id, so the UI can deep-link to the profile explorer (/search?pdi=<id>) from each result card.
         "id_num": _numeric_id(r.researcher_id),
         "name": r.name,
         "score": r.score,
@@ -152,15 +167,13 @@ def search():
     """Search for PDI recommendations given a free-text research idea.
 
     Request body (JSON):
-      - idea (str): free-text research idea in any language (all modes except
-        'keywords_user').
+      - idea (str): free-text research idea in any language (all modes except 'keywords_user').
       - keywords (list[str]): user-provided topic keywords ('keywords_user' only).
-      - mode (str, optional): 'keywords' (default), 'keywords_user', 'hybrid',
-        'summary_direct' or 'summary_enriched'.
-      - rerank (str, optional, 'hybrid' only): '' (no re-ranking, default),
-        'text' (second-stage listwise LLM re-ranking) or 'kg' (listwise with
-        knowledge-graph evidence per candidate; degrades to 'text' without
-        Memgraph). Powers the smart search and the /test bench.
+      - mode (str, optional): 'keywords' (default), 'keywords_user', 'hybrid', 'summary_direct' or 'summary_enriched'.
+      - rerank (str, optional, 'hybrid' only): '' (no re-ranking, default), 'text' (second-stage listwise LLM re-ranking) or 'kg' (listwise with knowledge-graph evidence per candidate; degrades to 'text' without Memgraph). Powers the smart search and the /test bench.
+      - clarify (bool, optional, 'hybrid' only): enable the ASK-style clarification loop (smart search). When the retrieved space looks ambiguous the response carries a `clarify` question instead of results.
+      - clarification (list, optional): completed rounds so far, as [{question, answer}, ...]; their answers refine the query (ASK).
+      - clarify_skip (bool, optional): answer now, skipping the detector ("buscar sin aclarar").
       - limit (int, optional): number of results to return (default 10, max 20).
 
     Response (JSON) common fields:
@@ -172,6 +185,7 @@ def search():
       - summary_enriched: enriched_query (the LLM-expanded English paragraph).
       - hybrid with rerank: rerank {variant, model, pool, windows, seconds,
         kg_degraded?, error?} (null when re-ranking was not requested).
+      - hybrid with clarify, when a question is needed: NO results; instead clarify {question, options, ambiguity, round, max_rounds}. The client re-posts with the answer appended to `clarification`.
     """
     body = request.get_json(silent=True) or {}
     idea: str = (body.get("idea") or "").strip()
@@ -184,9 +198,7 @@ def search():
     logger.info("Search request - mode={} idea_len={} limit={}", mode, len(idea), limit)
 
     if mode == "keywords_user":
-        # Topics typed by the user (no LLM involved): dedupe, trim and cap them,
-        # then run the same sparse BM42 search used for LLM-extracted keywords
-        # (single keyword set; the backend falls back to a one-leg query).
+        # Topics typed by the user (no LLM involved): dedupe, trim and cap them, then run the same sparse BM42 search used for LLM-extracted keywords (single keyword set; the backend falls back to a one-leg query).
         seen: set[str] = set()
         keywords: list[str] = []
         for raw in body.get("keywords") or []:
@@ -197,9 +209,7 @@ def search():
             if len(keywords) >= 15:
                 break
         if not keywords:
-            return jsonify(
-                {"error": "Añade al menos una temática para buscar."}
-            ), 422
+            return jsonify({"error": "Añade al menos una temática para buscar."}), 422
 
         try:
             results = search_pdis(_db, keywords, [], limit=limit)
@@ -245,35 +255,47 @@ def search():
         )
 
     if mode == "hybrid":
-        # Optional second stage: 'text' re-ranks the top candidates with the
-        # listwise LLM; 'kg' additionally grounds each candidate with its
-        # knowledge-graph evidence (fase B). Empty = classic single-stage RRF.
+        # Optional second stage: 'text' re-ranks the top candidates with the listwise LLM; 'kg' additionally grounds each candidate with its knowledge-graph evidence (fase B). Empty = classic single-stage RRF.
         rerank_variant: str = (body.get("rerank") or "").strip().lower()
         if rerank_variant not in ("", "text", "kg"):
             return jsonify(
                 {"error": f"Variante de re-ranking desconocida: '{rerank_variant}'."}
             ), 422
 
-        # Sparse leg: keyword extraction. Dense leg: enriched query (falls back
-        # to the raw idea if enrichment fails) so the summaries (written in
-        # English) are matched on comparable text.
+        # Optional ASK-style clarification loop (fase C, smart search): the client sends the completed rounds in `clarification` and may set  `clarify_skip` to force results ("buscar sin aclarar").
+        clarify_on: bool = bool(body.get("clarify"))
+        clarify_skip: bool = bool(body.get("clarify_skip"))
+        history: list[ClarifyTurn] = []
+        for raw in (body.get("clarification") or [])[: CLARIFY_MAX_ROUNDS * 2]:
+            question = str((raw or {}).get("question") or "").strip()[:300]
+            answer = str((raw or {}).get("answer") or "").strip()[:300]
+            if question and answer:
+                history.append(ClarifyTurn(question=question, answer=answer))
+
+        # Refined query: the idea plus the clarification exchanges (ASK appends the answers to the query and relaunches the search).
+        query_text = effective_idea(idea, history) if history else idea
+
+        # Sparse leg: keyword extraction. Dense leg: enriched query (falls back to the raw idea if enrichment fails) so the summaries (written in English) are matched on comparable text.
         try:
-            keywords = extract_keywords(idea)
+            keywords = extract_keywords(query_text)
         except Exception as exc:
             logger.exception("Keyword extraction failed")
             return jsonify({"error": f"Error al extraer keywords: {exc}"}), 500
 
         enriched_query: str | None = None
-        dense_text = idea
+        dense_text = query_text
         try:
-            dense_text = enrich_query(idea)
+            dense_text = enrich_query(query_text)
             enriched_query = dense_text
         except Exception:
             logger.warning("Query enrichment failed; using raw idea for dense leg")
 
-        # The re-ranker reorders a pool deeper than the displayed page, so a
-        # relevant candidate buried past `limit` can still surface.
-        pool = max(limit, RERANK_POOL) if rerank_variant else limit
+        # The re-ranker reorders a pool deeper than the displayed page; the clarification loop retrieves deeper still, because the domain-level question draws its aspects from the whole pool.
+        pool = limit
+        if rerank_variant:
+            pool = max(pool, RERANK_POOL)
+        if clarify_on:
+            pool = max(pool, CLARIFY_POOL)
         try:
             results = search_pdis_hybrid(
                 _db, keywords.general, keywords.specific, dense_text, limit=pool
@@ -283,12 +305,38 @@ def search():
             logger.exception("Qdrant hybrid search failed")
             return jsonify({"error": f"Error en la búsqueda híbrida: {exc}"}), 500
 
+        # ASK loop step: decide whether to ask ONE more clarifying question before ranking.
+        # Every failure path inside degrades to answering.
+        if clarify_on and not clarify_skip and results:
+            clarification = next_clarification(idea, history, results)
+            if clarification is not None:
+                logger.info(
+                    "Clarification round {} ({}): {}",
+                    len(history) + 1,
+                    clarification.ambiguity,
+                    clarification.question,
+                )
+                return jsonify(
+                    {
+                        "mode": "hybrid",
+                        "clarify": {
+                            "question": clarification.question,
+                            "options": clarification.options,
+                            "ambiguity": clarification.ambiguity,
+                            "round": len(history) + 1,
+                            "max_rounds": CLARIFY_MAX_ROUNDS,
+                        },
+                    }
+                )
+
         rerank_info: dict | None = None
         if rerank_variant and results:
             try:
-                results, rerank_info = rerank_pdi_results(
-                    results, dense_text, use_kg=rerank_variant == "kg"
+                head, tail = results[:RERANK_POOL], results[RERANK_POOL:]
+                head, rerank_info = rerank_pdi_results(
+                    head, dense_text, use_kg=rerank_variant == "kg"
                 )
+                results = head + tail
                 logger.info(
                     "Re-ranked {} candidates ({}, {} windows, {:.1f}s)",
                     rerank_info["pool"],
@@ -300,7 +348,7 @@ def search():
                 # Stage 1 already answered the query: degrade, don't fail.
                 logger.exception("Re-ranking failed; returning stage-1 order")
                 rerank_info = {"error": str(exc)}
-            results = results[:limit]
+        results = results[:limit]
 
         return jsonify(
             {
@@ -309,6 +357,7 @@ def search():
                 "specific_keywords": keywords.specific,
                 "enriched_query": enriched_query,
                 "rerank": rerank_info,
+                "clarify": None,
                 "results": [_serialise_result(r) for r in results],
             }
         )

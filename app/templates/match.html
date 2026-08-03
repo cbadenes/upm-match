@@ -89,6 +89,33 @@
   }
   .btn-ghost:hover { border-color: rgba(0,169,224,0.4); }
 
+  /* ── Clarification (smart-search mini-conversation) ── */
+  #clarify-section { margin-bottom: 1.5rem; }
+  .clarify-card {
+    border: 1px solid rgba(0,169,224,0.35); border-radius: var(--r-md);
+    background: rgba(0,169,224,0.06); padding: 16px;
+  }
+  .clarify-turn { margin-bottom: .65rem; font-size: 13.5px; line-height: 1.55; }
+  .clarify-turn .q { color: var(--muted); }
+  .clarify-turn .a { color: var(--text); font-weight: 600; }
+  .clarify-question { font-size: 15px; font-weight: 600; margin: .35rem 0 .8rem; }
+  .clarify-options { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: .9rem; }
+  .clarify-opt {
+    border: 1px solid rgba(0,169,224,0.4); border-radius: var(--r-full);
+    background: rgba(0,169,224,0.10); color: var(--text);
+    font-size: 13.5px; padding: 8px 14px; cursor: pointer;
+    transition: background .15s, border-color .15s;
+  }
+  .clarify-opt:hover:not(:disabled) { background: rgba(0,169,224,0.22); }
+  .clarify-opt:disabled { opacity: .5; cursor: default; }
+  .clarify-free-row { display: flex; gap: 8px; }
+  .clarify-foot { display: flex; align-items: center; justify-content: space-between; margin-top: .7rem; gap: 10px; }
+  .clarify-skip {
+    background: none; border: none; color: var(--muted); font-size: 12.5px;
+    cursor: pointer; text-decoration: underline; padding: 0;
+  }
+  .clarify-skip:hover { color: var(--text); }
+
   /* ── Results area ── */
   .results-area { max-width: 760px; margin: 0 auto; padding: 0 1.5rem 5rem; }
   .results-divider { display: flex; align-items: center; gap: 12px; margin-bottom: 1.5rem; }
@@ -238,6 +265,29 @@
 <!-- ── Results area ── -->
 <div class="results-area">
 
+  <!-- Clarification mini-conversation (smart search, fase C) -->
+  <div id="clarify-section" style="display:none">
+    <div class="section-label" data-i18n="um.clarify_label">Afinemos tu búsqueda</div>
+    <div class="clarify-card">
+      <div id="clarify-history"></div>
+      <div id="clarify-active" style="display:none">
+        <div class="clarify-question" id="clarify-question"></div>
+        <div class="clarify-options" id="clarify-options" role="group" aria-label="Opciones de respuesta"></div>
+        <div class="clarify-free-row">
+          <input type="text" id="clarify-free" class="text-input" autocomplete="off"
+                 data-i18n-ph="um.clarify_free_ph"
+                 placeholder="Ninguna encaja: escríbelo con tus palabras…"
+                 aria-label="Respuesta libre"/>
+          <button type="button" class="btn-ghost" id="clarify-free-btn" data-i18n="um.clarify_answer">Responder</button>
+        </div>
+        <div class="clarify-foot">
+          <button type="button" class="clarify-skip" id="clarify-skip" data-i18n="um.clarify_skip">Mostrar resultados sin aclarar →</button>
+          <div class="spinner" id="spinner-clarify" aria-hidden="true"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Interpretation section (smart / enriched searches) -->
   <div class="keywords-section" id="interp-section" style="display:none">
     <div class="section-label" data-i18n="um.interp_label">Cómo hemos interpretado tu búsqueda</div>
@@ -296,6 +346,15 @@
   const interpTags    = document.getElementById('interp-tags');
   const interpDetails = document.getElementById('interp-details');
   const interpText    = document.getElementById('interp-text');
+  const clarifySection = document.getElementById('clarify-section');
+  const clarifyActiveEl= document.getElementById('clarify-active');
+  const clarifyHistEl  = document.getElementById('clarify-history');
+  const clarifyQEl     = document.getElementById('clarify-question');
+  const clarifyOptsEl  = document.getElementById('clarify-options');
+  const clarifyFreeEl  = document.getElementById('clarify-free');
+  const clarifyFreeBtn = document.getElementById('clarify-free-btn');
+  const clarifySkipBtn = document.getElementById('clarify-skip');
+  const spinClarify    = document.getElementById('spinner-clarify');
   const resultsWrap   = document.getElementById('results-wrap');
   const resultList    = document.getElementById('result-list');
   const resultCount   = document.getElementById('results-count');
@@ -584,10 +643,13 @@
   function searchDescribe(smart) {
     const idea = ideaEl.value.trim();
     if (!idea) { showError(T('match.err_empty')); return; }
+    resetClarify();
     if (smart) {
-      // Smart search = hybrid retrieval + KG-grounded listwise re-ranking
-      // (degrades server-side to text-only or to stage-1 order if needed).
-      runSearch({ idea, mode: 'hybrid', rerank: 'kg' });
+      // Smart search = mini-conversation (ASK clarification loop) + hybrid
+      // retrieval + KG-grounded listwise re-ranking. Every stage degrades
+      // server-side (no clarifier -> no question; no Memgraph -> text-only
+      // rerank; no LLM -> stage-1 order).
+      runSmart(false);
     } else {
       runSearch({ idea, mode: quickEl.checked ? 'summary_direct' : 'summary_enriched' });
     }
@@ -595,7 +657,115 @@
 
   function searchTopics() {
     if (userTopics.length === 0) { showError(T('um.err_no_topics')); return; }
+    resetClarify();
     runSearch({ mode: 'keywords_user', keywords: userTopics });
+  }
+
+  // ── Smart-search mini-conversation (ASK clarification loop, fase C) ─────────
+  let clarifyHistory  = [];   // completed rounds: [{question, answer}]
+  let clarifyQuestion = null; // question currently on screen
+
+  function resetClarify() {
+    clarifyHistory = [];
+    clarifyQuestion = null;
+    clarifyHistEl.innerHTML = '';
+    clarifyActiveEl.style.display = 'none';
+    clarifySection.style.display = 'none';
+  }
+
+  function renderClarifyHistory() {
+    clarifyHistEl.innerHTML = '';
+    clarifyHistory.forEach(t => {
+      const div = document.createElement('div');
+      div.className = 'clarify-turn';
+      div.innerHTML = `<span class="q">${escHtml(t.question)}</span><br/><span class="a">→ ${escHtml(t.answer)}</span>`;
+      clarifyHistEl.appendChild(div);
+    });
+  }
+
+  function renderClarifyQuestion(clar) {
+    clarifyQuestion = clar.question;
+    renderClarifyHistory();
+    clarifyQEl.textContent = clar.question;
+    clarifyOptsEl.innerHTML = '';
+    (clar.options || []).forEach(opt => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'clarify-opt';
+      b.textContent = opt;
+      b.addEventListener('click', () => answerClarify(opt));
+      clarifyOptsEl.appendChild(b);
+    });
+    clarifyFreeEl.value = '';
+    clarifyActiveEl.style.display = '';
+    clarifySection.style.display = 'block';
+    resultsWrap.style.display = 'none';
+    emptyState.style.display  = 'none';
+    clarifySection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function setClarifyLoading(on) {
+    spinClarify.style.display = on ? 'block' : 'none';
+    clarifyOptsEl.querySelectorAll('button').forEach(b => { b.disabled = on; });
+    clarifyFreeBtn.disabled = on;
+    clarifySkipBtn.disabled = on;
+  }
+
+  function answerClarify(answer) {
+    if (!clarifyQuestion) return;
+    clarifyHistory.push({ question: clarifyQuestion, answer });
+    clarifyQuestion = null;
+    renderClarifyHistory();
+    runSmart(false);
+  }
+
+  clarifyFreeBtn.addEventListener('click', () => {
+    const value = clarifyFreeEl.value.trim();
+    if (value) answerClarify(value);
+  });
+  clarifyFreeEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); clarifyFreeBtn.click(); }
+  });
+  clarifySkipBtn.addEventListener('click', () => {
+    clarifyQuestion = null;
+    runSmart(true);
+  });
+
+  async function runSmart(skip) {
+    const idea = ideaEl.value.trim();
+    if (!idea) { showError(T('match.err_empty')); return; }
+    clearError();
+    setLoading(true);
+    setClarifyLoading(true);
+    interpSection.style.display = 'none';
+    resultsWrap.style.display   = 'none';
+    emptyState.style.display    = 'none';
+
+    try {
+      const resp = await fetch(API_URL, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          idea, mode: 'hybrid', rerank: 'kg',
+          clarify: true, clarification: clarifyHistory, clarify_skip: !!skip,
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) { showError(data.error || `${T('match.err_generic')} ${resp.status}`); return; }
+      if (data.clarify) {
+        renderClarifyQuestion(data.clarify);
+      } else {
+        // Final round: keep the conversation visible above the results.
+        clarifyActiveEl.style.display = 'none';
+        clarifySection.style.display = clarifyHistory.length ? 'block' : 'none';
+        renderResults(data);
+      }
+    } catch (err) {
+      showError(`${T('match.err_network')} ${err.message}`);
+    } finally {
+      setLoading(false);
+      setClarifyLoading(false);
+    }
   }
 
   btnSearch.addEventListener('click', () => searchDescribe(false));
