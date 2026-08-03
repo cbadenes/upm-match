@@ -92,6 +92,20 @@ def about():
     return render_template("about.html", active_page="about")
 
 
+@bp.get("/legal")
+def legal():
+    """Legal notice + privacy information (RGPD art. 14, LSSI art. 10).
+
+    Linked from the footer of every page: it is where a PDI finds out that this system exists, on what legal basis, and how to have their profile corrected or removed.
+    """
+    return render_template(
+        "legal.html",
+        active_page="legal",
+        contact_email=CONTACT_EMAIL,
+        last_updated=LEGAL_LAST_UPDATED,
+    )
+
+
 @bp.get("/healthz")
 def healthz():
     """Liveness probe for monitoring/orchestration. Intentionally does not touch

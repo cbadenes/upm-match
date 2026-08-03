@@ -524,6 +524,7 @@
     .footer-tagline { font-size: 12px; color: var(--muted); max-width: 55ch; line-height: 1.6; }
     .footer-eval-link { font-size: 13px; font-weight: 500; color: var(--ia-teal); margin-top: 4px; transition: opacity .15s; }
     .footer-eval-link:hover { opacity: 0.8; }
+    .footer-links { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 4px; }
     .footer-pie {
       border-top: 1px solid var(--border);
       max-width: 1280px; margin: 0 auto;
@@ -702,7 +703,10 @@
       <span class="footer-logo-text">UPM Match</span>
     </div>
     <p class="footer-tagline" data-i18n="footer.authorship">Desarrollado por Yago Boleas Francisco y Carlos Badenes-Olmedo en el marco del Proyecto de Innovación Educativa IE26.6102 de la Universidad Politécnica de Madrid.</p>
-    <a href="{{ url_for('eval.eval_home') }}" class="footer-eval-link" data-i18n="footer.evaluate">Evaluar la herramienta →</a>
+    <div class="footer-links">
+      <a href="{{ url_for('eval.eval_home') }}" class="footer-eval-link" data-i18n="footer.evaluate">Evaluar la herramienta →</a>
+      <a href="{{ url_for('main.legal') }}" class="footer-eval-link" data-i18n="footer.legal">Información legal y protección de datos</a>
+    </div>
   </div>
 
   <div class="footer-pie">
@@ -754,6 +758,10 @@
     "footer.authorship": {
       es: "Desarrollado por Yago Boleas Francisco y Carlos Badenes-Olmedo en el marco del Proyecto de Innovación Educativa IE26.6102 de la Universidad Politécnica de Madrid.",
       en: "Developed by Yago Boleas Francisco and Carlos Badenes-Olmedo as part of the Educational Innovation Project IE26.6102 at Universidad Politécnica de Madrid."
+    },
+    "footer.legal": {
+      es: "Información legal y protección de datos",
+      en: "Legal notice and data protection"
     },
     "footer.pie_badge": {
       es: "Proyecto de Innovación Educativa · IE26.6102 · 2025-2026",
@@ -882,8 +890,18 @@
     "um.btn_search":  { es: "Buscar", en: "Search" },
     "um.btn_smart":   { es: "Búsqueda inteligente", en: "Smart search" },
     "um.smart_hint": {
-      es: "La búsqueda inteligente analiza tu descripción más a fondo: detecta los conceptos clave, los combina con el significado global del texto y revisa uno a uno los mejores perfiles — incluida su experiencia dirigiendo trabajos — para ordenarlos mejor. Tarda un poco más.",
-      en: "Smart search analyses your description in more depth: it detects the key concepts, combines them with the overall meaning of the text and reviews the top profiles one by one — including their supervision experience — to order them better. It takes a bit longer."
+      es: "La búsqueda inteligente analiza tu descripción más a fondo: si tu idea admite varias direcciones puede hacerte alguna pregunta rápida para afinar, detecta los conceptos clave y revisa uno a uno los mejores perfiles — incluida su experiencia dirigiendo trabajos — para ordenarlos mejor. Tarda un poco más.",
+      en: "Smart search analyses your description in more depth: if your idea allows several directions it may ask you a quick question to sharpen it, detects the key concepts and reviews the top profiles one by one — including their supervision experience — to order them better. It takes a bit longer."
+    },
+    "um.clarify_label": { es: "Afinemos tu búsqueda", en: "Let's sharpen your search" },
+    "um.clarify_free_ph": {
+      es: "Ninguna encaja: escríbelo con tus palabras…",
+      en: "None fits: write it in your own words…"
+    },
+    "um.clarify_answer": { es: "Responder", en: "Answer" },
+    "um.clarify_skip": {
+      es: "Mostrar resultados sin aclarar →",
+      en: "Show results without clarifying →"
     },
     "um.topics_ph": {
       es: "Ej.: aprendizaje automático, robótica, redes de comunicaciones…",
@@ -1026,8 +1044,8 @@
       en: "<strong style=\"color:var(--text)\">Data extraction.</strong> Scraping of the UPM Research Portal: publications, projects, research lines and metadata for each researcher. The data is normalised and stored in MinIO and Memgraph."
     },
     "about.p2": {
-      es: "<strong style=\"color:var(--text)\">Enriquecimiento del perfil.</strong> Un agente LLM (Claude / Ollama) sintetiza las publicaciones de cada investigador en una biografía investigadora estructurada en inglés, optimizada para búsqueda semántica.",
-      en: "<strong style=\"color:var(--text)\">Profile enrichment.</strong> An LLM agent (Claude / Ollama) synthesises each researcher's publications into a structured research biography in English, optimised for semantic search."
+      es: "<strong style=\"color:var(--text)\">Enriquecimiento del perfil.</strong> Un agente LLM autoalojado (Ollama, en servidores de la UPM) sintetiza las publicaciones de cada investigador en una biografía investigadora estructurada en inglés, optimizada para búsqueda semántica.",
+      en: "<strong style=\"color:var(--text)\">Profile enrichment.</strong> A self-hosted LLM agent (Ollama, on UPM servers) synthesises each researcher's publications into a structured research biography in English, optimised for semantic search."
     },
     "about.p3": {
       es: "<strong style=\"color:var(--text)\">Indexación vectorial.</strong> Los perfiles se indexan en Qdrant con dos representaciones complementarias: vectores densos (embeddings semánticos) y vectores sparse BM42 (término-frecuencia neural), que permiten búsqueda híbrida con fusión RRF.",

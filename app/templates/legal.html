@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+
+{% block title %}Información legal y protección de datos · UPM Match{% endblock %}
+{% block description %}Quién trata los datos de UPM Match, con qué finalidad y con qué base jurídica, y cómo solicitar la corrección o la exclusión de un perfil.{% endblock %}
+{% block og_title %}Información legal · UPM Match{% endblock %}
+{% block og_description %}Responsable, finalidad, base jurídica y derechos sobre los datos tratados por UPM Match.{% endblock %}
+
+{% block head %}
+<style>
+  .legal-wrap { max-width: 760px; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
+  .legal-wrap h1 { font-size: clamp(1.4rem, 3.5vw, 2rem); margin-bottom: .6rem; }
+  .legal-updated { font-size: 13px; color: var(--muted-2); margin-bottom: 2rem; }
+  .legal-wrap h2 {
+    font-size: 17px; font-weight: 650; margin: 2.25rem 0 .75rem;
+    padding-top: 1.5rem; border-top: 1px solid var(--border);
+  }
+  .legal-wrap h2:first-of-type { border-top: none; padding-top: 0; margin-top: 1.5rem; }
+  .legal-wrap h3 { font-size: 14.5px; font-weight: 600; margin: 1.25rem 0 .4rem; }
+  .legal-wrap p, .legal-wrap li {
+    font-size: 14.5px; line-height: 1.7; color: var(--muted); text-wrap: pretty;
+  }
+  .legal-wrap p { margin-bottom: .85rem; }
+  .legal-wrap ul { margin: 0 0 .95rem 1.1rem; }
+  .legal-wrap li { margin-bottom: .35rem; }
+  .legal-wrap strong { color: var(--text); font-weight: 600; }
+  .legal-wrap a { color: var(--ia-teal); }
+  .legal-wrap a:hover { text-decoration: underline; }
+
+  /* Highlighted box for the rights channel — the reason most people land here. */
+  .legal-callout {
+    background: var(--surface-2); border: 1px solid var(--border-md);
+    border-left: 3px solid var(--ia-teal);
+    border-radius: var(--r-md); padding: 1.1rem 1.25rem; margin: 1.25rem 0 1.5rem;
+  }
+  .legal-callout p:last-child { margin-bottom: 0; }
+
+  .legal-note {
+    background: rgba(0,169,224,0.06); border: 1px solid rgba(0,169,224,0.25);
+    border-radius: var(--r-md); padding: .9rem 1.1rem; margin: 1rem 0 1.4rem;
+  }
+  .legal-note p { font-size: 13.5px; margin-bottom: 0; }
+
+  .legal-table { width: 100%; border-collapse: collapse; margin: .5rem 0 1.4rem; font-size: 13.5px; }
+  .legal-table th, .legal-table td {
+    text-align: left; padding: .6rem .75rem; border-bottom: 1px solid var(--border);
+    vertical-align: top; line-height: 1.6;
+  }
+  .legal-table th { color: var(--text); font-weight: 600; width: 34%; }
+  .legal-table td { color: var(--muted); }
+  @media (max-width: 560px) {
+    .legal-table, .legal-table tbody, .legal-table tr, .legal-table th, .legal-table td { display: block; width: 100%; }
+    .legal-table th { border-bottom: none; padding-bottom: .1rem; }
+    .legal-table td { padding-top: 0; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="legal-wrap">
+
+  <h1>Información legal y protección de datos</h1>
+  <p class="legal-updated">Última actualización: {{ last_updated }}</p>
+
+  <p>
+    UPM Match es un <strong>prototipo de investigación</strong> desarrollado en el marco del
+    Proyecto de Innovación Educativa <strong>IE26.6102</strong> de la Universidad Politécnica de
+    Madrid. Su finalidad es ayudar a los estudiantes a encontrar un tutor de TFG, TFM o tesis
+    afín a sus intereses, y facilitar la detección de colaboraciones entre investigadores.
+  </p>
+
+  <div class="legal-callout">
+    <p>
+      <strong>¿Eres PDI y no quieres aparecer, o hay algo incorrecto en tu perfil?</strong>
+    </p>
+    <p>
+      Escribe a <a href="mailto:{{ contact_email }}">{{ contact_email }}</a> indicando tu nombre o
+      tu identificador del Portal Científico. <strong>Atendemos la solicitud sin pedir
+      justificación</strong>: tu perfil deja de mostrarse y deja de procesarse, y no vuelve a
+      incorporarse en sucesivas actualizaciones. También puedes dirigirte directamente a la
+      Delegación de Protección de Datos de la UPM
+      (<a href="mailto:proteccion.datos@upm.es">proteccion.datos@upm.es</a>).
+    </p>
+  </div>
+
+  <h2>Por qué este tratamiento es lícito</h2>
+
+  <p>
+    UPM Match trata <strong>exclusivamente información profesional pública</strong> procedente del
+    <a href="https://portalcientifico.upm.es" target="_blank" rel="noopener">Portal Científico de
+    la UPM</a>: publicaciones, proyectos, líneas de investigación, docencia impartida, cargos y
+    trabajos dirigidos. No trata datos personales de carácter privado, ni categorías especiales de
+    datos (art. 9 RGPD), ni información ajena a la actividad académica.
+  </p>
+  <p>
+    La base jurídica <strong>no es el consentimiento del profesorado, sino el cumplimiento de una
+    misión realizada en interés público</strong> (art. 6.1.e del Reglamento (UE) 2016/679, RGPD),
+    en el ejercicio de las funciones de docencia, investigación y transferencia que la legislación
+    universitaria atribuye a la Universidad. El tratamiento se realiza además <strong>con fines de
+    investigación científica</strong> (art. 89 RGPD), y el propio Reglamento establece que el
+    tratamiento ulterior con esos fines no se considera incompatible con la finalidad original de
+    recogida (art. 5.1.b).
+  </p>
+  <p>
+    En la práctica, esto significa tres cosas. Primera: la difusión pública de la actividad
+    investigadora <strong>ya es la finalidad del Portal Científico</strong>, y UPM Match la
+    reutiliza para orientar a estudiantes de la propia universidad, dentro de la misma
+    institución. Segunda: <strong>no se le pidió consentimiento a nadie porque el tratamiento no
+    se basa en él</strong>, y solicitarlo habría sido jurídicamente incorrecto además de
+    inviable. Y tercera: que la base sea el interés público <strong>refuerza</strong> los derechos
+    de las personas afectadas, porque activa el derecho de oposición del art. 21 RGPD, que
+    atendemos sin condiciones.
+  </p>
+
+  <h2>Quién responde y de qué</h2>
+
+  <table class="legal-table">
+    <tbody>
+      <tr>
+        <th>Responsable del tratamiento</th>
+        <td>Universidad Politécnica de Madrid · Calle Ramiro de Maeztu, 7 · 28040 Madrid</td>
+      </tr>
+      <tr>
+        <th>Delegado de Protección de Datos</th>
+        <td><a href="mailto:proteccion.datos@upm.es">proteccion.datos@upm.es</a></td>
+      </tr>
+      <tr>
+        <th>Contacto del proyecto</th>
+        <td><a href="mailto:{{ contact_email }}">{{ contact_email }}</a> (PIE IE26.6102)</td>
+      </tr>
+      <tr>
+        <th>Finalidad</th>
+        <td>Recomendar tutores de TFG/TFM/tesis a estudiantes, detectar colaboraciones entre investigadores y evaluar científicamente el propio sistema de recomendación</td>
+      </tr>
+      <tr>
+        <th>Base jurídica</th>
+        <td>Art. 6.1.e RGPD (misión de interés público) en relación con el art. 89 RGPD (fines de investigación científica)</td>
+      </tr>
+      <tr>
+        <th>Origen de los datos</th>
+        <td>Portal Científico de la UPM (<code>portalcientifico.upm.es</code>), de acceso público</td>
+      </tr>
+      <tr>
+        <th>Categorías de datos</th>
+        <td>Nombre, filiación y cargo; publicaciones y sus resúmenes; proyectos; líneas y temas de investigación; docencia impartida; trabajos dirigidos; coautorías</td>
+      </tr>
+      <tr>
+        <th>Destinatarios</th>
+        <td>No se cede a terceros. El perfil es consultable públicamente en esta web</td>
+      </tr>
+      <tr>
+        <th>Transferencias internacionales</th>
+        <td><strong>Ninguna.</strong> Todo el procesamiento, incluidos los modelos de lenguaje, se ejecuta en infraestructura de la UPM</td>
+      </tr>
+      <tr>
+        <th>Conservación</th>
+        <td>Mientras el sistema esté en servicio y sea necesario para los fines descritos. Los datos derivados se regeneran periódicamente desde la fuente</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Perfiles generados automáticamente</h2>
+
+  <div class="legal-note">
+    <p>
+      <strong>Los resúmenes y las áreas de conocimiento que verás en cada perfil los redacta un
+      modelo de lenguaje, no una persona.</strong> Son una síntesis automática de las
+      publicaciones registradas en el Portal Científico y <strong>pueden contener errores,
+      omisiones o énfasis discutibles</strong>. No son una valoración de la calidad ni del
+      desempeño de nadie.
+    </p>
+  </div>
+
+  <p>
+    Los modelos se ejecutan <strong>en servidores de la propia Universidad</strong> (Ollama
+    autoalojado). Ningún dato se envía a proveedores externos de inteligencia artificial ni se
+    utiliza para entrenar modelos de terceros.
+  </p>
+  <p>
+    Las puntuaciones que acompañan a cada recomendación son <strong>relativas a la consulta
+    concreta</strong> que ha escrito el estudiante y no tienen sentido comparativo fuera de ella.
+    El sistema <strong>no publica ninguna clasificación global de investigadores</strong> y sus
+    resultados no deben emplearse para evaluar el desempeño docente o investigador de nadie: ese
+    uso queda expresamente fuera de la finalidad declarada.
+  </p>
+  <p>
+    La recomendación es <strong>orientativa</strong>. No sustituye ninguna decisión académica: la
+    elección de tutor sigue siendo un acuerdo entre dos personas.
+  </p>
+
+  <h2>Datos de quien usa el buscador</h2>
+
+  <p>
+    El buscador <strong>no requiere identificarse ni crear cuenta</strong>. No se guarda un
+    historial de consultas asociado a personas, ni se construyen perfiles de usuario. La idea que
+    escribe el estudiante se procesa para responder a esa consulta y no se conserva vinculada a
+    su identidad.
+  </p>
+  <p>
+    Los <strong>cuestionarios de evaluación</strong> son voluntarios, van precedidos de
+    consentimiento informado y no almacenan nombre ni dirección de correo. Los resultados se
+    publican únicamente de forma agregada.
+  </p>
+  <p>
+    Esta web <strong>no utiliza cookies de analítica ni de publicidad</strong>. Únicamente emplea
+    una cookie técnica de sesión, imprescindible para el funcionamiento del cuestionario, exenta
+    de consentimiento conforme al art. 22.2 de la Ley 34/2002 (LSSI).
+  </p>
+
+  <h2>Tus derechos</h2>
+
+  <p>
+    Cualquier persona cuyos datos trate este sistema puede ejercer los derechos de
+    <strong>acceso, rectificación, supresión, limitación, portabilidad y oposición</strong>
+    (arts. 15 a 22 RGPD). Dado que el tratamiento se basa en el interés público, resulta
+    especialmente relevante el <strong>derecho de oposición</strong> del art. 21: basta con
+    solicitarlo para quedar excluido del sistema.
+  </p>
+  <ul>
+    <li>
+      <strong>Vía rápida:</strong> <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>.
+      Es la forma más ágil de corregir un perfil o de quedar excluido.
+    </li>
+    <li>
+      <strong>Vía formal:</strong> Delegación de Protección de Datos de la UPM,
+      <a href="mailto:proteccion.datos@upm.es">proteccion.datos@upm.es</a>, o a través de la
+      <a href="https://sede.upm.es/procedimientos/tratamientodatos" target="_blank" rel="noopener">Sede
+      Electrónica de la UPM</a>. Plazo de respuesta: un mes.
+    </li>
+    <li>
+      <strong>Reclamación:</strong> ante la
+      <a href="https://www.aepd.es" target="_blank" rel="noopener">Agencia Española de Protección
+      de Datos</a>, si considera que sus derechos no han sido debidamente atendidos.
+    </li>
+  </ul>
+  <p>
+    Cuando alguien solicita la exclusión, su identificador se conserva en una lista interna de
+    exclusión con el único fin de <strong>garantizar que el sistema no vuelva a incorporarlo</strong>
+    en actualizaciones posteriores. Es el mínimo dato necesario para que la exclusión sea
+    duradera.
+  </p>
+
+  <h2>Sobre los contenidos</h2>
+
+  <p>
+    La extracción y el análisis de los datos del Portal Científico se amparan en el límite de
+    <strong>minería de textos y datos con fines de investigación científica</strong> previsto en
+    el art. 67 del Real Decreto-ley 24/2021, aplicable a los organismos de investigación con
+    acceso lícito a los contenidos.
+  </p>
+  <p>
+    Los resúmenes de las publicaciones proceden del Portal Científico y sus derechos corresponden
+    a sus autores o a las editoriales correspondientes; se muestran de forma accesoria y con
+    enlace a la ficha original. Si es titular de derechos sobre alguno de estos contenidos y
+    desea que dejemos de mostrarlo, escríbanos a
+    <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>.
+  </p>
+
+</div>
+{% endblock %}
