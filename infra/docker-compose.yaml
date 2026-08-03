@@ -294,7 +294,7 @@ services:
       OLLAMA_PORT: ${OLLAMA_PORT}
       # Second-stage listwise re-ranking (smart search / /test bench)
       RERANK_MODEL: ${RERANK_MODEL:-qwen2.5:7b-instruct}
-      RERANK_POOL: ${RERANK_POOL:-25}    # stage-1 candidates the re-ranker reorders
+      RERANK_POOL: ${RERANK_POOL:-50}    # stage-1 candidates the re-ranker reorders (recall ceiling: 53% @50)
     depends_on:
       - qdrant
       - ollama

@@ -274,11 +274,11 @@ def search_pdis_hybrid(
     return _to_pdi_results_hybrid(raw, sparse_terms)
 
 
-# Two-stage listwise re-ranking (fase B: the smart search / test-bench extension)
-# How many stage-1 candidates the re-ranker reorders in the app. Deeper pools
-# rescue more buried candidates but cost more LLM windows (latency); the
-# harness campaign (B0/B4) informs the production value.
-RERANK_POOL = int(os.environ.get("RERANK_POOL", "25"))
+# Two-stage listwise re-ranking
+# How many stage-1 candidates the re-ranker reorders in the app.
+# Deeper pools rescue more buried candidates but cost more LLM windows (latency).
+# Set to 50 from the definitive campaign's recall ceiling.
+RERANK_POOL = int(os.environ.get("RERANK_POOL", "50"))
 
 # When Memgraph is down, don't retry the graph-signal load on every request.
 _SIGNAL_RETRY_SECONDS = 300
