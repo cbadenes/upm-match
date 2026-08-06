@@ -131,15 +131,23 @@ SEARCH_MODES: list[str] = [
     "hybrid",
     "rerank_listwise",
     "rerank_listwise_kg",
+    "rerank_listwise_kg_excl",
     "clarify_hybrid",
 ]
 # Modes that re-rank the cached hybrid stage instead of retrieving.
-RERANK_MODES = ("rerank_listwise", "rerank_listwise_kg")
-# The graph-grounded condition and its leave-one-out twin. The twin is NOT a
-# search mode: it carries the same ranking with the graph signals recomputed
-# while masking each query's own work, and exists only for the off-line sweep.
+RERANK_MODES = ("rerank_listwise", "rerank_listwise_kg", "rerank_listwise_kg_excl")
+# The graph-grounded condition and its two leave-one-out variants, which differ
+# in WHICH channel of the graph evidence gets the query's own work masked:
+#   - `..._loo`  : the numeric signals only, recomputed off-line by `signals-loo`
+#                  from an existing run. Not a search mode (same ranking), it
+#                  exists only for the sensitivity sweep.
+#   - `..._excl` : the evidence the re-ranker reads in its prompt, which means
+#                  re-ranking again. A full search condition, comparable to
+#                  `rerank_listwise_kg` query by query.
 _KG_RERANK_MODE = "rerank_listwise_kg"
 _LOO_RERANK_MODE = "rerank_listwise_kg_loo"
+_EXCL_RERANK_MODE = "rerank_listwise_kg_excl"
+_KG_MODES = (_KG_RERANK_MODE, _EXCL_RERANK_MODE)
 # Modes that start from the cached hybrid stage (re-ranking or clarification).
 STAGE1_MODES = (*RERANK_MODES, "clarify_hybrid")
 
@@ -152,6 +160,7 @@ MODE_LABELS: dict[str, str] = {
     "hybrid": "Híbrida",
     "rerank_listwise": "Reordenación listwise (texto)",
     "rerank_listwise_kg": "Reordenación listwise (grafo+texto)",
+    "rerank_listwise_kg_excl": "Reordenación listwise (grafo+texto, exclusión)",
     "clarify_hybrid": "Híbrida con clarificación",
 }
 
@@ -785,6 +794,7 @@ def run_rerank(
     profiles: dict,
     mode: str = "rerank_listwise",
     signal_store=None,
+    exclude_work_id: str | None = None,
 ) -> RecommendationResult:
     """Second stage: listwise re-ranking over the CACHED hybrid ranking.
 
@@ -839,7 +849,12 @@ def run_rerank(
     if signal_store is not None:
         # Copy-on-write: the profiles map is shared across queries/modes.
         candidates = [
-            replace(c, evidence=signal_store.evidence_lines(c.researcher_id))
+            replace(
+                c,
+                evidence=signal_store.evidence_lines(
+                    c.researcher_id, exclude_work_id=exclude_work_id
+                ),
+            )
             for c in candidates
         ]
     try:
@@ -859,7 +874,9 @@ def run_rerank(
         head_set = set(head)
         for rid in head:
             components.setdefault(rid, {}).update(
-                signal_store.components(rid, normalized_query, head_set)
+                signal_store.components(
+                    rid, normalized_query, head_set, exclude_work_id=exclude_work_id
+                )
             )
 
     llm_seconds += outcome.llm_seconds
@@ -1363,6 +1380,30 @@ def report(
         logger.info("Report written to {}", out_dir)
 
 
+def _stage1_from_reports(
+    reports_dir: Path, source: str, tag: str | None
+) -> dict[str, RecommendationResult]:
+    """Hybrid rankings of the newest published run, as a stage-1 cache.
+
+    Lets an extension re-rank a campaign whose working cache is gone, without
+    re-running the retrieval: the rankings are read back from the mirror of the
+    evaluation bucket, so stage 1 stays byte-identical to the campaign's.
+    """
+    base = reports_dir / (f"{source}/{tag}" if tag else source)
+    runs = sorted(
+        p for p in base.glob("*/cache/recommendations_hybrid.json") if p.parent.parent.name != "latest"
+    )
+    if not runs:
+        return {}
+    newest = runs[-1]
+    raw = json.loads(newest.read_text(encoding="utf-8"))
+    cache = {r["gold_id"]: RecommendationResult.model_validate(r) for r in raw}
+    logger.info(
+        "Stage 1 seeded from {} ({} rankings).", newest.parent.parent.name, len(cache)
+    )
+    return cache
+
+
 def signals_loo(args: argparse.Namespace) -> int:
     """Recompute the graph signals of a cached kg re-ranking, masking each query's own work.
 
@@ -1754,10 +1795,19 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
             # Extensions built on the hybrid rankings cached by THIS campaign
             # (fixed stage 1 across repetitions, registered protocol).
             stage1_cache = _load_recs_cache("hybrid", args.source, tag)
+            if not stage1_cache and getattr(args, "stage1_from_reports", None):
+                # The working cache lives in the container and does not survive a
+                # recreate, while the published runs do. Seeding stage 1 from the
+                # mirrored campaign keeps the protocol intact (same rankings) and
+                # avoids re-running the hybrid stage just to re-rank it.
+                stage1_cache = _stage1_from_reports(
+                    Path(args.stage1_from_reports), args.source, tag
+                )
             if not stage1_cache:
                 logger.error(
-                    "Mode {} skipped: no hybrid cache for source={} tag={} — "
-                    "run the hybrid mode first.",
+                    "Mode {} skipped: no hybrid rankings for source={} tag={} — "
+                    "run the hybrid mode first, or pass --stage1-from-reports "
+                    "pointing at a mirror of the eval bucket.",
                     mode,
                     args.source,
                     tag,
@@ -1765,14 +1815,15 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
                 continue
             if profiles is None:
                 profiles = _load_candidate_profiles(db)
-            if mode == "rerank_listwise_kg" and signal_store is None:
+            if mode in _KG_MODES and signal_store is None:
                 from app.graph_signals import load_signal_store
 
                 signal_store = load_signal_store(list(profiles))
                 if signal_store is None:
                     logger.error(
-                        "Mode rerank_listwise_kg skipped: Memgraph unavailable "
-                        "(graph signals cannot be computed)."
+                        "Mode {} skipped: Memgraph unavailable "
+                        "(graph signals cannot be computed).",
+                        mode,
                     )
                     continue
 
@@ -1797,7 +1848,12 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
                     stage1_cache.get(s.gold_id),
                     profiles,
                     mode=mode,
-                    signal_store=signal_store if mode == "rerank_listwise_kg" else None,
+                    signal_store=signal_store if mode in _KG_MODES else None,
+                    # Leave-one-out: the work that produced this query must not
+                    # be readable in its own supervisor's evidence.
+                    exclude_work_id=(
+                        s.gold_id if mode == _EXCL_RERANK_MODE else None
+                    ),
                 )
             else:
                 res = run_recommendations(s, gold_rec, mode, db, limit=max(K_VALUES))
@@ -1957,6 +2013,14 @@ def main() -> int:
         help="After reporting, upload report.md + metrics.json + raw rankings to "
         "MinIO (bucket MINIO_EVAL_BUCKET, default 'tfm-evaluation') for "
         "off-server retrieval.",
+    )
+    p_eval.add_argument(
+        "--stage1-from-reports",
+        default=None,
+        help="Directory mirroring the eval bucket. When the working cache holds no "
+        "hybrid rankings for this source/tag, the re-ranking and clarification "
+        "modes seed stage 1 from the newest published run there, so a campaign "
+        "can be extended without re-running its retrieval.",
     )
     p_eval.add_argument(
         "--no-cache",
