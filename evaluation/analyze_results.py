@@ -72,6 +72,11 @@ HEADLINE_METRICS = (
     ["mrr", "map"] + [f"hit@{k}" for k in K_VALUES if k <= 25] + ["ndcg@5", "ndcg@10"]
 )
 SOURCES_DEFAULT = ["gold", "silver"]
+# A published run must cover at least this fraction of the largest run's query
+# set to take part in the paired analysis. Guards against a smoke test (an
+# `evaluate --limit N`) or a crashed run silently shrinking every table, since
+# the paired query set is an intersection across runs.
+MIN_RUN_COVERAGE = 0.5
 SEGMENT_KEYS = ["study_type", "knowledge_area", "year"]
 
 # Metric used for the pairwise significance tests and most breakdowns.
@@ -305,6 +310,30 @@ class SourceData:
             per_run = [d for d in per_run if d]  # keep only runs that have this mode
             if per_run:
                 self.by_mode[mode] = per_run
+        self.modes = [m for m in SEARCH_MODES if m in self.by_mode]
+
+        # `common` is an INTERSECTION, so a partial run (a smoke test with
+        # --limit, or a crashed one) would silently shrink every table to its
+        # size while every number still looked plausible. Such runs are dropped
+        # with a warning instead: a published run is only comparable when it
+        # covers the same query set as the campaign it belongs to.
+        sizes = [len(d) for runs_ in self.by_mode.values() for d in runs_]
+        floor = max(sizes) * MIN_RUN_COVERAGE if sizes else 0
+        for mode, runs_ in list(self.by_mode.items()):
+            kept = [d for d in runs_ if len(d) >= floor]
+            if len(kept) != len(runs_):
+                logger.warning(
+                    "Mode {}: {} partial run(s) ignored ({} < {:.0f} queries); "
+                    "they would have shrunk the paired query set.",
+                    mode,
+                    len(runs_) - len(kept),
+                    ", ".join(str(len(d)) for d in runs_ if len(d) < floor),
+                    floor,
+                )
+            if kept:
+                self.by_mode[mode] = kept
+            else:
+                del self.by_mode[mode]
         self.modes = [m for m in SEARCH_MODES if m in self.by_mode]
 
         id_sets = [set(d) for runs_ in self.by_mode.values() for d in runs_]

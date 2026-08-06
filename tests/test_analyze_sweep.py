@@ -122,3 +122,45 @@ def test_equity_column_present_only_with_productivity():
     without, _ = build_t9_sweep(sd, productivity=None)
     assert "brecha T3" in with_prod
     assert "brecha T3" not in without
+
+
+# --- Partial-run guard ---------------------------------------------------------
+
+
+def test_partial_runs_do_not_shrink_the_paired_query_set(tmp_path, caplog):
+    """A smoke test published alongside a campaign must not collapse `common`.
+
+    `common` is an intersection across every (mode, run), so a 5-query run would
+    otherwise reduce every table to 5 queries with no error raised.
+    """
+    import json
+    from evaluation.analyze_results import SourceData
+
+    def _write(run: str, mode: str, n: int) -> None:
+        d = tmp_path / "silver" / "final" / run / "cache"
+        d.mkdir(parents=True, exist_ok=True)
+        (d / f"recommendations_{mode}.json").write_text(
+            json.dumps(
+                [
+                    {
+                        "gold_id": f"q{i}",
+                        "mode": mode,
+                        "ranked_researcher_ids": ["pdi_1"],
+                        "true_director": "pdi_1",
+                    }
+                    for i in range(n)
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+    _write("20260101_000000", "hybrid", 100)
+    _write("20260102_000000", "rerank_listwise_kg_excl", 5)  # smoke test
+
+    runs = [
+        tmp_path / "silver" / "final" / "20260101_000000",
+        tmp_path / "silver" / "final" / "20260102_000000",
+    ]
+    sd = SourceData("silver", runs)
+    assert len(sd.common) == 100
+    assert "rerank_listwise_kg_excl" not in sd.modes
