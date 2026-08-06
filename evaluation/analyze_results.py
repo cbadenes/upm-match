@@ -107,6 +107,13 @@ TUTORS_DEFAULT = "evaluation/reports/tutores_por_trabajo.json"
 # re-invoking the LLM (the dominant cost), and read off which signals/weights help
 # quality and at what cost in equity (memoria sec:eval-estrategias-rerank).
 SWEEP_MODE = "rerank_listwise_kg"  # the only mode carrying graph components
+# Leave-one-out twin of the sweep mode: same ranking, graph signals recomputed
+# with each query's own supervised work masked (harness subcommand `signals-loo`).
+# Not a search condition, so it never enters T1/T2/T3; it only feeds a second
+# sweep that shows what the signals are worth once the echo of the query's own
+# work is removed (memoria sec:eval-validez).
+SWEEP_MODE_LOO = "rerank_listwise_kg_loo"
+EXTRA_SWEEP_MODES = (SWEEP_MODE_LOO,)
 # Graph signals available per candidate (higher = better), fused with the text rank.
 GRAPH_SIGNALS = ["supervised_total", "supervised_fit", "teaching_fit", "coauthors_in_set"]
 GRAPH_SIGNAL_LABELS = {
@@ -302,6 +309,23 @@ class SourceData:
 
         id_sets = [set(d) for runs_ in self.by_mode.values() for d in runs_]
         self.common: list[str] = sorted(set.intersection(*id_sets)) if id_sets else []
+
+        # Modes that are NOT search conditions and must stay out of the headline
+        # tables: they carry the same ranking as an existing mode with some
+        # component recomputed, and exist only for the off-line sweep. Loaded
+        # here so the sweep can address them, never added to `self.modes`.
+        self.extra_modes: dict[str, list[dict[str, RecommendationResult]]] = {}
+        for mode in EXTRA_SWEEP_MODES:
+            per_run = [load_run_mode(r, mode) for r in runs]
+            per_run = [d for d in per_run if d]
+            if per_run:
+                self.extra_modes[mode] = per_run
+
+    def runs_for_mode(
+        self, mode: str
+    ) -> list[dict[str, RecommendationResult]] | None:
+        """Runs of a mode, whether it is a search condition or a sweep-only extra."""
+        return self.by_mode.get(mode) or self.extra_modes.get(mode)
 
     def n_runs(self, mode: str) -> int:
         return len(self.by_mode.get(mode, []))
@@ -835,7 +859,9 @@ def _grid_configs() -> list[tuple[str, dict[str, float]]]:
 
 
 def build_t9_sweep(
-    sd: SourceData, productivity: dict[str, float] | None
+    sd: SourceData,
+    productivity: dict[str, float] | None,
+    sweep_mode: str = SWEEP_MODE,
 ) -> tuple[str, str] | None:
     """T9 — late-fusion sensitivity sweep over the graph-grounded re-ranker's signals.
 
@@ -846,9 +872,10 @@ def build_t9_sweep(
     MRR — so the reader sees each signal's marginal value AND whether chasing MRR
     widens the popularity gap. Returns None when the graph-grounded mode is absent.
     """
-    if SWEEP_MODE not in sd.by_mode:
+    runs = sd.runs_for_mode(sweep_mode)
+    if not runs:
         return None
-    runs = sd.by_mode[SWEEP_MODE]
+    loo = sweep_mode != SWEEP_MODE
 
     # Optional equity: query indices per productivity tercile of the true supervisor.
     idx_by_tercile: dict[int, list[int]] | None = None
@@ -897,7 +924,16 @@ def build_t9_sweep(
     cap = (
         f"Barrido de sensibilidad de la fusión tardía (fuente {sd.source}) sobre las "
         "señales del reordenador con grafo, recompuesto sin volver a invocar el LLM. "
-        "Cada fila fija el peso del texto en 1.0 y varía las señales de grafo; la última "
+        + (
+            "Señales calculadas con protocolo leave-one-out: el trabajo que origina "
+            "cada consulta queda oculto al calcular las señales de supervisión de su "
+            "propio director, de modo que la aportación medida ya no contiene el eco "
+            "del enunciado. El rango textual de partida sigue procediendo del "
+            "reordenador que sí vio esa evidencia en su contexto. "
+            if loo
+            else ""
+        )
+        + "Cada fila fija el peso del texto en 1.0 y varía las señales de grafo; la última "
         f"es el óptimo de una rejilla de ${len(_grid_configs())}$ combinaciones por MRR. "
         + (
             "La brecha T3$-$T1 vigila que ganar MRR no ensanche el sesgo de popularidad."
@@ -906,15 +942,18 @@ def build_t9_sweep(
         )
     )
     return _md_table(header, rows), _latex_table(
-        header, rows, cap, f"tab:rerank-sweep-{sd.source}"
+        header, rows, cap, f"tab:rerank-sweep-{sd.source}{'-loo' if loo else ''}"
     )
 
 
-def write_sweep_grid(sd: SourceData, out_dir: Path) -> Path | None:
+def write_sweep_grid(
+    sd: SourceData, out_dir: Path, sweep_mode: str = SWEEP_MODE
+) -> Path | None:
     """Dump the full weight grid × metrics to CSV for the appendix (one row per config)."""
-    if SWEEP_MODE not in sd.by_mode:
+    runs = sd.runs_for_mode(sweep_mode)
+    if not runs:
         return None
-    runs = sd.by_mode[SWEEP_MODE]
+    suffix = "" if sweep_mode == SWEEP_MODE else "_loo"
     lines = ["config," + ",".join(GRAPH_SIGNALS) + "," + ",".join(SWEEP_METRICS)]
     for label, weights in _grid_configs():
         cols = [f'"{label}"'] + [f"{weights.get(s, 0.0):g}" for s in GRAPH_SIGNALS]
@@ -923,7 +962,7 @@ def write_sweep_grid(sd: SourceData, out_dir: Path) -> Path | None:
                 _fmt(float(_sweep_per_query(runs, sd.common, weights, metric).mean()))
             )
         lines.append(",".join(cols))
-    path = out_dir / f"t9_sweep_grid_{sd.source}.csv"
+    path = out_dir / f"t9_sweep_grid_{sd.source}{suffix}.csv"
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return path
 
@@ -1266,6 +1305,18 @@ def analyze(args: argparse.Namespace) -> int:
             grid_path = write_sweep_grid(sd, out_dir)
             if grid_path is not None:
                 logger.info("Full re-ranking weight grid → {}", grid_path)
+
+        sweep_loo = build_t9_sweep(sd, productivity, sweep_mode=SWEEP_MODE_LOO)
+        if sweep_loo is not None:
+            emit(
+                f"t12_rerank_sweep_loo_{source}",
+                sweep_loo[0],
+                sweep_loo[1],
+                f"T12 · Barrido con señales leave-one-out — {source}",
+            )
+            grid_loo = write_sweep_grid(sd, out_dir, sweep_mode=SWEEP_MODE_LOO)
+            if grid_loo is not None:
+                logger.info("Leave-one-out weight grid → {}", grid_loo)
 
         clarify = build_t10_clarify(sd)
         if clarify is not None:

@@ -52,6 +52,7 @@ def _synthetic_source(discriminative: str | None = "supervised_fit", runs_n: int
     sd.runs = []
     sd.by_mode = {"rerank_listwise_kg": runs}
     sd.modes = ["rerank_listwise_kg"]
+    sd.extra_modes = {}
     sd.common = [f"q{q}" for q in range(6)]
     return sd
 
@@ -97,6 +98,21 @@ def test_build_t9_returns_none_without_kg_mode():
     sd.by_mode = {}
     sd.modes = []
     assert build_t9_sweep(sd, productivity=None) is None
+
+
+def test_loo_sweep_reads_the_extra_mode_and_is_skipped_when_absent():
+    """The leave-one-out twin lives outside `by_mode` so it stays out of T1/T2/T3."""
+    from evaluation.analyze_results import SWEEP_MODE_LOO
+
+    sd = _synthetic_source()
+    assert build_t9_sweep(sd, productivity=None, sweep_mode=SWEEP_MODE_LOO) is None
+
+    sd.extra_modes = {SWEEP_MODE_LOO: sd.by_mode["rerank_listwise_kg"]}
+    md, tex = build_t9_sweep(sd, productivity=None, sweep_mode=SWEEP_MODE_LOO)
+    assert "leave-one-out" in tex
+    assert "tab:rerank-sweep-gold-loo" in tex
+    # And it must not have leaked into the search conditions.
+    assert SWEEP_MODE_LOO not in sd.modes
 
 
 def test_equity_column_present_only_with_productivity():

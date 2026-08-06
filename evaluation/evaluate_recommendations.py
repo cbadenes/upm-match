@@ -135,6 +135,11 @@ SEARCH_MODES: list[str] = [
 ]
 # Modes that re-rank the cached hybrid stage instead of retrieving.
 RERANK_MODES = ("rerank_listwise", "rerank_listwise_kg")
+# The graph-grounded condition and its leave-one-out twin. The twin is NOT a
+# search mode: it carries the same ranking with the graph signals recomputed
+# while masking each query's own work, and exists only for the off-line sweep.
+_KG_RERANK_MODE = "rerank_listwise_kg"
+_LOO_RERANK_MODE = "rerank_listwise_kg_loo"
 # Modes that start from the cached hybrid stage (re-ranking or clarification).
 STAGE1_MODES = (*RERANK_MODES, "clarify_hybrid")
 
@@ -1358,6 +1363,104 @@ def report(
         logger.info("Report written to {}", out_dir)
 
 
+def signals_loo(args: argparse.Namespace) -> int:
+    """Recompute the graph signals of a cached kg re-ranking, masking each query's own work.
+
+    The work that originates a query is, by construction, one the real supervisor
+    directed, so it hangs off that supervisor in the graph and its keywords feed
+    the supervision signals of the correct candidate (memoria sec:eval-validez).
+    This rebuilds those signals with that single work hidden, which is the
+    leave-one-out protocol the memoria declares as pending.
+
+    Cheap by design: the listwise ranking is NOT recomputed, so no model is
+    invoked. It therefore cleans the *numeric* signals that the off-line
+    sensitivity sweep weighs, not the evidence the re-ranker read in its prompt.
+    Cleaning that too requires re-running the re-ranker, which is a separate,
+    far more expensive step.
+
+    Writes a sibling cache under mode ``rerank_listwise_kg_loo`` so the original
+    is left untouched and the analysis can compare both.
+    """
+    from app.graph_signals import load_signal_store
+
+    source, tag = args.source, args.tag
+    base = Path(args.reports_dir) / (f"{source}/{tag}" if tag else source)
+    run_files = sorted(base.glob(f"*/cache/recommendations_{_KG_RERANK_MODE}.json"))
+    if not run_files:
+        logger.error(
+            "No '{}' results under {}. Fetch the campaign from MinIO first.",
+            _KG_RERANK_MODE,
+            base,
+        )
+        return 1
+    logger.info("Found {} run(s) with graph-grounded re-ranking under {}.", len(run_files), base)
+
+    gold = load_gold_standard()
+    if source == "gold":
+        query_records = gold
+    else:
+        silver_paths = tuple(p for p in (SILVER_TFG_PATH, SILVER_TFM_PATH) if p.exists())
+        if not silver_paths:
+            logger.error("No final silver standard in {}.", SILVER_DIR)
+            return 1
+        query_records = load_gold_standard(paths=silver_paths)
+    proposal_by_id = {r.gold_id: r.description for r in query_records}
+
+    runs = [
+        [RecommendationResult.model_validate(r) for r in json.loads(f.read_text(encoding="utf-8"))]
+        for f in run_files
+    ]
+    candidates = sorted(
+        {rid for run in runs for res in run for rid in res.ranked_researcher_ids}
+    )
+    store = load_signal_store(candidates)
+    if store is None:
+        logger.error("Memgraph unavailable — cannot recompute graph signals.")
+        return 1
+
+    total_rebuilt = total_skipped = 0
+    for src_file, results in zip(run_files, runs):
+        rebuilt = skipped = 0
+        for res in results:
+            proposal = proposal_by_id.get(res.gold_id)
+            if not res.rerank_components or not res.ranked_researcher_ids:
+                skipped += 1
+                continue
+            if proposal is None or not res.dense_query_text:
+                # Without both texts the normalised query cannot be reproduced
+                # exactly, and an approximation would not be comparable.
+                skipped += 1
+                continue
+            normalized = store.normalize_query(f"{res.dense_query_text} {proposal}")
+            head_set = set(res.ranked_researcher_ids)
+            for rid in res.rerank_components:
+                res.rerank_components[rid].update(
+                    store.components(
+                        rid, normalized, head_set, exclude_work_id=res.gold_id
+                    )
+                )
+            res.mode = _LOO_RERANK_MODE
+            rebuilt += 1
+        # Written next to the source run so the analysis discovers it with the
+        # rest of that run's modes, no extra plumbing.
+        dst = src_file.with_name(f"recommendations_{_LOO_RERANK_MODE}.json")
+        _atomic_write_json(dst, [r.model_dump() for r in results])
+        logger.info("{}: {} rebuilt, {} skipped → {}", src_file.parent.parent.name, rebuilt, skipped, dst.name)
+        total_rebuilt += rebuilt
+        total_skipped += skipped
+
+    if not total_rebuilt:
+        logger.error("Nothing to rebuild: no cached result carried both texts.")
+        return 1
+    logger.info(
+        "Leave-one-out signals rebuilt for {} query-runs ({} skipped) as mode '{}'.",
+        total_rebuilt,
+        total_skipped,
+        _LOO_RERANK_MODE,
+    )
+    return 0
+
+
 # I/O helpers
 def _atomic_write_json(path: Path, data) -> None:
     """Write JSON atomically (temp file + os.replace) so partial writes never corrupt."""
@@ -1872,6 +1975,32 @@ def main() -> int:
         "selftest", help="Validate the metric math offline (no services needed)."
     )
     p_self.set_defaults(func=cmd_selftest)
+
+    p_loo = sub.add_parser(
+        "signals-loo",
+        help="Recompute the graph signals of a cached kg re-ranking with each "
+        "query's own supervised work masked (leave-one-out). Needs Memgraph, "
+        "never the LLM.",
+    )
+    p_loo.add_argument(
+        "--source",
+        choices=("gold", "silver"),
+        required=True,
+        help="Reference set whose cached re-ranking is rebuilt.",
+    )
+    p_loo.add_argument(
+        "--tag",
+        default=None,
+        help="Campaign tag the runs live under (<reports>/<source>/<tag>/).",
+    )
+    p_loo.add_argument(
+        "--reports-dir",
+        default="evaluation/reports",
+        help="Directory mirroring the MinIO eval bucket. The rebuilt signals are "
+        "written next to each run's own cache, so the analysis picks them up "
+        "with no further plumbing.",
+    )
+    p_loo.set_defaults(func=signals_loo)
 
     p_fetch = sub.add_parser(
         "fetch-minio",

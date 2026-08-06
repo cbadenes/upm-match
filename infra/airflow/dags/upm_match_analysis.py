@@ -95,6 +95,30 @@ with DAG(
         ),
     )
 
+    # Leave-one-out signals: rebuilt from the mirrored runs, written next to each
+    # run's own cache so `analyze` discovers them as one more mode. Needs Memgraph
+    # but never the LLM. Deliberately non-blocking: if the graph is unreachable the
+    # analysis must still produce every other table, exactly as it does for T8/T11.
+    signals_loo = [
+        BashOperator(
+            task_id=f"signals_loo_{source}",
+            bash_command=(
+                f"cd {_PROJECT} && {_UV} --module {_MODULE} signals-loo "
+                f"--source {source} --reports-dir {_MIRROR_DIR} "
+                "--tag {{ params.tag }} "
+                f'|| echo "signals-loo {source} failed; T12 will be skipped"'
+            ),
+            retries=0,
+            doc_md=(
+                f"Recomputes the graph signals of the cached {source} re-ranking "
+                "with each query's own supervised work masked, so the thematic-fit "
+                "signal can no longer read back the query's own enunciation "
+                "(memoria sec:eval-validez). Cheap: no model is invoked."
+            ),
+        )
+        for source in ("gold", "silver")
+    ]
+
     analyze = BashOperator(
         task_id="analyze",
         bash_command=(
@@ -132,4 +156,4 @@ with DAG(
         ),
     )
 
-    selftest_analysis >> fetch_for_analysis >> analyze >> fetch_to_repo
+    selftest_analysis >> fetch_for_analysis >> signals_loo[0] >> signals_loo[1] >> analyze >> fetch_to_repo

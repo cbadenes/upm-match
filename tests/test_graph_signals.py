@@ -10,16 +10,46 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.graph_signals import PdiGraphInfo, SignalStore, _dedup
+from app.graph_signals import PdiGraphInfo, SignalStore, SupervisedWork, _dedup
+
+
+def _works() -> list[SupervisedWork]:
+    """12 supervised works, newest first, as the graph loader returns them."""
+    works = [
+        SupervisedWork(
+            work_id="tft_1",
+            year=2025,
+            type="TFG",
+            keywords=["machine learning"],
+            title="Un título de TFG",
+        ),
+        SupervisedWork(
+            work_id="tft_2",
+            year=2024,
+            type="TFG",
+            keywords=["visión por computador", "nlp"],
+            title="Otro TFG",
+        ),
+    ]
+    # Padding so the totals and the type histogram match the original fixture.
+    works += [
+        SupervisedWork(work_id=f"tft_pad_{i}", year=2023 - i, type="TFG")
+        for i in range(6)
+    ]
+    works += [
+        SupervisedWork(work_id=f"tft_tfm_{i}", year=2017 - i, type="TFM")
+        for i in range(3)
+    ]
+    works.append(
+        SupervisedWork(work_id="tft_phd", year=2014, type="Tesis Doctoral")
+    )
+    return works
 
 
 def _store() -> SignalStore:
     info = {
         "pdi_1": PdiGraphInfo(
-            supervised_total=12,
-            supervised_types={"TFG": 8, "TFM": 3, "Tesis Doctoral": 1},
-            supervised_topics=["machine learning", "visión por computador", "nlp"],
-            supervised_titles=["Un título de TFG"],
+            works=_works(),
             subjects=["Aprendizaje Automático", "Programación I"],
         ),
         "pdi_2": PdiGraphInfo(),  # indexed but without graph activity
@@ -91,6 +121,61 @@ def test_components_unknown_candidate_all_zero():
     store = _store()
     comps = store.components("pdi_unknown", store.normalize_query("q"), set())
     assert all(v == 0.0 for v in comps.values())
+
+
+# --- Leave-one-out masking ------------------------------------------------------
+
+
+def test_excluding_a_work_removes_its_topic_and_decrements_the_total():
+    store = _store()
+    q = store.normalize_query("applies machine learning and vision por computador")
+    full = store.components("pdi_1", q, set())
+    masked = store.components("pdi_1", q, set(), exclude_work_id="tft_1")
+    assert full["supervised_fit"] == 2.0
+    assert masked["supervised_fit"] == 1.0  # "machine learning" is gone
+    assert masked["supervised_total"] == full["supervised_total"] - 1
+
+
+def test_excluding_a_work_leaves_the_clean_signals_untouched():
+    """Teaching and co-authorship do not derive from supervised works."""
+    store = _store()
+    q = store.normalize_query("aprendizaje automático")
+    full = store.components("pdi_1", q, {"pdi_2", "pdi_3"})
+    masked = store.components("pdi_1", q, {"pdi_2", "pdi_3"}, exclude_work_id="tft_1")
+    assert masked["teaching_fit"] == full["teaching_fit"] == 1.0
+    assert masked["coauthors_in_set"] == full["coauthors_in_set"] == 2.0
+
+
+def test_excluding_a_work_hides_it_from_the_evidence_lines():
+    store = _store()
+    assert "machine learning" in store.evidence_lines("pdi_1")[0]
+    masked = store.evidence_lines("pdi_1", exclude_work_id="tft_1")
+    assert "machine learning" not in masked[0]
+    assert masked[0].startswith("Supervised student works: 11 (")
+    assert masked[1].startswith("Teaches:")  # teaching survives
+
+
+def test_excluding_an_unrelated_work_changes_nothing_but_the_count():
+    store = _store()
+    q = store.normalize_query("applies machine learning and vision por computador")
+    masked = store.components("pdi_1", q, set(), exclude_work_id="tft_phd")
+    assert masked["supervised_fit"] == 2.0
+
+
+def test_masking_frees_a_slot_in_the_recency_window():
+    """Dropping a work must let the next one into the 20-work window."""
+    works = [
+        SupervisedWork(work_id="tft_new", year=2025, keywords=["tema reciente"])
+    ]
+    works += [
+        SupervisedWork(work_id=f"tft_{i}", year=2024 - i, keywords=[f"relleno {i}"])
+        for i in range(19)
+    ]
+    works.append(SupervisedWork(work_id="tft_21", year=2000, keywords=["tema antiguo"]))
+    store = SignalStore({"p": PdiGraphInfo(works=works)}, {})
+    q = store.normalize_query("sobre tema antiguo")
+    assert store.components("p", q, set())["supervised_fit"] == 0.0
+    assert store.components("p", q, set(), exclude_work_id="tft_new")["supervised_fit"] == 1.0
 
 
 # --- Helpers -------------------------------------------------------------------

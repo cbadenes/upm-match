@@ -45,14 +45,59 @@ _MIN_TERM_LEN = 4  # ignore ultra-short terms in lexical fit (noise like "ia")
 
 
 @dataclass
+class SupervisedWork:
+    """One supervised work as the signals see it, kept individually.
+
+    Storing the works separately (instead of a pre-flattened topic list) is what
+    makes an exact leave-one-out possible: masking a work must also free its slot
+    in the recency window, and must not drop a topic that another work shares.
+    """
+
+    work_id: str = ""
+    year: int = 0
+    type: str = ""
+    keywords: list[str] = field(default_factory=list)
+    title: str = ""
+
+
+@dataclass
 class PdiGraphInfo:
     """Static (query-independent) graph facts for one researcher."""
 
-    supervised_total: int = 0
-    supervised_types: dict[str, int] = field(default_factory=dict)
-    supervised_topics: list[str] = field(default_factory=list)  # recent, deduped
-    supervised_titles: list[str] = field(default_factory=list)
+    works: list[SupervisedWork] = field(default_factory=list)  # newest first
     subjects: list[str] = field(default_factory=list)
+
+    def view(self, exclude_work_id: str | None = None) -> "SupervisionView":
+        """Supervision facts as the signals consume them, optionally masking one work.
+
+        `exclude_work_id` drops that work before applying the recency window, so
+        the view is exactly what would have been computed had the work never
+        existed. Used by the leave-one-out protocol of the evaluation, where the
+        work that originates a query must not inform the signals of its own
+        supervisor (memoria sec:eval-validez).
+        """
+        works = [w for w in self.works if w.work_id != exclude_work_id]
+        recent = works[:_RECENT_WORKS]
+        types: dict[str, int] = {}
+        for w in works:
+            name = (w.type or "").strip() or "otros"
+            types[name] = types.get(name, 0) + 1
+        return SupervisionView(
+            total=len(works),
+            types=types,
+            topics=_dedup([kw for w in recent for kw in w.keywords]),
+            titles=_dedup([w.title for w in recent]),
+        )
+
+
+@dataclass
+class SupervisionView:
+    """Supervision facts for one candidate, already windowed and deduplicated."""
+
+    total: int = 0
+    types: dict[str, int] = field(default_factory=dict)
+    topics: list[str] = field(default_factory=list)
+    titles: list[str] = field(default_factory=list)
 
 
 class SignalStore:
@@ -67,18 +112,25 @@ class SignalStore:
         self._coauthors = coauthors
 
     # --- mechanism 1: readable evidence for the prompt -----------------------
-    def evidence_lines(self, researcher_id: str) -> list[str]:
-        """Compact evidence lines for one candidate (empty when no graph data)."""
+    def evidence_lines(
+        self, researcher_id: str, exclude_work_id: str | None = None
+    ) -> list[str]:
+        """Compact evidence lines for one candidate (empty when no graph data).
+
+        `exclude_work_id` hides one supervised work, so the re-ranker cannot read
+        back the very work that produced the query (leave-one-out protocol).
+        """
         pdi = self._info.get(researcher_id)
         if pdi is None:
             return []
+        sup = pdi.view(exclude_work_id)
         lines: list[str] = []
-        if pdi.supervised_total:
+        if sup.total:
             types = ", ".join(
-                f"{count} {name}" for name, count in sorted(pdi.supervised_types.items())
+                f"{count} {name}" for name, count in sorted(sup.types.items())
             )
-            line = f"Supervised student works: {pdi.supervised_total} ({types})"
-            topics = pdi.supervised_topics[:_PROMPT_TOPICS] or pdi.supervised_titles[:3]
+            line = f"Supervised student works: {sup.total} ({types})"
+            topics = sup.topics[:_PROMPT_TOPICS] or sup.titles[:3]
             if topics:
                 line += f"; recent supervised topics: {', '.join(topics)}"
             lines.append(line)
@@ -104,18 +156,26 @@ class SignalStore:
         researcher_id: str,
         normalized_query: str,
         candidate_set: set[str],
+        exclude_work_id: str | None = None,
     ) -> dict[str, float]:
         """Numeric graph signals for one candidate against one query.
 
         Raw values (counts), NOT normalised or weighted: the off-line sweep
         decides transformations and weights.
+
+        `exclude_work_id` masks one supervised work from the supervision signals
+        (`supervised_total`, `supervised_fit`), which is how the leave-one-out
+        protocol removes the echo of the query's own work. The teaching and
+        co-authorship signals are unaffected: neither derives from the works
+        supervised, so both are clean by construction.
         """
         pdi = self._info.get(researcher_id) or PdiGraphInfo()
-        supervised_fit = self._lexical_fit(pdi.supervised_topics, normalized_query)
+        sup = pdi.view(exclude_work_id)
+        supervised_fit = self._lexical_fit(sup.topics, normalized_query)
         teaching_fit = self._lexical_fit(pdi.subjects, normalized_query)
         degree = len(self._coauthors.get(researcher_id, set()) & candidate_set)
         return {
-            "supervised_total": float(pdi.supervised_total),
+            "supervised_total": float(sup.total),
             "supervised_fit": float(supervised_fit),
             "teaching_fit": float(teaching_fit),
             "coauthors_in_set": float(degree),
@@ -172,23 +232,22 @@ def load_signal_store(researcher_ids: list[str]) -> SignalStore | None:
             MATCH (p:Pdi {id: rid})-[:Tutoring]->(t:LastYearProject)
             WITH rid, t ORDER BY t.year DESC
             RETURN rid,
-                   count(t) AS total,
-                   collect(t.type) AS types,
-                   collect(t.keywords)[0..$recent] AS keywords,
-                   collect(t.name)[0..$recent] AS titles
+                   collect({id: t.id, year: t.year, type: t.type,
+                            keywords: t.keywords, name: t.name}) AS works
             """,
-            {"ids": researcher_ids, "recent": _RECENT_WORKS},
+            {"ids": researcher_ids},
         ):
-            types: dict[str, int] = {}
-            for t in row.get("types") or []:
-                name = str(t or "").strip() or "otros"
-                types[name] = types.get(name, 0) + 1
-            info[row["rid"]] = PdiGraphInfo(
-                supervised_total=int(row.get("total") or 0),
-                supervised_types=types,
-                supervised_topics=_dedup(row.get("keywords") or []),
-                supervised_titles=_dedup(row.get("titles") or []),
-            )
+            works = [
+                SupervisedWork(
+                    work_id=str(w.get("id") or ""),
+                    year=int(w.get("year") or 0),
+                    type=str(w.get("type") or ""),
+                    keywords=[str(k) for k in (w.get("keywords") or [])],
+                    title=str(w.get("name") or ""),
+                )
+                for w in (row.get("works") or [])
+            ]
+            info[row["rid"]] = PdiGraphInfo(works=works)
 
         for row in db.query(
             """
