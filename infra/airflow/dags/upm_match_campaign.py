@@ -215,15 +215,19 @@ with DAG(
             f"--reports-dir {_MIRROR_DIR} "
             f"--out-dir {_MIRROR_DIR}/analysis "
             f"--productivity {_MIRROR_DIR}/productividad_pdis.json "
+            f"--tutors {_MIRROR_DIR}/tutores_por_trabajo.json "
             "--tag {{ params.tag }} "
             "--publish-minio"
         ),
         doc_md=(
             "Statistical analysis of the whole campaign (both sources, all "
-            "repetitions): tables T1-T9 as Markdown + LaTeX, including the recall "
-            "ceiling (T7), equity terciles (T8) and the late-fusion sensitivity "
-            "sweep with its full grid CSVs (T9). Published to MinIO under "
-            "analysis/<tag>/<timestamp>/ and analysis/<tag>/latest/."
+            "repetitions): tables T1-T11 as Markdown + LaTeX, including the recall "
+            "ceiling (T7), equity terciles (T8), the late-fusion sensitivity "
+            "sweep with its full grid CSVs (T9), the clarification loop (T10) and "
+            "the relaxed-relevance re-scoring that credits any real co-supervisor "
+            "(T11, needs Memgraph the first time; the tutor map is then cached in "
+            "the mirror dir). Published to MinIO under analysis/<tag>/<timestamp>/ "
+            "and analysis/<tag>/latest/."
         ),
     )
 

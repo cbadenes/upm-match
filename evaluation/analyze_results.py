@@ -89,6 +89,18 @@ PRODUCTIVITY_DEFAULT = "evaluation/reports/productividad_pdis.json"
 EQUITY_METRICS = ["mrr", f"hit@{MCNEMAR_K}"]
 TERCILE_LABELS = ["T1 (baja)", "T2 (media)", "T3 (alta)"]
 
+# Co-supervision re-scoring (T11). The ground truth records ONE director per
+# work, but the portal lists every PDI who tutored it and a sizeable minority of
+# the reference works have more than one, so a genuine co-supervisor of that very
+# work is scored as a miss (memoria sec:eval-validez). T11 re-scores the same
+# cached rankings counting any real tutor as a hit. Complementary reading only:
+# relaxing relevance makes the task easier by construction, so absolute figures
+# rise and only the RELATIVE comparison between strategies stays comparable.
+COSUP_METRICS = ["mrr", f"hit@{MCNEMAR_K}", "hit@25"]
+# Cached {work_id: [pdi ids]} so the table survives without Memgraph (the
+# analysis often runs where only the reports are mirrored).
+TUTORS_DEFAULT = "evaluation/reports/tutores_por_trabajo.json"
+
 # Off-line late-fusion sensitivity sweep (T9). The graph-grounded re-ranker
 # stores, per candidate, its listwise textual rank plus the raw graph signals in
 # `rerank_components`; we re-compose the ranking under many fusion weights WITHOUT
@@ -187,6 +199,69 @@ def load_productivity(path: Path) -> dict[str, float] | None:
         return {str(k): float(v) for k, v in raw.items()}
     except (ValueError, TypeError, OSError) as exc:
         logger.warning("Could not read productivity map {}: {}", path, exc)
+        return None
+
+
+def load_tutor_sets(
+    work_ids: list[str], cache_path: Path | None = None
+) -> dict[str, set[str]] | None:
+    """Map every reference work to the FULL set of PDIs the portal lists as its tutors.
+
+    The ``Tutoring`` edge carries no role, so the portal cannot tell a director
+    from a co-tutor or a ponente; every listed supervisor is therefore treated
+    alike, which is the same assumption the rest of the corpus makes about the
+    source. Used by T11 to re-score with a relaxed relevance criterion.
+
+    Reads ``cache_path`` when present so the analysis runs where only the reports
+    are mirrored; otherwise queries Memgraph and writes the cache. Returns None
+    when neither is available, so T11 is skipped gracefully like T8.
+    """
+    if cache_path is not None and cache_path.exists():
+        try:
+            raw = json.loads(cache_path.read_text(encoding="utf-8"))
+            logger.info("Tutor sets read from {} ({} works).", cache_path, len(raw))
+            return {str(k): set(v) for k, v in raw.items()}
+        except (ValueError, TypeError, OSError) as exc:
+            logger.warning("Could not read tutor map {}: {}", cache_path, exc)
+
+    try:
+        from dbs.graph.memgraph import MemgraphBackend  # lazy: needs MEMGRAPH_* env
+
+        db = MemgraphBackend()
+        out: dict[str, set[str]] = {}
+        for row in db.query(
+            """
+            UNWIND $ids AS pid
+            MATCH (t:LastYearProject {id: pid})<-[:Tutoring]-(p:Pdi)
+            RETURN pid, collect(DISTINCT p.id) AS tutors
+            """,
+            {"ids": list(work_ids)},
+        ):
+            out[row["pid"]] = set(row["tutors"] or [])
+        multi = sum(1 for v in out.values() if len(v) > 1)
+        logger.info(
+            "Tutor sets from Memgraph: {} works, {} with more than one tutor.",
+            len(out),
+            multi,
+        )
+        if cache_path is not None:
+            # Best effort: the map is already in memory, so a read-only mount
+            # must cost the cache, never the table.
+            try:
+                cache_path.parent.mkdir(parents=True, exist_ok=True)
+                cache_path.write_text(
+                    json.dumps(
+                        {k: sorted(v) for k, v in out.items()},
+                        ensure_ascii=False,
+                        indent=2,
+                    ),
+                    encoding="utf-8",
+                )
+            except OSError as exc:
+                logger.warning("Could not cache tutor map to {}: {}", cache_path, exc)
+        return out or None
+    except Exception:  # noqa: BLE001 — degrade: T11 is skipped upstream
+        logger.warning("Memgraph unavailable and no tutor cache; T11 skipped.")
         return None
 
 
@@ -949,6 +1024,85 @@ def build_t10_clarify(sd: SourceData) -> tuple[str, str] | None:
     )
 
 
+def build_t11_cosupervision(
+    sd: SourceData, tutors: dict[str, set[str]]
+) -> tuple[str, str] | None:
+    """T11 — re-scoring when ANY real supervisor of the work counts as a hit.
+
+    The default criterion credits only the single `director` recorded in the
+    ground truth, yet the portal lists every PDI who tutored the work. When a
+    work was co-supervised, the other supervisor is scored as an error even
+    though they demonstrably supervised that exact work: a sharper, factual
+    instance of the single-relevant limitation (memoria sec:eval-validez).
+
+    Re-scores the SAME cached rankings with the relaxed criterion, taking the
+    best-ranked real tutor as the relevant item, so nothing is re-run. Reported
+    as a complementary reading: the relaxation makes the task easier by
+    construction, so absolute values rise for every strategy and it is the
+    relative ordering, unchanged, that carries the conclusions.
+    """
+    covered = [gid for gid in sd.common if tutors.get(gid)]
+    if not covered:
+        return None
+    multi = sum(1 for gid in covered if len(tutors[gid]) > 1)
+    if not multi:
+        return None
+
+    def relaxed_value(res: RecommendationResult, metric: str) -> float:
+        """Metric for one query crediting whichever real tutor ranks best."""
+        rels = tutors.get(res.gold_id) or {res.true_director}
+        best = next((r for r in res.ranked_researcher_ids if r in rels), None)
+        return metric_on_ranking(
+            res.ranked_researcher_ids, best or res.true_director, metric
+        )
+
+    def mode_mean(mode: str, metric: str, relaxed: bool) -> float:
+        runs_ = sd.by_mode[mode]
+        per_query = [
+            float(
+                np.mean(
+                    [
+                        relaxed_value(d[gid], metric)
+                        if relaxed
+                        else per_query_value(d[gid], metric)
+                        for d in runs_
+                    ]
+                )
+            )
+            for gid in covered
+        ]
+        return float(np.mean(per_query))
+
+    header = ["Modo"]
+    for metric in COSUP_METRICS:
+        header += [f"{metric} (director)", f"{metric} (cualquiera)", "Δ"]
+
+    rows: list[list[str]] = []
+    for mode in sd.modes:
+        row = [MODE_LABELS.get(mode, mode)]
+        for metric in COSUP_METRICS:
+            base = mode_mean(mode, metric, False)
+            rel = mode_mean(mode, metric, True)
+            pct = f" ({(rel - base) / base * 100:+.1f}\\%)" if base else ""
+            row += [_fmt(base), _fmt(rel), f"{rel - base:+.3f}{pct}"]
+        rows.append(row)
+
+    cap = (
+        f"Relectura con criterio de relevancia relajado (fuente {sd.source}, "
+        f"n={len(covered)}): se cuenta como acierto a cualquiera de los tutores "
+        f"reales del trabajo, no solo al director registrado en la verdad de "
+        f"referencia. {multi} de los {len(covered)} trabajos tienen más de un "
+        "tutor en el portal. Se reutilizan los mismos rankings sin recalcular "
+        "nada: lo único que cambia es a quién se considera respuesta correcta. "
+        "Lectura complementaria, no sustitutiva, pues relajar la relevancia "
+        "facilita la tarea por construcción y eleva a todas las estrategias por "
+        "igual."
+    )
+    return _md_table(header, rows), _latex_table(
+        header, rows, cap, f"tab:cosupervision-{sd.source}"
+    )
+
+
 def publish_analysis_to_minio(out_dir: Path, tag: str | None) -> None:
     """Upload the analysis outputs (report.md, LaTeX tables, sweep CSVs) to MinIO.
 
@@ -1004,6 +1158,10 @@ def analyze(args: argparse.Namespace) -> int:
     except FileNotFoundError as exc:
         logger.warning("Gold standard not found ({}); segment tables skipped.", exc)
         gold_by_id = {}
+
+    tutors = load_tutor_sets(
+        sorted(gold_by_id), Path(args.tutors) if args.tutors else None
+    )
 
     productivity = load_productivity(Path(args.productivity))
     if productivity is None:
@@ -1117,6 +1275,16 @@ def analyze(args: argparse.Namespace) -> int:
                 clarify[1],
                 f"T10 · Efecto de la clarificación — {source}",
             )
+
+        if tutors:
+            cosup = build_t11_cosupervision(sd, tutors)
+            if cosup is not None:
+                emit(
+                    f"t11_cosupervision_{source}",
+                    cosup[0],
+                    cosup[1],
+                    f"T11 · Relevancia relajada por cosupervisión — {source}",
+                )
 
     if len(sources) > 1:
         md, tex = build_t6_cross_source(sources)
@@ -1256,6 +1424,14 @@ def main() -> int:
         help="JSON map {pdi_<id>: activity count} for the equity table (T8), "
         "produced by the evaluation DAG and fetched with the reports; T8 is "
         "skipped if absent.",
+    )
+    parser.add_argument(
+        "--tutors",
+        default=TUTORS_DEFAULT,
+        help="JSON map {work_id: [pdi ids]} with EVERY tutor the portal lists per "
+        "reference work, for the relaxed-relevance table (T11). Read if present; "
+        "otherwise built from Memgraph and written there. T11 is skipped when "
+        "neither is available.",
     )
     parser.add_argument(
         "--bootstrap", type=int, default=10000, help="Bootstrap resamples."
