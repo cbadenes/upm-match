@@ -118,7 +118,16 @@ SWEEP_MODE = "rerank_listwise_kg"  # the only mode carrying graph components
 # sweep that shows what the signals are worth once the echo of the query's own
 # work is removed (memoria sec:eval-validez).
 SWEEP_MODE_LOO = "rerank_listwise_kg_loo"
-EXTRA_SWEEP_MODES = (SWEEP_MODE_LOO,)
+# Same protocol applied to the OTHER channel: the evidence the re-ranker reads in
+# its prompt, which can only be masked by re-ranking again. It is a full run, but
+# NOT a competing strategy: it is `rerank_listwise_kg` measured under a stricter
+# protocol. Keeping it out of the headline family matters, because the
+# multiple-comparison correction must span the hypotheses of one question, and
+# adding a robustness variant would penalise every other pair for a question that
+# is not theirs (it would also leave gold and silver corrected over families of
+# different size). Reported instead in its own table, with its own paired test.
+EXCL_MODE = "rerank_listwise_kg_excl"
+EXTRA_SWEEP_MODES = (SWEEP_MODE_LOO, EXCL_MODE)
 # Graph signals available per candidate (higher = better), fused with the text rank.
 GRAPH_SIGNALS = ["supervised_total", "supervised_fit", "teaching_fit", "coauthors_in_set"]
 GRAPH_SIGNAL_LABELS = {
@@ -305,7 +314,7 @@ class SourceData:
         self.source = source
         self.runs = runs
         self.by_mode: dict[str, list[dict[str, RecommendationResult]]] = {}
-        for mode in SEARCH_MODES:
+        for mode in (m for m in SEARCH_MODES if m not in EXTRA_SWEEP_MODES):
             per_run = [load_run_mode(r, mode) for r in runs]
             per_run = [d for d in per_run if d]  # keep only runs that have this mode
             if per_run:
@@ -1171,6 +1180,59 @@ def build_t11_cosupervision(
     )
 
 
+def build_t13_excl(
+    sd: SourceData, rng: np.random.Generator, b: int, alpha: float
+) -> tuple[str, str] | None:
+    """T13 — the graph-grounded re-ranking with the query's own work masked in the prompt.
+
+    Companion to T12: that one cleans the numeric signals off-line, this one
+    cleans the evidence the model actually read, which requires re-ranking. The
+    comparison is paired query by query (both consume the same first stage) and
+    is reported on its own, deliberately outside the headline family of T2.
+    """
+    runs_a = sd.by_mode.get(SWEEP_MODE)
+    runs_b = sd.extra_modes.get(EXCL_MODE)
+    if not runs_a or not runs_b:
+        return None
+
+    def vals(runs_, metric: str) -> np.ndarray:
+        out = np.empty(len(sd.common))
+        for i, gid in enumerate(sd.common):
+            per_run = [per_query_value(d[gid], metric) for d in runs_ if gid in d]
+            out[i] = float(np.mean(per_run)) if per_run else 0.0
+        return out
+
+    header = ["Métrica", "Sin exclusión", "Con exclusión", "Δ", "IC 95\\%", "$p$ Wilcoxon"]
+    rows: list[list[str]] = []
+    for metric in ["mrr", f"hit@{MCNEMAR_K}", "hit@25", "ndcg@10"]:
+        a, bb = vals(runs_a, metric), vals(runs_b, metric)
+        lo, hi = paired_diff_ci(bb, a, rng, b, alpha)
+        rows.append(
+            [
+                metric,
+                _fmt(float(a.mean())),
+                _fmt(float(bb.mean())),
+                f"{bb.mean() - a.mean():+.3f}",
+                f"[{_fmt(lo)}, {_fmt(hi)}]",
+                f"{wilcoxon_p(a, bb):.4f}",
+            ]
+        )
+
+    cap = (
+        f"Efecto de ocultar al reordenador el trabajo que origina cada consulta "
+        f"(fuente {sd.source}, $n={len(sd.common)}$). Ambas condiciones parten del "
+        "mismo ranking de primera etapa, de modo que la comparación es pareada y "
+        "toda diferencia procede de la evidencia enmascarada. Se reporta aparte de "
+        "la Tabla~\\ref{tab:benchmark-significancia} porque no es una estrategia "
+        "rival sino la misma condición bajo un protocolo más estricto, y añadirla "
+        "a aquella familia corregiría el resto de contrastes por una pregunta "
+        "distinta de la suya."
+    )
+    return _md_table(header, rows), _latex_table(
+        header, rows, cap, f"tab:excl-{sd.source}"
+    )
+
+
 def publish_analysis_to_minio(out_dir: Path, tag: str | None) -> None:
     """Upload the analysis outputs (report.md, LaTeX tables, sweep CSVs) to MinIO.
 
@@ -1354,6 +1416,15 @@ def analyze(args: argparse.Namespace) -> int:
                 clarify[0],
                 clarify[1],
                 f"T10 · Efecto de la clarificación — {source}",
+            )
+
+        excl = build_t13_excl(sd, rng, args.bootstrap, args.alpha)
+        if excl is not None:
+            emit(
+                f"t13_excl_{source}",
+                excl[0],
+                excl[1],
+                f"T13 · Reordenación con exclusión del trabajo de la consulta — {source}",
             )
 
         if tutors:
