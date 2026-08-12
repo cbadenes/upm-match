@@ -52,6 +52,7 @@ from evaluation.evaluate_recommendations import (  # noqa: E402
     K_VALUES,
     SILVER_TFG_PATH,
     SILVER_TFM_PATH,
+    common_indexed_universe,
     hit_at_k,
     load_gold_standard,
     ndcg_at_k,
@@ -205,13 +206,14 @@ def main() -> int:
     # Same connection style as the production backend (dbs/vector/qdrant.py).
     client = QdrantClient(url=f"http://{_QDRANT_HOST}:{_QDRANT_PORT}", api_key=_QDRANT_API_KEY)
 
-    # Same universe as the campaign: researchers present in the production dense
-    # index, so the ablation and the reference condition search the same people.
-    prod = client.scroll(
-        collection_name="researcher_summaries", limit=10000, with_payload=["researcher_id"]
-    )[0]
-    universe = {p.payload["researcher_id"] for p in prod if p.payload.get("researcher_id")}
-    logger.info("Production dense universe: {} researchers.", len(universe))
+    # EXACTLY the campaign's universe: researchers present in BOTH production
+    # indices, computed with the harness's own helper. Using only the dense index
+    # would evaluate over a different candidate set and a different query subset,
+    # and the comparison against `summary_direct` would not mean anything.
+    from dbs.vector import get_vector_db
+
+    _, _, universe = common_indexed_universe(get_vector_db())
+    logger.info("Common indexed universe (campaign protocol): {} researchers.", len(universe))
 
     stats = {}
     if not args.skip_build:
