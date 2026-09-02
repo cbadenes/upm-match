@@ -209,8 +209,17 @@ __marimo__/
 # Directorio de datos
 data/*
 
-# Scripts auxiliares de evaluación: se mantienen solo en local, no se versionan
-evaluation/build_gold_standard.py
+# Scripts auxiliares de evaluación: se mantienen solo en local, no se versionan.
+# build_gold_standard.py SÍ se versiona: es el generador determinista del conjunto
+# de referencia y sostiene la reproducibilidad del experimento (ver evaluation/README.md).
 evaluation/explore_minio.py
 evaluation/export_projects_csv.py
 evaluation/*.csv
+
+# Conjunto de referencia (500 trabajos): NO se publica.
+# Cada registro conserva el título y el resumen literales del trabajo, que resuelven
+# en el Portal Científico a la persona que lo dirigió. Se regenera con
+# `uv run evaluation/build_gold_standard.py`.
+evaluation/gold_standard_*.json
+evaluation/silver_standard_*.json
+evaluation/silver_candidates_*.json
