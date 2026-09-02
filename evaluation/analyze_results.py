@@ -1206,7 +1206,7 @@ def build_t13_excl(
     rows: list[list[str]] = []
     for metric in ["mrr", f"hit@{MCNEMAR_K}", "hit@25", "ndcg@10"]:
         a, bb = vals(runs_a, metric), vals(runs_b, metric)
-        lo, hi = paired_diff_ci(bb, a, rng, b, alpha)
+        _, lo, hi = paired_diff_ci(bb, a, rng, b, alpha)
         rows.append(
             [
                 metric,
