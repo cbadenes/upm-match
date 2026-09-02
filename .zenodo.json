@@ -33,6 +33,12 @@
       "identifier": "https://github.com/cbadenes/upm-match",
       "relation": "isSupplementTo",
       "scheme": "url"
+    },
+    {
+      "identifier": "10.5281/zenodo.22259315",
+      "relation": "isSupplementedBy",
+      "scheme": "doi",
+      "resource_type": "dataset"
     }
   ],
   "notes": "Trabajo de Fin de Máster del Máster Universitario en Aprendizaje Automático y Datos Masivos, Escuela Técnica Superior de Ingeniería de Sistemas Informáticos, Universidad Politécnica de Madrid (2026). Director: Carlos Badenes Olmedo. Desarrollado en el marco del Proyecto de Innovación Educativa IE26.6102 de la UPM.",

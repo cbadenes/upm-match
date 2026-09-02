@@ -95,7 +95,7 @@ Given the same corpus, this reproduces exactly the same 500 records — the sele
 | Material | Where | Licence |
 |---|---|---|
 | Source code (this repository) | [10.5281/zenodo.22259041](https://doi.org/10.5281/zenodo.22259041) | Apache 2.0 |
-| Aggregated results of the evaluation | [10.5281/zenodo.YYYYYYY](https://doi.org/10.5281/zenodo.YYYYYYY) | CC BY 4.0 |
+| Aggregated results of the evaluation | [10.5281/zenodo.22259315](https://doi.org/10.5281/zenodo.22259315) | CC BY 4.0 |
 | Reference set of 500 works | **Not published** | — |
 
 The two deposits are separate because the archive assigns a single licence per record and code and results do not share one.
