@@ -9,6 +9,7 @@ Tasks
 2. `analyze_pdi` — aggregate the PDI responses (Likert stats with reverse-coding by polarity, knowledge-domain relevance levels, recommendation-case metrics, open text, completion/timing/device quality). Writes `pdi_analysis.json` + `pdi_report.md`.
 3. `analyze_students` — the equivalent for students (context distributions, Likert, multi/single choices, open text, quality). Writes `student_analysis.json` + `student_report.md`.
 4. `combine_report` *(added extra)* — merge both into a single `report.md` + `summary.json` and log a concise overview in the task log.
+5. `fetch_to_repo` — mirror `analysis/latest/` into the mounted repo checkout (`evaluation/reports/questionnaire/`) and echo both reports into the task log, since MinIO has no public route on the server.
 """
 
 from __future__ import annotations
@@ -58,6 +59,14 @@ def run_stage(stage: str, run_ts: str, since: str = "") -> dict:
         resp = client.get_object(bucket, name)
         try:
             return json.loads(resp.read().decode("utf-8"))
+        finally:
+            resp.close()
+            resp.release_conn()
+
+    def read_text(name):
+        resp = client.get_object(bucket, name)
+        try:
+            return resp.read().decode("utf-8")
         finally:
             resp.close()
             resp.release_conn()
@@ -465,6 +474,33 @@ def run_stage(stage: str, run_ts: str, since: str = "") -> dict:
         print(report)
         return summary
 
+    if stage == "fetch":
+        # MinIO has no public route, so mirror `analysis/latest/` into the mounted
+        # repo checkout (same convention as upm_match_analysis.fetch_to_repo) and
+        # echo the Markdown reports into the task log, which is readable from the
+        # Airflow UI even when the mount is not writable by the container user.
+        dest = "/opt/airflow/project/evaluation/reports/questionnaire"
+        written, failed = [], []
+        for obj in client.list_objects(bucket, prefix="analysis/latest/", recursive=True):
+            name = obj.object_name.split("/")[-1]
+            try:
+                os.makedirs(dest, exist_ok=True)
+                client.fget_object(bucket, obj.object_name, f"{dest}/{name}")
+                written.append(name)
+            except Exception as exc:  # noqa: BLE001 — read-only mount must not fail the run
+                failed.append(f"{name}: {exc}")
+        rule = "=" * 78
+        for name in ("pdi_report.md", "student_report.md"):
+            try:
+                body = read_text(f"analysis/latest/{name}")
+            except Exception as exc:  # noqa: BLE001 - the report may not exist yet
+                print(f"[{name}] not available: {exc}")
+                continue
+            print(f"{rule}{chr(10)}{name}{chr(10)}{rule}{chr(10)}{body}")
+        if failed:
+            print(f"Could not write into {dest} (chmod a+rwx it to keep a copy): {failed}")
+        return {"dest": dest, "written": written, "failed": failed}
+
     raise ValueError(f"Unknown stage: {stage!r}")
 
 
@@ -527,5 +563,21 @@ with DAG(
         **_common,
     )
 
+    fetch_to_repo = ExternalPythonOperator(
+        task_id="fetch_to_repo",
+        op_kwargs={"stage": "fetch", "run_ts": _ts, "since": _since},
+        # Best effort, and pulls whatever exists even if a step above failed.
+        trigger_rule="all_done",
+        doc_md=(
+            "Mirrors `analysis/latest/` into the mounted repo checkout "
+            "(`evaluation/reports/questionnaire/`) and prints both Markdown "
+            "reports into this task log, since MinIO has no public route. "
+            "The directory must be writable by the container user "
+            "(`mkdir -p evaluation/reports/questionnaire && chmod -R a+rwx "
+            "evaluation/reports`); if it is not, the log copy still works."
+        ),
+        **_common,
+    )
+
     # PDI and student analyses are independent, so they run in parallel after the download and join into the combined report.
-    download >> [analyze_pdi, analyze_students] >> combine
+    download >> [analyze_pdi, analyze_students] >> combine >> fetch_to_repo

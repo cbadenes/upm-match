@@ -229,3 +229,7 @@ evaluation/silver_candidates_*.json
 # y el desglose por investigador permite reidentificar. Sus resultados se publican
 # únicamente en la memoria, en agregado.
 evaluation/reports/questionnaire/
+
+# Los punteros latest/ son duplicados byte a byte del run con timestamp
+# correspondiente, y analyze_results.py los ignora para no contar dos veces.
+evaluation/reports/**/latest/
