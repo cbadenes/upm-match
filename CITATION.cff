@@ -2,26 +2,26 @@ cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 title: "UPM Match: recomendación de tutores académicos mediante representación semántica de la actividad investigadora"
 abstract: >-
-  UPM Match convierte los datos públicos del Portal Científico de la Universidad
-  Politécnica de Madrid en un servicio consultable en texto libre que devuelve una
-  lista ordenada y justificada de tutores potenciales para TFG y TFM. El depósito
-  incluye el pipeline completo de construcción del corpus, la aplicación web y el
-  arnés de evaluación, junto con el generador determinista del conjunto de
-  referencia. Todo el sistema se ejecuta sobre infraestructura propia con modelos
+  UPM Match convierte los datos públicos del Portal Científico de la Universidad Politécnica de Madrid en un servicio consultable en texto libre que devuelve una
+  lista ordenada y justificada de tutores potenciales para TFG y TFM. El depósito incluye el pipeline completo de construcción del corpus, la aplicación web y el
+  arnés de evaluación, junto con el generador determinista del conjunto de referencia. Todo el sistema se ejecuta sobre infraestructura propia con modelos
   de lenguaje abiertos, sin servicios externos.
 type: software
 version: 1.0.0
 date-released: 2026-09-02
 license: Apache-2.0
+doi: "10.5281/zenodo.22259041"
 repository-code: "https://github.com/cbadenes/upm-match"
 url: "https://wiig.dia.fi.upm.es/upm-match/"
 authors:
   - family-names: "Boleas Francisco"
     given-names: "Yago"
     affiliation: "Universidad Politécnica de Madrid"
+    orcid: "https://orcid.org/0009-0006-9707-869X"
   - family-names: "Badenes Olmedo"
     given-names: "Carlos"
     affiliation: "Universidad Politécnica de Madrid"
+    orcid: "https://orcid.org/0000-0002-2753-9917"
 keywords:
   - recommender system
   - expert finding

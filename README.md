@@ -15,7 +15,7 @@
 [![Ollama](https://img.shields.io/badge/Ollama-local%20LLM-white?logo=ollama&logoColor=black)](https://ollama.com/)
 [![Docker](https://img.shields.io/badge/Docker-compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-D22128)](LICENSE)
-[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.XXXXXXX-1682D4)](https://doi.org/10.5281/zenodo.XXXXXXX)
+[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.22259041-1682D4)](https://doi.org/10.5281/zenodo.22259041)
 [![PIE IE26.6102](https://img.shields.io/badge/PIE-IE26.6102-0072CE)](https://innovacioneducativa.upm.es/proyectos-ie/informacion?anyo=2025-2026&id=2018)
 
 </div>
@@ -94,7 +94,7 @@ Given the same corpus, this reproduces exactly the same 500 records — the sele
 
 | Material | Where | Licence |
 |---|---|---|
-| Source code (this repository) | [10.5281/zenodo.XXXXXXX](https://doi.org/10.5281/zenodo.XXXXXXX) | Apache 2.0 |
+| Source code (this repository) | [10.5281/zenodo.22259041](https://doi.org/10.5281/zenodo.22259041) | Apache 2.0 |
 | Aggregated results of the evaluation | [10.5281/zenodo.YYYYYYY](https://doi.org/10.5281/zenodo.YYYYYYY) | CC BY 4.0 |
 | Reference set of 500 works | **Not published** | — |
 
@@ -114,7 +114,7 @@ Requests concerning a researcher's profile should be addressed to the contact pu
 
 If you use this software, please cite it through [`CITATION.cff`](CITATION.cff), or:
 
-> Boleas Francisco, Y., & Badenes Olmedo, C. (2026). *UPM Match: recomendación de tutores académicos mediante representación semántica de la actividad investigadora* (v1.0.0). Zenodo. https://doi.org/10.5281/zenodo.XXXXXXX
+> Boleas Francisco, Y., & Badenes Olmedo, C. (2026). *UPM Match: recomendación de tutores académicos mediante representación semántica de la actividad investigadora* (v1.0.0). Zenodo. https://doi.org/10.5281/zenodo.22259041
 
 The accompanying Master's thesis (Máster Universitario en Aprendizaje Automático y Datos Masivos, ETSISI–UPM, 2026) documents the design decisions, the evaluation protocol and the ethical and legal analysis in full.
 

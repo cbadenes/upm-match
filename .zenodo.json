@@ -9,11 +9,13 @@
   "creators": [
     {
       "name": "Boleas Francisco, Yago",
-      "affiliation": "Universidad Politécnica de Madrid"
+      "affiliation": "Universidad Politécnica de Madrid",
+      "orcid": "0009-0006-9707-869X"
     },
     {
       "name": "Badenes Olmedo, Carlos",
-      "affiliation": "Universidad Politécnica de Madrid"
+      "affiliation": "Universidad Politécnica de Madrid",
+      "orcid": "0000-0002-2753-9917"
     }
   ],
   "keywords": [
@@ -31,12 +33,8 @@
       "identifier": "https://github.com/cbadenes/upm-match",
       "relation": "isSupplementTo",
       "scheme": "url"
-    },
-    {
-      "identifier": "https://wiig.dia.fi.upm.es/upm-match/",
-      "relation": "isIdenticalTo",
-      "scheme": "url"
     }
   ],
-  "notes": "Trabajo de Fin de Máster del Máster Universitario en Aprendizaje Automático y Datos Masivos, Escuela Técnica Superior de Ingeniería de Sistemas Informáticos, Universidad Politécnica de Madrid (2026). Director: Carlos Badenes Olmedo. Desarrollado en el marco del Proyecto de Innovación Educativa IE26.6102 de la UPM."
+  "notes": "Trabajo de Fin de Máster del Máster Universitario en Aprendizaje Automático y Datos Masivos, Escuela Técnica Superior de Ingeniería de Sistemas Informáticos, Universidad Politécnica de Madrid (2026). Director: Carlos Badenes Olmedo. Desarrollado en el marco del Proyecto de Innovación Educativa IE26.6102 de la UPM.",
+  "doi": "10.5281/zenodo.22259041"
 }
