@@ -223,3 +223,9 @@ evaluation/*.csv
 evaluation/gold_standard_*.json
 evaluation/silver_standard_*.json
 evaluation/silver_candidates_*.json
+
+# Agregados de los cuestionarios: no se versionan ni se depositan.
+# Con n=20 (PDI) y n=12 (estudiantes) un agregado desglosado deja de ser agregado,
+# y el desglose por investigador permite reidentificar. Sus resultados se publican
+# únicamente en la memoria, en agregado.
+evaluation/reports/questionnaire/
