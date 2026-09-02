@@ -1,0 +1,42 @@
+{
+  "title": "UPM Match: recomendación de tutores académicos mediante representación semántica de la actividad investigadora",
+  "upload_type": "software",
+  "version": "1.0.0",
+  "language": "spa",
+  "license": "apache-2.0",
+  "access_right": "open",
+  "description": "<p><strong>UPM Match</strong> convierte los datos públicos del Portal Científico de la Universidad Politécnica de Madrid en un servicio consultable en texto libre que devuelve una lista ordenada y justificada de tutores potenciales para Trabajos de Fin de Grado y de Máster.</p><p>Este depósito archiva el sistema completo: el pipeline incremental que estructura la actividad pública en un grafo de conocimiento, la generación de perfiles semánticos con modelos de lenguaje abiertos ejecutados localmente, la indexación léxica y densa, la aplicación web y el arnés de evaluación con el que se comparan las estrategias de recuperación. Todo el despliegue es local: no se emplea ningún servicio externo de inferencia ni salen datos de la infraestructura de la universidad.</p><p><strong>Reproducibilidad.</strong> El depósito incluye <code>evaluation/build_gold_standard.py</code>, el generador determinista del conjunto de referencia de 500 trabajos empleado en la evaluación. Quien disponga de acceso al Portal Científico puede regenerar íntegramente el mismo conjunto con el mismo criterio de selección.</p><p><strong>Qué no incluye.</strong> Los 500 trabajos que sirven de verdad de referencia no se publican. Aunque el director figura pseudonimizado, cada registro conserva el título y el resumen literales del trabajo, que resuelven en el propio portal a la persona que lo dirigió, y esos resúmenes son además obra de los estudiantes que redactaron los trabajos. La reproducibilidad se preserva por la vía del procedimiento y no la del dato.</p><p><strong>Resultados agregados.</strong> Las cifras que sostienen la evaluación se depositan por separado, bajo licencia CC BY 4.0, porque el archivo asigna una sola licencia por registro.</p><p>Desarrollado en el marco del Proyecto de Innovación Educativa IE26.6102 de la Universidad Politécnica de Madrid.</p>",
+  "creators": [
+    {
+      "name": "Boleas Francisco, Yago",
+      "affiliation": "Universidad Politécnica de Madrid"
+    },
+    {
+      "name": "Badenes Olmedo, Carlos",
+      "affiliation": "Universidad Politécnica de Madrid"
+    }
+  ],
+  "keywords": [
+    "recommender system",
+    "expert finding",
+    "information retrieval",
+    "semantic search",
+    "knowledge graph",
+    "large language models",
+    "rank fusion",
+    "academic supervision"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/cbadenes/upm-match",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    },
+    {
+      "identifier": "https://wiig.dia.fi.upm.es/upm-match/",
+      "relation": "isIdenticalTo",
+      "scheme": "url"
+    }
+  ],
+  "notes": "Trabajo de Fin de Máster del Máster Universitario en Aprendizaje Automático y Datos Masivos, Escuela Técnica Superior de Ingeniería de Sistemas Informáticos, Universidad Politécnica de Madrid (2026). Director: Carlos Badenes Olmedo. Desarrollado en el marco del Proyecto de Innovación Educativa IE26.6102 de la UPM."
+}

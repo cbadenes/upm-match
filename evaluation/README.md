@@ -33,9 +33,26 @@ gold_standard_{tfg,tfm}.json ┐
 
 ### 1. Gold standard (`gold_standard_tfg.json`, `gold_standard_tfm.json`)
 
-500 registros de TFG/TFM curados **a mano** (250 + 250), proporcionales al tamaño
-de cada escuela (ETSII 79, ETSIT 77, ETSISI 57, ETSIST 37 por tipo) y con un máximo
-de 3 trabajos por director. Esquema de cada registro:
+500 registros de TFG/TFM (250 + 250) construidos por un **procedimiento enteramente
+determinista**, proporcionales al tamaño de cada escuela (ETSII 79, ETSIT 77,
+ETSISI 57, ETSIST 37 por tipo) y con un máximo de 3 trabajos por director.
+No hay muestreo aleatorio: la selección es un criterio explícito y ordenado
+(elegibilidad por longitud de resumen, puntuación por riqueza de la evidencia y
+reparto por escuela recorriendo directores por turnos), de modo que sobre el mismo
+corpus el generador reproduce exactamente los mismos 500 registros.
+
+> **Estos dos ficheros no se versionan ni se publican** (ver
+> [`.gitignore`](../.gitignore)). Cada registro conserva el título y el resumen
+> literales del trabajo, que resuelven en el Portal Científico a la persona que lo
+> dirigió, por lo que la pseudonimización del director no convierte el conjunto en
+> anónimo; y esos resúmenes son obra de los estudiantes que redactaron los trabajos.
+> Lo que se publica es el procedimiento que los construye:
+>
+> ```bash
+> uv run evaluation/build_gold_standard.py
+> ```
+
+Esquema de cada registro:
 
 | campo            | descripción                                                |
 |------------------|------------------------------------------------------------|
